@@ -32,7 +32,7 @@ implementation
 
 { TBaseCircuit }
 
-function TBaseCircuit.GetSatSolver: TSATSolverInterface; inline;
+function TBaseCircuit.GetSatSolver: TSATSolverInterface;
 begin
   Result:= SatSolverInterfaceUnit.GetSatSolver;
 end;

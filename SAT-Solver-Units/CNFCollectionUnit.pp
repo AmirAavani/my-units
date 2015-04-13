@@ -16,12 +16,14 @@ type
     AllClauses: TClauseCollection;
     AllComments: TStringList;
     CommentLineIndices: TIntegerCollection;
+    FOutputFilename: AnsiString;
+    procedure SetOutputFilename(AValue: AnsiString);
 
   protected
     function GetCNF: TClauseCollection; override;
    
   public
-
+    property OutputFilename: AnsiString write SetOutputFilename;
     constructor Create;
     destructor Destroy; override;
 
@@ -53,18 +55,16 @@ end;
 
 destructor TCNFCollection.Destroy;
 var
-  CNFStream: TMyTextStream;
   i: Integer;
   cl: TClause;
+  CNFStream : TMyTextStream;
 begin
-  if GetRunTimeParameterManager.ValueByName['--OutputFileName']<> '' then
+  if FOutputFilename <> '' then
   begin
     CNFStream := TMyTextStream.Create(
-      TFileStream.Create(GetRunTimeParameterManager.ValueByName['--OutputFileName'],
-      fmCreate), True);
+      TFileStream.Create(FOutputFilename, fmCreate), True);
     Self.SaveToFile(CNFStream);
     CNFStream.Free;
-
   end;
 
   for i := 0 to AllClauses.Count - 1 do
@@ -81,10 +81,15 @@ begin
 
 end;
 
+
+procedure TCNFCollection.SetOutputFilename(AValue: AnsiString);
+begin
+  FOutputFilename:= AValue;
+end;
+
 function TCNFCollection.GetCNF: TClauseCollection;
 begin
   Result := AllClauses.Copy;
-
 end;
 
 procedure TCNFCollection.SubmitClause; 
@@ -245,7 +250,6 @@ begin
     end;
     if Sat then
       Continue;
-
     if 0 < ActiveClause.Count then
     begin
       SetLength(OutputString, ActiveClause.Count* 10);
@@ -253,7 +257,7 @@ begin
       OutputStringPChar := @(OutputString[1]);
 
       Lit := ActiveClause.Items[0];
-      if((GetValue(GetVar(Lit)) = gbTrue) and IsNegated(Lit)) or
+     if((GetValue(GetVar(Lit)) = gbTrue) and IsNegated(Lit)) or
         ((GetValue(GetVar(Lit)) = gbFalse) and(not IsNegated(Lit))) then
       else
       begin
@@ -273,7 +277,6 @@ begin
 
       end;
 
-  
       for j := 1 to ActiveClause.Count- 1 do
       begin
         Lit := ActiveClause.Items[j];

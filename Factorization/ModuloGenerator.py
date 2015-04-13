@@ -3,8 +3,8 @@ import math
 def log2(n):
   return math.log(n) / math.log(2)
 
-def GenerateModulos(n, all_primes, TwoToPs):
-  logn = int(log2(n))
+def GenerateModulos3(n, all_primes, TwoToPs):
+  logn = int(log2(n) + 0.9999)
   N = (1 << n) - 1
   M = 1l
   for i in range(logn):
@@ -22,6 +22,45 @@ def GenerateModulos(n, all_primes, TwoToPs):
       return [n, logn, i, all_primes[i], TwoToPs[i], N, M]
   print n, logn, TwoToPs[i], all_primes[i], N, M
   return []
+
+def GenerateModulos4(n, all_primes, TwoToPs):
+  logn = int(log2(n) + 0.9999)
+  N = (1 << n) - 1
+
+  top = n / 2
+  bot = 1
+  result = []
+  MinP = []
+
+  while bot <= top:
+    M = 1l
+    mid = (bot + top) / 2
+
+    P = []
+    for i in range(logn):
+      p = all_primes[i]
+      if  mid <= p:
+        print "-mid = ", mid
+        bot = mid + 1
+        break
+      
+      while p * all_primes[i] < mid:
+        p *= all_primes[i]
+      P.append(p)
+      M *= ((1 << p) - 1)
+
+    if N < M:
+      print "+mid = ", mid, 'P = ', P
+      result = [n, logn, p, mid, N, M]
+      MinP = P
+      top = mid - 1
+    else:
+      print "-mid = ", mid
+      bot = mid + 1
+
+  print 'n, logn, max_p^i, mid, N, M', result
+  print 'MinP = ', MinP
+  return result
 
 
 def GeneratePrimes(m):
@@ -53,7 +92,13 @@ for p in all_primes:
 #print all_primes
 n = int(raw_input())
 #while True:
-L = GenerateModulos(n, all_primes, TwoToPs)
+L = GenerateModulos3(n, all_primes, TwoToPs)
+if L == []:
+  pass
+else:
+  print L
+
+L = GenerateModulos4(n, all_primes, TwoToPs)
 if L == []:
   pass
 else:

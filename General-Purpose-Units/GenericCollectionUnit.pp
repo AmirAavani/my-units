@@ -13,6 +13,8 @@ type
 
   generic TGenericCollection<TData>= class(specialize TVector<TData>)
   private
+    type
+      TVectorData = specialize TVector<TData>;
     function GetCount: Integer; inline;
     function GetFirstItem: TData; inline;
     function GetItem(Index: Integer): TData; inline;
@@ -21,11 +23,9 @@ type
 
   public
     property Item[Index: Integer]: TData read GetItem write SetItem;
-    property FirstItem: TData read GetFirstItem;
-    property LastItem: TData read GetLastItem;
     property Count : Integer read GetCount;
 
-    constructor Create(Size_: Integer);
+    constructor Create(Vector: TVectorData);
     constructor Create;
     destructor Destroy; override;
 
@@ -38,8 +38,6 @@ type
       The item has not been freed, yet.
     }
     function Delete(Index: Integer): TData;
-
-    procedure Load(Stream: TMyTextStream); virtual;
 
     procedure Sort(Compare: TSortCompare);
   end;
@@ -70,7 +68,6 @@ type
       Deletes the Index-th item from the list and return it.
     }
     function Delete(Index: Integer): TData;
-
     {
       Set Count to 0.
     }
@@ -110,16 +107,16 @@ begin
 
 end;
 
-constructor TGenericCollection.Create(Size_: Integer);
+constructor TGenericCollection.Create(Vector: TVectorData);
 var
   i: Integer;
 
 begin
   inherited Create;
 
-  Resize(Size_);
-  for i := 0 to Size - 1 do
-    Item[i] := TData.Create;
+  Self.Resize(Vector.Size);
+  for i := 0 to Vector.Size - 1 do
+    Self.Item[i] := Vector[i];
 
 end;
 
@@ -130,13 +127,13 @@ begin
 end;
 
 destructor TGenericCollection.Destroy;
-var
+{var
   i: Integer;
-
+}
 begin
-  for i := 0 to Count - 1 do
+{  for i := 0 to Count - 1 do
     Item[i].Free;
-
+}
   inherited Destroy;
 
 end;
@@ -170,15 +167,9 @@ begin
 
 end;
 
-procedure TGenericCollection.Load(Stream: TMyTextStream);
-begin
-  //Do nothing
-
-end;
-
 procedure TGenericCollection.Sort(Compare: TSortCompare);
 begin
-
+  assert(False);
 end;
 
 { TGenericCollectionForBuiltInData }

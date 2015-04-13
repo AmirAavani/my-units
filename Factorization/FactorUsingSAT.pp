@@ -6,18 +6,17 @@ uses
   {$IFDEF UNIX}{$IFDEF UseCThreads}
   cthreads,
   {$ENDIF}{$ENDIF}
-  Classes, SatSolverInterfaceUnit, ParameterManagerUnit, MiniSatSolverUnit,
-  MiniSatSolverInterfaceUnit, SysUtils, contnrs, gvector, BigInt,
-  FactoringUsingSATUnit, AbstractSolverUnit, CNFCollectionUnit,
-  TSeitinVariableUnit, BinaryEncodingBasedFactoringUnit, BitVectorUnit,
+  Classes, SatSolverInterfaceUnit, ParameterManagerUnit, SysUtils, contnrs,
+  gvector, BigInt, FactoringUsingSATUnit, AbstractSolverUnit, CNFCollectionUnit,
+  MiniSatSolverInterfaceUnit, TSeitinVariableUnit,
+  BinaryEncodingBasedFactoringUnit, BitVectorUnit, ClauseUnit,
   BinaryArithmeticCircuitUnit, BaseArithmeticCircuitUnit, BaseCircuitUnit,
   ModuloBasedFactoringUnit, GenericCollectionUnit, StreamUnit,
-  GenericFactoryUnit, PBConstraintUnit, AbstractPBModEncoderUnit;
+  GenericFactoryUnit, GenericStackUnit;
 
 procedure Initialize;
 begin
   ParameterManagerUnit.Initialize;
-
   SatSolverInterfaceUnit.Initialize;
   TSeitinVariableUnit.Initialize;
   FactoringUsingSATUnit.Initialize;//('BinaryRep');
@@ -56,48 +55,103 @@ begin
   InputNumber:= GetRunTimeParameterManager.ValueByName['--InputNumber'];
   InputSize:= GetRunTimeParameterManager.ValueByName['--InputSize'];
 
-  if InputNumber <> '' then
+  if UpperCase(GetRunTimeParameterManager.ValueByName['--Mode']) =
+             UpperCase('Factoring') then
   begin
+    if InputNumber <> '' then
+    begin
 
-    n:= BigIntFactory.GetNewMember.LoadFromString(@InputNumber[1]);
+      n:= BigIntFactory.GetNewMember.LoadFromString(@InputNumber[1]);
 
-    a:= TBitVector.Create(n.Log );
-    b:= TBitVector.Create(n.Log);
+      a:= TBitVector.Create(n.Log );
+      b:= TBitVector.Create(n.Log);
 
-    WriteLn('c a = ', a.ToString);
-    WriteLn('c b = ', b.ToString);
-    WriteLn('c n = ', InputNumber);
+      WriteLn('c a = ', a.ToString);
+      WriteLn('c b = ', b.ToString);
+      WriteLn('c n = ', InputNumber);
 
-    SatSolverInterfaceUnit.GetSatSolver.BeginConstraint;
-    SatSolverInterfaceUnit.GetSatSolver.AddLiteral(FactoringUsingSATUnit.GetActiveFactorizer.GenerateCNF(a, b, n));
-    SatSolverInterfaceUnit.GetSatSolver.SubmitClause;
+      SatSolverInterfaceUnit.GetSatSolver.BeginConstraint;
+      SatSolverInterfaceUnit.GetSatSolver.AddLiteral(FactoringUsingSATUnit.GetActiveFactorizer.GenerateCNF(a, b, n));
+      SatSolverInterfaceUnit.GetSatSolver.SubmitClause;
 
-    BigIntFactory.ReleaseMemeber(n);
+      BigIntFactory.ReleaseMemeber(n);
 
-    a.Free;
-    b.Free;
+      a.Free;
+      b.Free;
 
-  end
-  else
+    end
+    else
+    begin
+      n := BigIntFactory.GetNewMember.SetValue(1).ShiftLeft(StrToInt(InputSize)).Decr;
+
+      a:= TBitVector.Create(n.Log );
+      b:= TBitVector.Create(n.Log);
+
+      WriteLn('c a = ', a.ToString);
+      WriteLn('c b = ', b.ToString);
+
+      SatSolverInterfaceUnit.GetSatSolver.BeginConstraint;
+      SatSolverInterfaceUnit.GetSatSolver.AddLiteral(FactoringUsingSATUnit.GetActiveFactorizer.GenerateCNF(a, b, n));
+      SatSolverInterfaceUnit.GetSatSolver.SubmitClause;
+
+      BigIntFactory.ReleaseMemeber(n);
+
+      a.Free;
+      b.Free;
+
+      BigIntFactory.ReleaseMemeber(n);
+
+    end;
+  end else if UpperCase(GetRunTimeParameterManager.ValueByName['--Mode']) =
+             UpperCase('RSAFactoring') then
   begin
-    n := BigIntFactory.GetNewMember.SetValue(1).ShiftLeft(StrToInt(InputSize));
+    if InputNumber <> '' then
+    begin
 
-    a:= TBitVector.Create(n.Log );
-    b:= TBitVector.Create(n.Log);
+      n:= BigIntFactory.GetNewMember.LoadFromString(@InputNumber[1]);
 
-    WriteLn('c a = ', a.ToString);
-    WriteLn('c b = ', b.ToString);
+      WriteLn('n.Log = ', n.Log);
+//      assert(n.Log  mod 2 = 0);
+      a:= TBitVector.Create((n.Log + 3) div 2);
+      b:= TBitVector.Create((n.Log + 3) div 2);
 
-    SatSolverInterfaceUnit.GetSatSolver.BeginConstraint;
-    SatSolverInterfaceUnit.GetSatSolver.AddLiteral(FactoringUsingSATUnit.GetActiveFactorizer.GenerateCNF(a, b, n));
-    SatSolverInterfaceUnit.GetSatSolver.SubmitClause;
+      WriteLn('c a = ', a.ToString);
+      WriteLn('c b = ', b.ToString);
+      WriteLn('c n = ', InputNumber);
 
-    BigIntFactory.ReleaseMemeber(n);
+      SatSolverInterfaceUnit.GetSatSolver.BeginConstraint;
+      SatSolverInterfaceUnit.GetSatSolver.AddLiteral(FactoringUsingSATUnit.GetActiveFactorizer.GenerateCNF(a, b, n));
+      SatSolverInterfaceUnit.GetSatSolver.SubmitClause;
 
-    a.Free;
-    b.Free;
+      BigIntFactory.ReleaseMemeber(n);
 
-    BigIntFactory.ReleaseMemeber(n);
+      a.Free;
+      b.Free;
+
+    end
+    else
+    begin
+      n := BigIntFactory.GetNewMember.SetValue(1).ShiftLeft(StrToInt(InputSize)).Decr;
+
+      assert(n.Log  mod 2 = 0);
+      a:= TBitVector.Create(n.Log div 2);
+      b:= TBitVector.Create(n.Log div 2);
+
+      WriteLn('c a = ', a.ToString);
+      WriteLn('c b = ', b.ToString);
+
+      SatSolverInterfaceUnit.GetSatSolver.BeginConstraint;
+      SatSolverInterfaceUnit.GetSatSolver.AddLiteral(FactoringUsingSATUnit.GetActiveFactorizer.GenerateCNF(a, b, n));
+      SatSolverInterfaceUnit.GetSatSolver.SubmitClause;
+
+      BigIntFactory.ReleaseMemeber(n);
+
+      a.Free;
+      b.Free;
+
+      BigIntFactory.ReleaseMemeber(n);
+
+    end;
 
   end;
   Finalize;

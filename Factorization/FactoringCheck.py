@@ -33,6 +33,7 @@ while True:
       if t == '':
           break
       it = int(t)
+      print 'si, sign, it, solution[it]'
       print si, sign, it, solution[it]
       if (0 < solution[it]) and (0 < sign):
         print 1,

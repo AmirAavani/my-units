@@ -116,8 +116,8 @@ type
   private
     constructor Create; overload;
     constructor Create(S: PChar); overload;
-  public
     destructor Destroy; override;
+  public
 
     {
       Sets Self to the integer represented by S, and return Self
@@ -147,7 +147,8 @@ type
 
   { TBigIntFactory }
 
-  TBigIntFactory= class(specialize TGenericFactoy<TBigInt>)
+  _TBigIntFactory = specialize TGenericFactoy<TBigInt>;
+  TBigIntFactory= class(_TBigIntFactory{specialize TGenericFactoy<TBigInt>})
   public
     function  ComputeProduct(Values: TBigIntCollection): TBigInt;
   end;
@@ -178,6 +179,7 @@ begin
     BigIntFactory.ReleaseMemeber(Result);
 
     Result := Temp;
+
   end;
 
 end;
@@ -650,7 +652,6 @@ begin
 
   while 1<= Temp1.Length do
   begin
-
     if Odd(Temp1.FDigits^[0]) then
       Result.Add(Temp2);
 
@@ -790,7 +791,6 @@ end;
 
 destructor TBigInt.Destroy;
 begin
-  WriteLn('In Destroy');
   FLength := 0;
   Dispose(FDigits);
   

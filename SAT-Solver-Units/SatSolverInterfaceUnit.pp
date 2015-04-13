@@ -58,6 +58,7 @@ type
     property CNF: TClauseCollection read GetCNF;
 
     procedure AddComment(const Comment: AnsiString); virtual;
+    // for debug... should be removed!!
     function CStack: TStackOfClauses;
 //    function GenerateNewVariable(VariablePolrity: TVariablePolarity= vpNone; Decide: Boolean= True): Integer; virtual; abstract;
     function GenerateNewVariable(VariablePolrity: TVariablePolarity; Decide: Boolean): Integer; virtual; abstract;
@@ -69,6 +70,7 @@ type
     procedure AddLiterals(Lits: array of const); virtual;
     procedure AddClause(AClause: TClause); inline;
 
+    procedure SubmitExactlyOne(Literalts: array of TLiteral); virtual;
     procedure SubmitAndGate(p: TLiteral); virtual;
     procedure SubmitOrGate(p: TLiteral); virtual;
     procedure SubmitXOrGate(p: TLiteral); virtual;
@@ -100,7 +102,8 @@ type
   end;
 
 function GetSatSolver: TSATSolverInterface; inline;
-function ReNewSatSolver(SatSolverType: TSatSolverType= ssMiniSatSolver): TSATSolverInterface;
+function ReNewSatSolver(const SatSolverType: AnsiString): TSATSolverInterface;
+function PopBackSatSolver: TSATSolverInterface;
 procedure Initialize;
 procedure Finalize;
 
@@ -109,27 +112,42 @@ uses
   TSeitinVariableUnit,  MiniSatSolverInterfaceUnit, CNFCollectionUnit,
   ParameterManagerUnit, CNFStreamUnit;
 
+type
+  TSatSolverStack = specialize TGenericStack<TSATSolverInterface>;
+
 var
-  SatSolverInterface: TSATSolverInterface;
+  SatSolverStack: TSatSolverStack;
+  SatSolver: TSATSolverInterface;
 
 function GetSatSolver: TSATSolverInterface; inline;
 begin
-  Result:= SatSolverInterface;
+  Result:= SatSolver;
 
 end;
 
-function ReNewSatSolver(SatSolverType: TSatSolverType): TSATSolverInterface; inline;
+function ReNewSatSolver(const SatSolverType: AnsiString): TSATSolverInterface; inline;
 begin
-  SatSolverInterface.Free;
+  SatSolverStack.Push(SatSolver);
 
-  case SatSolverType of
-    ssMiniSatSolver: SatSolverInterface:= TMiniSatSolverInterface.Create;
-    ssCNFCollection:  SatSolverInterface:= TCNFCollection.Create
-    else    ;
+  if UpperCase(SatSolverType)= UpperCase('CNFCollection') then
+    SatSolver:= TCNFCollection.Create
+  else if UpperCase(SatSolverType)= UpperCase('CNFStream') then
+    SatSolver:= TCNFStream.Create(GetRunTimeParameterManager.GetValueByName('--OutputFilename'))
+  else if UpperCase(SatSolverType)= UpperCase('InternalMiniSAT') then
+    SatSolver:= TMiniSatSolverInterface.Create
+  else
+  begin
+    WriteLn('Invalid SatSolveType!');
+    Halt(1);
 
+{  if GetRunTimeParameterManager.SATSolverType= ssMiniSatSolver then
+     SatSolverInterface:= TMiniSatSolverInterface.Create
+  else if GetRunTimeParameterManager.SATSolverType= ssCNFCollection then
+      SatSolverInterface:= TCNFCollection.Create;
+}
   end;
 
-  Result:= SatSolverInterface;
+  Result:= SatSolver;
 
   Result.BeginConstraint;
   Result.AddLiteral(GetVariableManager.TrueLiteral);
@@ -137,14 +155,28 @@ begin
 
 end;
 
+function PopBackSatSolver: TSATSolverInterface;
+begin
+  SatSolver.Free;
+
+  SatSolver := SatSolverStack.Pop;
+
+  Result := SatSolver;
+end;
+
 procedure Initialize;
 begin
+  SatSolverStack := TSatSolverStack.Create;
+
   if UpperCase(GetRunTimeParameterManager.GetValueByName('--SatSolverType'))= UpperCase('CNFCollection') then
-    SatSolverInterface:= TCNFCollection.Create
+  begin
+    SatSolver:= TCNFCollection.Create;
+    (SatSolver as TCNFCollection).OutputFilename := GetRunTimeParameterManager.ValueByName['--OutputFileName'];
+  end
   else if UpperCase(GetRunTimeParameterManager.GetValueByName('--SatSolverType'))= UpperCase('CNFStream') then
-    SatSolverInterface:= TCNFStream.Create(GetRunTimeParameterManager.GetValueByName('--OutputFilename'))
+    SatSolver:= TCNFStream.Create(GetRunTimeParameterManager.GetValueByName('--OutputFilename'))
   else if UpperCase(GetRunTimeParameterManager.GetValueByName('--SatSolverType'))= UpperCase('InternalMiniSAT') then
-    SatSolverInterface:= TMiniSatSolverInterface.Create
+    SatSolver:= TMiniSatSolverInterface.Create
   else
   begin
     WriteLn('Invalid SatSolveType!');
@@ -328,9 +360,15 @@ var
 
 begin
   if 0 < NoOfLiteralInTopConstraint[gbTrue] then
-    Exit(GetVariableManager.TrueLiteral)
+  begin
+    Result := GetVariableManager.TrueLiteral;
+    AbortConstraint;
+  end
   else if NoOfLiteralInTopConstraint[gbFalse] = TopConstraint.Count then
-    Exit(GetVariableManager.FalseLiteral)
+  begin
+    Result := GetVariableManager.FalseLiteral;
+    AbortConstraint;
+  end
   else
   begin
     if TopConstraint.Count = 0 then
@@ -542,6 +580,28 @@ begin
     AddLiteral(AClause.Items[i]);
 
   SubmitClause;
+
+end;
+
+procedure TSATSolverInterface.SubmitExactlyOne(Literalts: array of TLiteral);
+var
+  i, j: Integer;
+begin
+  BeginConstraint;
+
+  for i := 0 to High(Literalts) do
+  begin
+    for j := i + 1 to High(Literalts) do
+    begin
+      BeginConstraint;
+      AddLiteral(NegateLiteral(Literalts[i]));
+      AddLiteral(NegateLiteral(Literalts[j]));
+      SubmitClause;         //li -> ~lj
+    end;
+    AddLiteral(Literalts[i]);
+  end;
+
+  SubmitOrGate(GetVariableManager.TrueLiteral);
 
 end;
 
@@ -964,15 +1024,17 @@ begin
 end;
 
 procedure Finalize;
-
 begin
 {  Stream:= TMyTextStream.Create(
     TFileStream.Create(GetRunTimeParameterManager.OutputFilename, fmCreate));
  (GetSatSolver as TCNFCollection).SaveToFile(Stream);
   Stream.Free;
 }
+  if SatSolverStack.Count <> 0 then
+    WriteLn('Error in SatSolverStack');
 
   GetSatSolver.Free;
+  SatSolverStack.Free;
 
 end;
 

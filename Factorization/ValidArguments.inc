@@ -1,4 +1,4 @@
-  ValidArguments: array [1..12] of AnsiString=
+  ValidArguments: array [1..13] of AnsiString=
     ('--ModularEncoder',
      '--SATSolverType',
      '--FactorizerMode',
@@ -8,11 +8,12 @@
      '--AddaLeb',
      '--ExtraClausesMode',
      '--AddModuloMod',
+     '--Mode',
      '--InputNumber',
      '--InputSize',
      '--OutputFilename'
     );
-  ValidArgumentsValues: array [1..12] of AnsiString=
+  ValidArgumentsValues: array [1..13] of AnsiString=
     (
 //--ModularEncoder:
    'DP:DCDirect:DCTseitin:CARD.DP:CARD.DC:CARD.SN:Less.Variables:'
@@ -26,13 +27,15 @@
 //    Verbosity
      'None:END',
 //     '--ModuloMode',
-     'normal:UsingDP:END',
+     'Mode1:Mode2:Mode3:Mode4:Mode5:UsingDP:END',
 //     '--AddaLeb'
      'True:False:END',
 //     '--ExtraClausesMode',
       'None:END', //Dec_1:Dec_2:IncByTwoToM_1_1:IncByTwoToM_1_2:EQ:END',
 //     '--AddModuloMod',
       'Decr:IncByTwoToM_1:END',
+//     '--Mode',
+      'Factoring:RSAFactoring:END',
 //     '--InputNumber',
       'None:END',
 //     '--InputSize',

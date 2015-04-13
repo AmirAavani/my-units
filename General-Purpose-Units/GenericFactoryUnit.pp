@@ -88,8 +88,15 @@ begin
 end;
 
 function TGenericFactoy.ReleaseMemeber(AMember: T): Integer;
+var
+  i: Integer;
+
 begin
   AMember.Reset;
+
+
+  assert(not AvailableItems.Find(AMember));
+
   AvailableItems.Push(AMember);
 
 end;

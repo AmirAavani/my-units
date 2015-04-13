@@ -60,7 +60,7 @@ type
     function Copy: TClauseCollection;
     function ToString: AnsiString; override;
 
-    procedure Load(Stream: TMyTextStream); override;
+    procedure Load(Stream: TMyTextStream);
 
   end;
 

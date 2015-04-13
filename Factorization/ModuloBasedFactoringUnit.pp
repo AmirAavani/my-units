@@ -6,12 +6,11 @@ interface
 
 uses
   Classes, SysUtils, FactoringUsingSATUnit, BigInt,
-  BitVectorUnit, BinaryArithmeticCircuitUnit,
+  BitVectorUnit, BinaryArithmeticCircuitUnit, gvector,
   ClauseUnit, GenericCollectionUnit;
 
 type
-  TIntegerCollection = specialize TGenericCollectionForBuiltInData<Integer>;
-
+  TIntegerCollection = specialize TGenericCollection<Integer>;
 
   { TModuloBasedBinaryArithmeticCircuit }
 
@@ -21,7 +20,11 @@ type
 
   protected
     function GenerateModulosUsingDP(n: Integer): TIntegerCollection;
-    function GenerateModulos(n: Integer; MaxModLogVal: Integer = -1): TIntegerCollection;
+    function GenerateModulos1(n: Integer; MaxModLogVal: Integer = -1): TIntegerCollection;
+    function GenerateModulos2(n: Integer; MaxModLogVal: Integer = -1): TIntegerCollection;
+    function GenerateModulos3(n: Integer): TIntegerCollection;
+    function GenerateModulos4(n: Integer): TIntegerCollection;
+    function GenerateModulos5(n: Integer): TIntegerCollection;
     function EncodeMul(const a, b, c: TBitVector; Level: Integer): TLiteral; override;
     {
     Encode c = a mod (2^m-1).
@@ -71,12 +74,204 @@ type
 
 implementation
 uses
-  TSeitinVariableUnit, ParameterManagerUnit, gvector, math,
-  SatSolverInterfaceUnit, PBConstraintUnit;
+  TSeitinVariableUnit, ParameterManagerUnit, math,
+  SatSolverInterfaceUnit;
 
 { TModuloBasedBinaryArithmeticCircuit }
+function ComputeModuloProduct(Bases: TIntegerCollection): TBigInt;
+var
+  Modulos: TBigIntCollection;
+  i: Integer;
 
-function TModuloBasedBinaryArithmeticCircuit.GenerateModulos(n: Integer;
+begin
+  Modulos := TBigIntCollection.Create;
+
+  for i := 0 to Bases.Size - 1 do
+    Modulos.Add(BigIntFactory.GetNewMember.SetValue(1).
+        ShiftLeft(Bases[i]).Decr);
+
+  Result := BigIntFactory.ComputeProduct(Modulos);
+  for i := 0 to Bases.Size - 1 do
+    BigIntFactory.ReleaseMemeber(Modulos[i]);
+  Modulos.Free;
+end;
+
+function SelectSmallestSubset(Modulos: TIntegerCollection;
+  TargetLog: Integer): TIntegerCollection;
+var
+  CurrentSet: TIntegerCollection;
+  MinSetMask: Integer;
+  MinProd, Temp: TBigInt;
+  i, j: Integer;
+  mCount: Integer;
+
+begin
+  mCount := Modulos.Size;
+
+  MinProd := ComputeModuloProduct(Modulos);
+  Assert(TargetLog <= MinProd.Log, 'TargetLog = ' + IntToStr(TargetLog) +
+    ' all modulos prod = ' + IntToStr(MinProd.Log));
+  MinSetMask := (1 shl mCount) - 1;
+
+  CurrentSet := TIntegerCollection.Create;
+  for i := 0 to ((1 shl mCount) - 1) do
+  begin
+    CurrentSet.Clear;
+
+    for j := 0 to mCount - 1 do
+      if (i and (1 shl j)) <> 0 then
+        CurrentSet.PushBack(Modulos[j]);
+
+    Temp := ComputeModuloProduct(CurrentSet);
+    if Temp.Log < TargetLog then
+    else if MinProd.CompareWith(Temp) > 0 then
+    begin
+      BigIntFactory.ReleaseMemeber(MinProd);
+      MinProd := Temp.Copy;
+      MinSetMask := i;
+    end;
+
+    BigIntFactory.ReleaseMemeber(Temp);
+  end;
+  CurrentSet.Free;
+
+  Result := TIntegerCollection.Create;
+  for j := 0 to mCount - 1 do
+    if (MinSetMask and (1 shl j)) <> 0 then
+      Result.PushBack(Modulos[j]);
+end;
+
+
+function TModuloBasedBinaryArithmeticCircuit.GenerateModulos1(n: Integer;
+  MaxModLogVal: Integer): TIntegerCollection;
+
+var
+  AllPrimes, Modulos: TIntegerCollection;
+  b: Integer;
+  logn: Integer;
+  i, j: Integer;
+  ActivePrime: Integer;
+
+  Top, Bot, Mid: Integer;
+  StartingIndex: Integer;
+
+  Prod, t2p, Temp: TBigInt;
+begin
+  if MaxModLogVal = -1 then
+    MaxModLogVal := MaxInt;
+
+  AllPrimes := GenerateAllPrimesLessThanEq(2 * n);
+
+  logn := 2 * Round(log2(n / 2.0));
+  if (GetRunTimeParameterManager.Verbosity and
+                  VerbModuloBasedBinaryArithmeticCircuit) <> 0 then
+    WriteLn('logn = ', logn);
+
+  b := Round((3 * n + 1) / (2.0 * logn)) div 2;
+//  p2b := 1 shl b;
+
+  Top := AllPrimes.Size - 1; Bot := 0;
+
+  StartingIndex := -1;
+  while Bot <= Top do
+  begin
+    Mid := (Top + Bot) div 2;
+    if AllPrimes[Mid] < b then
+      Bot := Mid + 1
+    else // if p2b <= AllPrimes[Mid]
+    begin
+      StartingIndex := Mid;
+      Top := Mid - 1;
+    end;
+  end;
+
+  Prod := BigIntFactory.GetNewMember.SetValue(1);
+
+  Modulos := TIntegerCollection.Create;
+  for i := StartingIndex downto Max(StartingIndex -  logn, 0)  do
+  begin
+    if MaxModLogVal <= AllPrimes[i]  then
+      break;
+    ActivePrime := AllPrimes[i];
+    if ActivePrime = 2 then
+      ActivePrime := 4
+    else if ActivePrime = 3 then
+      ActivePrime := 9;
+
+    t2p := BigIntFactory.GetNewMember.SetValue(1).ShiftLeft(ActivePrime).Decr;
+    assert(not t2p.IsZero);
+
+    Temp := Prod.Mul(t2p);
+    BigIntFactory.ReleaseMemeber(t2p);
+    BigIntFactory.ReleaseMemeber(Prod);
+    Prod := Temp;
+
+    Modulos.PushBack(ActivePrime);
+    if n < Prod.Log then
+      Break;
+
+  end;
+
+  while Prod.Log <= n do
+  begin
+    i := StartingIndex;
+    while True do
+    begin
+      Inc(i);
+      if MaxModLogVal <= AllPrimes[i]  then
+        break;
+      ActivePrime := AllPrimes[i];
+      if ActivePrime = 2 then
+        ActivePrime := 4
+      else if ActivePrime = 3 then
+        ActivePrime := 9;
+
+      t2p := BigIntFactory.GetNewMember.SetValue(1).ShiftLeft(ActivePrime).Decr;
+      assert(not t2p.IsZero);
+
+      Temp := Prod.Mul(t2p);
+      BigIntFactory.ReleaseMemeber(t2p);
+      BigIntFactory.ReleaseMemeber(Prod);
+      Prod := Temp;
+
+      Modulos.PushBack(ActivePrime);
+      if n < Prod.Log then
+        Break;
+
+    end;
+
+  end;
+  if Prod.Log < n then
+  begin
+    for i := StartingIndex - 1 downto Max(0, Modulos.Size - Logn)  do
+    begin
+      ActivePrime := AllPrimes[i];
+      if ActivePrime = 2 then
+        ActivePrime := 4
+      else if ActivePrime = 3 then
+        ActivePrime := 9;
+
+      t2p := BigIntFactory.GetNewMember.SetValue(1).ShiftLeft(ActivePrime).Decr;
+      Temp := Prod.Mul(t2p);
+      BigIntFactory.ReleaseMemeber(t2p);
+      BigIntFactory.ReleaseMemeber(Prod);
+      Prod := Temp;
+
+      Modulos.PushBack(AllPrimes[i]);
+      if n < Prod.Log then
+        Break;
+    end;
+  end;
+
+  BigIntFactory.ReleaseMemeber(Prod);
+  AllPrimes.Free;
+
+  Result := SelectSmallestSubset(Modulos, n);
+  Modulos.Free;
+
+end;
+
+function TModuloBasedBinaryArithmeticCircuit.GenerateModulos2(n: Integer;
   MaxModLogVal: Integer): TIntegerCollection;
 
   function SelectSmallestSubset(Modulos: TIntegerCollection;
@@ -91,11 +286,14 @@ function TModuloBasedBinaryArithmeticCircuit.GenerateModulos(n: Integer;
 
   begin
     ModulosBigInts := TBigIntCollection.Create;
-    for i := 0 to Modulos.Count - 1 do
+    for i := 0 to Modulos.Size - 1 do
+    begin
+      WriteLn('M[', i, '] = ', Modulos[i]);
       ModulosBigInts.Add(
           BigIntFactory.GetNewMember.SetValue(1).ShiftLeft(Modulos[i]).Decr);
+    end;
 
-    mCount := Modulos.Count;
+    mCount := Modulos.Size;
 
     MinProd := BigIntFactory.ComputeProduct(ModulosBigInts);
     Assert(TargetLog <= MinProd.Log, 'TargetLog = ' + IntToStr(TargetLog) +
@@ -132,92 +330,409 @@ function TModuloBasedBinaryArithmeticCircuit.GenerateModulos(n: Integer;
     Result := TIntegerCollection.Create;
     for j := 0 to mCount - 1 do
       if (MinSetMask and (1 shl j)) <> 0 then
-        Result.Add(Modulos[j]);
+        Result.PushBack(Modulos[j]);
   end;
 
 var
+  {Modulos[i] * AllPrimes[i] = ModulosPlus_1[i]}
   AllPrimes, Modulos: TIntegerCollection;
+  Values: TBigIntCollection;
   b: Integer;
-  p2b: Int64;
-  logn: Integer;
+  logn, nOverLogn: Integer;
+  p, PCount: Integer;
   i, j: Integer;
 
-  Top, Bot, Mid: Integer;
-  StartingIndex: Integer;
+  Prod, Temp, t2p: TBigInt;
+  MaxModulo: Integer;
 
-  Prod, t2p, Temp: TBigInt;
 begin
   if MaxModLogVal = -1 then
     MaxModLogVal := MaxInt;
 
-  AllPrimes := GenerateAllPrimesLessThanEq(2 * n);
+  AllPrimes := GenerateAllPrimesLessThanEq(n div 2);
 
-  logn := Round(log2(n)) + 1;
+  logn := Round(log2(n));
+  nOverLogn := (n + logn - 1) div logn;
+
   if (GetRunTimeParameterManager.Verbosity and
                   VerbModuloBasedBinaryArithmeticCircuit) <> 0 then
     WriteLn('logn = ', logn);
 
-  b := Round(log2((n + 2) / logn));
-  p2b := 1 shl b;
-
-  Top := AllPrimes.Count - 1; Bot := 0;
-
-  StartingIndex := -1;
-  while Bot <= Top do
-  begin
-    Mid := (Top + Bot) div 2;
-    if AllPrimes[Mid] < p2b then
-      Bot := Mid + 1
-    else // if p2b <= AllPrimes[Mid]
-    begin
-      StartingIndex := Mid;
-      Top := Mid - 1;
-    end;
-  end;
+  PCount := AllPrimes.Size;
+  Modulos := TIntegerCollection.Create;
 
   Prod := BigIntFactory.GetNewMember.SetValue(1);
-
-  Modulos := TIntegerCollection.Create;
-  for i := StartingIndex to Min(StartingIndex +  logn, AllPrimes.Count - 1)  do
+  MaxModulo := nOverLogn div 2;
+  while True do
   begin
-    if MaxModLogVal <= AllPrimes[i]  then
-      break;
-    t2p := BigIntFactory.GetNewMember.SetValue(1).ShiftLeft(AllPrimes[i]).Decr;
-    assert(not t2p.IsZero);
+    if n / 2 < MaxModulo then
+      MaxModulo:= n div 2 - 1;
 
-    Temp := Prod.Mul(t2p);
-    BigIntFactory.ReleaseMemeber(t2p);
-    BigIntFactory.ReleaseMemeber(Prod);
-    Prod := Temp;
-
-    Modulos.Add(AllPrimes[i]);
-    if n < Prod.Log then
-      Break;
-
-  end;
-
-  if Prod.Log < n then
-  begin
-    for i := StartingIndex - 1 downto Max(0, Modulos.Count - Logn)  do
+    for i := 0 to Min(PCount - 1, logn) do
     begin
-      t2p := BigIntFactory.GetNewMember.SetValue(1).ShiftLeft(AllPrimes[i]).Decr;
+      Modulos.PushBack(AllPrimes[i]);
+      p := AllPrimes[i];
+//      WriteLn('p =', p);
+
+      while Modulos[i] <= MaxModulo do
+        Modulos[i] := Modulos[i] * p;
+      if n / 2 <= Modulos[i]  then
+        Modulos[i] := Modulos[i] div p;
+
+//      WriteLn('M[', i, '] = ', Modulos[i], ' ', nOverLogn);
+
+      t2p := BigIntFactory.GetNewMember.SetValue(1).ShiftLeft(Modulos[i]).Decr;
+      assert(not t2p.IsZero);
+
       Temp := Prod.Mul(t2p);
       BigIntFactory.ReleaseMemeber(t2p);
       BigIntFactory.ReleaseMemeber(Prod);
       Prod := Temp;
-
-      Modulos.Add(AllPrimes[i]);
-      if n < Prod.Log then
-        Break;
     end;
-  end;
 
-  BigIntFactory.ReleaseMemeber(Prod);
+    if n < Prod.Log then
+      Break;
+
+    MaxModulo *= 2;
+    Inc(logn);
+  end;
   AllPrimes.Free;
+
 
   Result := SelectSmallestSubset(Modulos, n);
   Modulos.Free;
 
+end;
+
+function TModuloBasedBinaryArithmeticCircuit.GenerateModulos3(n: Integer
+  ): TIntegerCollection;
+
+  function SelectSmallestSubset(Modulos: TIntegerCollection;
+    TargetLog: Integer): TIntegerCollection;
+  var
+    ModulosBigInts: TBigIntCollection;
+    CurrentSet: TBigIntCollection;
+    MinSetMask: Integer;
+    MinProd, Temp: TBigInt;
+    i, j: Integer;
+    mCount: Integer;
+
+  begin
+    ModulosBigInts := TBigIntCollection.Create;
+    for i := 0 to Modulos.Size - 1 do
+    begin
+      ModulosBigInts.Add(
+          BigIntFactory.GetNewMember.SetValue(1).ShiftLeft(Modulos[i]).Decr);
+      WriteLn('M[', i, '] = ', Modulos[i], ' ', ModulosBigInts[i].ToString);
+    end;
+
+    mCount := Modulos.Size;
+
+    MinProd := BigIntFactory.ComputeProduct(ModulosBigInts);
+    Assert(TargetLog <= MinProd.Log, 'TargetLog = ' + IntToStr(TargetLog) +
+      ' all modulos prod = ' + IntToStr(MinProd.Log));
+    MinSetMask := (1 shl mCount) - 1;
+
+    CurrentSet := TBigIntCollection.Create;
+    for i := 0 to ((1 shl mCount) - 1) do
+    begin
+      CurrentSet.Clear;
+
+      for j := 0 to mCount - 1 do
+        if (i and (1 shl j)) <> 0 then
+          CurrentSet.Add(ModulosBigInts[j]);
+
+      Temp := BigIntFactory.ComputeProduct(CurrentSet);
+      if Temp.Log < TargetLog then
+      else if MinProd.CompareWith(Temp) > 0 then
+      begin
+        BigIntFactory.ReleaseMemeber(MinProd);
+        MinProd := Temp.Copy;
+        MinSetMask := i;
+      end;
+
+      BigIntFactory.ReleaseMemeber(Temp);
+    end;
+    CurrentSet.Free;
+
+    for i := 0 to ModulosBigInts.Count - 1 do
+      BigIntFactory.ReleaseMemeber(ModulosBigInts[i]);
+    ModulosBigInts.Clear;
+    ModulosBigInts.Free;
+
+    Result := TIntegerCollection.Create;
+    for j := 0 to mCount - 1 do
+      if (MinSetMask and (1 shl j)) <> 0 then
+        Result.PushBack(Modulos[j]);
+  end;
+
+var
+  i, j: Integer;
+  ActivePrime: Integer;
+  logn: Integer;
+  Temp : TBigIntCollection;
+  Prod, t2p: TBigInt;
+  Modulos, AllPrimes: TIntegerCollection;
+
+begin
+  Modulos := TIntegerCollection.Create;
+  AllPrimes := GenerateAllPrimesLessThanEq(n div 2);
+
+  logn := Round(log2(n));
+
+  Temp := TBigIntCollection.Create;
+
+  for i := 0 to AllPrimes.Size - logn do
+  begin
+    for j := 0 to Temp.Count - 1 do
+      BigIntFactory.ReleaseMemeber(Temp[j]);
+
+    Temp.Clear;
+    Modulos.Clear;
+    for j := 1 to logn do
+    begin
+      ActivePrime := AllPrimes[i + j - 1];
+      if n  div 2 <= ActivePrime then
+        break;
+
+{      while (ActivePrime * AllPrimes[i + j - 1]) < (n div 3) do
+        ActivePrime *= AllPrimes[i + j - 1];
+}
+      Modulos.PushBack(ActivePrime);
+      t2p := BigIntFactory.GetNewMember.SetValue(1).ShiftLeft(ActivePrime).Decr;
+      Temp.Add(t2p);
+
+      Prod := BigIntFactory.ComputeProduct(Temp);
+
+      if n < Prod.Log then
+        break;
+
+      BigIntFactory.ReleaseMemeber(Prod);
+      Prod := nil;
+    end;
+
+    if Prod <> nil then
+    begin
+//      BigIntFactory.ReleaseMemeber(Prod);
+      Prod := nil;
+      Break;
+    end;
+  end;
+
+  assert(Prod = nil);
+//  for j := 0 to Temp.Count - 1 do
+//    BigIntFactory.ReleaseMemeber(Temp[i]);
+  Temp.Clear;
+  Temp.Free;
+
+  Result := SelectSmallestSubset(Modulos, n);
+  Modulos.Free;
+
+end;
+
+function TModuloBasedBinaryArithmeticCircuit.GenerateModulos4(n: Integer
+  ): TIntegerCollection;
+  function IsPossible(AllPrimes: TIntegerCollection; MaxVal: Integer;
+    ModuloCount: Integer): TIntegerCollection;
+  var
+    i, j: Integer;
+    AllModulos: TIntegerCollection;
+    ActivePrime: Integer;
+    MaxIndex, Max: Integer;
+
+  begin
+    Result := TIntegerCollection.Create;
+
+    AllModulos := TIntegerCollection.Create;
+
+    for i := 0 to AllPrimes.Size - 1 do
+    begin
+      ActivePrime := AllPrimes[i];
+
+      if ActivePrime < MaxVal then
+      begin
+        while ActivePrime * AllPrimes[i] < MaxVal do
+          ActivePrime *= AllPrimes[i];
+
+        AllModulos.PushBack(ActivePrime);
+      end;
+    end;
+
+    for i := 1 to ModuloCount do
+    begin
+      Max := -1;
+      MaxIndex := -1;
+
+      for j := 0 to AllModulos.Size - 1 do
+        if Max < AllModulos[j] then
+        begin
+          MaxIndex := j;
+          Max := AllModulos[j];
+        end;
+      AllModulos.Erase(MaxIndex);
+      Result.PushBack(Max);
+    end;
+
+    AllModulos.Free;
+
+  end;
+
+var
+  Top, Bot, Mid, Last: Integer;
+  OrigAllPrimes, CurrentModuloSet: TIntegerCollection;
+  Prod: TBigInt;
+  logn: Integer;
+  i, j: Integer;
+  TwoToN : TBigInt;
+  MinMax: Integer;
+
+begin
+  TwoToN := BigIntFactory.GetNewMember.SetValue(1).ShiftLeft(n);
+
+  OrigAllPrimes := GenerateAllPrimesLessThanEq(n div 2);
+
+  logn := Round(log2(n));
+  Last := n div 2;
+
+  Result := nil;
+  for i := 1 to logn do
+  begin
+    Top := Last - 1;
+    Bot := 1;
+
+    while Bot <= Top do
+    begin
+      Mid := (Bot + Top) div 2;
+
+      CurrentModuloSet := IsPossible(OrigAllPrimes, Mid, i);
+      Prod := ComputeModuloProduct(CurrentModuloSet);
+      if 0 <= Prod.CompareWith(TwoToN) then
+      begin
+        Result.Free;
+        Result := TIntegerCollection.Create(CurrentModuloSet);
+
+        Last := Mid;
+        Top := Mid - 1;
+      end
+      else
+        Bot := Mid + 1;
+
+      BigIntFactory.ReleaseMemeber(Prod);
+      CurrentModuloSet.Free;
+    end;
+  end;
+
+  OrigAllPrimes.Free;
+  BigIntFactory.ReleaseMemeber(TwoToN);
+
+  for i := 0 to Result.Size - 1 do
+    Write(Result[i], ' ');
+  WriteLn;
+
+  CurrentModuloSet := SelectSmallestSubset(Result, n);
+  Result.Free;
+
+  Result := CurrentModuloSet;
+end;
+
+function TModuloBasedBinaryArithmeticCircuit.GenerateModulos5(n: Integer
+  ): TIntegerCollection;
+  function IsPossible(AllPrimes: TIntegerCollection; MaxVal: Integer;
+    ModuloCount: Integer): TIntegerCollection;
+  var
+    i, j: Integer;
+    AllModulos: TIntegerCollection;
+    ActivePrime: Integer;
+    MaxIndex, Max: Integer;
+
+  begin
+    Result := TIntegerCollection.Create;
+
+    AllModulos := TIntegerCollection.Create;
+
+    for i := 0 to AllPrimes.Size - 1 do
+    begin
+      ActivePrime := AllPrimes[i];
+
+      if ActivePrime < MaxVal then
+        AllModulos.PushBack(ActivePrime);
+    end;
+
+    for i := 1 to ModuloCount do
+    begin
+      Max := -1;
+      MaxIndex := -1;
+
+      for j := 0 to AllModulos.Size - 1 do
+        if Max < AllModulos[j] then
+        begin
+          MaxIndex := j;
+          Max := AllModulos[j];
+        end;
+      AllModulos.Erase(MaxIndex);
+      Result.PushBack(Max);
+    end;
+
+    AllModulos.Free;
+
+  end;
+
+var
+  Top, Bot, Mid, Last: Integer;
+  OrigAllPrimes, CurrentModuloSet: TIntegerCollection;
+  Prod: TBigInt;
+  logn: Integer;
+  i, j: Integer;
+  TwoToN : TBigInt;
+  MinMax: Integer;
+
+begin
+  TwoToN := BigIntFactory.GetNewMember.SetValue(1).ShiftLeft(n);
+
+  OrigAllPrimes := GenerateAllPrimesLessThanEq(n div 2);
+
+  logn := Round(log2(n));
+  Last := n div 2;
+
+  Result := nil;
+  for i := 1 to logn do
+  begin
+    Top := Last - 1;
+    Bot := 1;
+
+    while Bot <= Top do
+    begin
+      Mid := (Bot + Top) div 2;
+
+      CurrentModuloSet := IsPossible(OrigAllPrimes, Mid, i);
+      Prod := ComputeModuloProduct(CurrentModuloSet);
+      if 0 <= Prod.CompareWith(TwoToN) then
+      begin
+        Result.Free;
+        Result := TIntegerCollection.Create(CurrentModuloSet);
+
+        Last := Mid;
+        Top := Mid - 1;
+      end
+      else
+        Bot := Mid + 1;
+
+      BigIntFactory.ReleaseMemeber(Prod);
+      CurrentModuloSet.Free;
+    end;
+  end;
+
+  OrigAllPrimes.Free;
+  BigIntFactory.ReleaseMemeber(TwoToN);
+
+  for i := 0 to Result.Size - 1 do
+    Write(Result[i], ' ');
+  WriteLn;
+
+  CurrentModuloSet := SelectSmallestSubset(Result, n);
+  Result.Free;
+
+  Result := CurrentModuloSet;
 end;
 
 function TModuloBasedBinaryArithmeticCircuit.GenerateAllPrimesLessThanEq(
@@ -242,15 +757,12 @@ begin
   Result := TIntegerCollection.Create;
   for i := 2 to Last do
     if IsPrime[i] then
-      Result.Add(i);
+      Result.PushBack(i);
 
 end;
 
 function TModuloBasedBinaryArithmeticCircuit.GenerateModulosUsingDP(n: Integer
   ): TIntegerCollection;
-type
-  TIntegerCollection = specialize TGenericCollectionForBuiltInData<Integer>;
-
 type
   TPair = record
     Sum: TIntegerCollection;
@@ -268,30 +780,35 @@ var
 begin
   AllPrimes := GenerateAllPrimesLessThanEq(2 * n);
 
-  logn := Round(log2(n)) + 1;
+  logn := Round(log2(n / 2.0)) + 1;
   SetLength(dp, logn + 1);
   for i := 0 to logn  do
-    dp[i] := TIntegerCollection.Create(3 * n, 0);
+  begin
+    dp[i] := TIntegerCollection.Create;
+    dp[i].Resize(3 * n);
+    for j := 0 to dp[i].Size - 1 do
+      dp[i][j] := 0;
+  end;
 
 
   dp[0][0] := 1;
   dp[0][AllPrimes[0]] := 1;
-  for i := 1 to AllPrimes.Count - 1 do
+  for i := 1 to AllPrimes.Size - 1 do
   begin
     ActivePrime := AllPrimes[i];
 
-    for j := 0 to dp[i - 1].Count - 1 do
+    for j := 0 to dp[i - 1].Size - 1 do
       if dp[i - 1][j] <> 0 then
       begin
         dp[i][j] := 1;
-        if j + ActivePrime < dp[i].Count then
+        if j + ActivePrime < dp[i].Size then
           dp[i][j + ActivePrime] := 1;
       end;
   end;
 
   TargetSum := -1;
-  for i := 2 * n + 3 to dp[AllPrimes.Count - 1].Count do
-    if dp[AllPrimes.Count - 1][i] <> 0 then
+  for i := 2 * n + 3 to dp[AllPrimes.Size - 1].Size do
+    if dp[AllPrimes.Size - 1][i] <> 0 then
     begin
       TargetSum := i;
       break;
@@ -299,7 +816,7 @@ begin
   assert(TargetSum <> -1, 'TargetSum = -1');
 
   Result := TIntegerCollection.Create;
-  i := AllPrimes.Count - 1;
+  i := AllPrimes.Size - 1;
   while 1 <= i do
   begin
     Assert(dp[i][TargetSum] <> -1);
@@ -308,7 +825,7 @@ begin
     if dp[i - 1][TargetSum] <> 0 then
     else if dp[i - 1][TargetSum - ActivePrime] <> 0  then
     begin
-      Result.Add(ActivePrime);
+      Result.PushBack(ActivePrime);
       TargetSum -= ActivePrime;
     end
     else
@@ -320,7 +837,7 @@ begin
 
   assert((TargetSum = 2) or (TargetSum = 0));
   if TargetSum = 2 then
-    Result.Add(2);
+    Result.PushBack(2);
 
   for i := 0 to logn  do
     dp[i].Free;
@@ -333,16 +850,20 @@ var
 
 procedure dWriteLn(msg: String = ''; n: Integer = -1);
 begin
-  if n = -1 then
-    n := GetVariableManager.LastUsedCNFIndex;
+  if (GetRunTimeParameterManager.Verbosity and
+       VerbModuloBasedBinaryArithmeticCircuit) <> 0 then
+  begin
+    if n = -1 then
+      n := GetVariableManager.LastUsedCNFIndex;
 
-  if msg <> '' then
-    WriteLn(msg + ' : ', n - last_n);
-  last_n := n;
+    if msg <> '' then
+      WriteLn(msg + ' : ', n - last_n);
+    last_n := n;
+  end;
 end;
 
 function TModuloBasedBinaryArithmeticCircuit.EncodeMul(const a, b,
-  c: TBitVector; level: Integer): TLiteral;
+  c: TBitVector; Level: Integer): TLiteral;
 {
   This method selects Log(n) prime integers, p1,...,p_m, such that their summation is
   greater than 2n + 2, and returns 2^p_i - 1, for i = 1, ..., m = Log(n).
@@ -351,7 +872,6 @@ function TModuloBasedBinaryArithmeticCircuit.EncodeMul(const a, b,
 
 var
   i: Integer;
-  Temp, t2p: TBigInt;
   m: Int64;
   Modulos: TIntegerCollection;
   aModm, bModm, cModm, TempVector: TBitVector;
@@ -360,44 +880,60 @@ var
   TotalVar: Integer;
 
 begin
-{  WriteLn('<EncodeMul aCount= "', a.Count, '" bCount= "', b.Count, '">');
+
+  {  WriteLn('<EncodeMul aCount= "', a.Count, '" bCount= "', b.Count, '">');
 }
   assert(a.Count + b.Count <= c.Count);
 
   TotalVar:= GetVariableManager.LastUsedCNFIndex;
-  if (a.Count + b.Count <= 26) or (0 < level) then
+  if {(a.Count + b.Count <= 200) or} (0 < level)
+         then
   begin
     TempVector := inherited Mul(a, b);
     Result := EncodeIsEqual(TempVector, c);
     TempVector.Free;
     Exit;
   end;
+  if (GetRunTimeParameterManager.Verbosity and
+               VerbModuloBasedBinaryArithmeticCircuit) <> 0 then
+  begin
+    WriteLn('EncodeMul');
+    WriteLn('a = ' + a.ToString);
+    WriteLn('b = ' + b.ToString);
+    WriteLn('c = ' + c.ToString);
+  end;
 
 //  WriteLn('Mul a.Count = ', a.Count, ' b.Count = ', b.Count);
   Modulos := nil;
-  if UpperCase(GetRunTimeParameterManager.GetValueByName('--ModuloMode')) = UpperCase('dp') then
+  if UpperCase(GetRunTimeParameterManager.GetValueByName('--ModuloMode'))
+         = UpperCase('dp') then
     Modulos := GenerateModulosUsingDP(a.Count + b.Count)
-  else if UpperCase(GetRunTimeParameterManager.GetValueByName('--ModuloMode')) = UpperCase('normal') then
-    Modulos := GenerateModulos(a.Count + b.Count, Min(a.Count, b.Count));
+  else if UpperCase(GetRunTimeParameterManager.GetValueByName('--ModuloMode'))
+         = UpperCase('Mode1') then
+    Modulos := GenerateModulos1(a.Count + b.Count, Min(a.Count, b.Count))
+  else if UpperCase(GetRunTimeParameterManager.GetValueByName('--ModuloMode'))
+                = UpperCase('Mode2') then
+           Modulos := GenerateModulos2(a.Count + b.Count, Min(a.Count, b.Count))
+  else if UpperCase(GetRunTimeParameterManager.GetValueByName('--ModuloMode'))
+         = UpperCase('Mode3') then
+    Modulos := GenerateModulos3(a.Count + b.Count)
+  else if UpperCase(GetRunTimeParameterManager.GetValueByName('--ModuloMode'))
+                = UpperCase('Mode4') then
+           Modulos := GenerateModulos4(a.Count + b.Count)
+  else if UpperCase(GetRunTimeParameterManager.GetValueByName('--ModuloMode'))
+         = UpperCase('Mode5') then
+    Modulos := GenerateModulos5(a.Count + b.Count);
+
   assert(Modulos <> nil);
 
-  prod := BigIntFactory.GetNewMember.SetValue(1);
-  for i := 0 to Modulos.Count - 1 do
-  begin
-    t2p := BigIntFactory.GetNewMember.SetValue(1).ShiftLeft(Modulos[i]).Decr;
-
-    Temp := Prod.Mul(t2p);
-    BigIntFactory.ReleaseMemeber(Prod);
-    Prod := Temp;
-    if (GetRunTimeParameterManager.Verbosity and
-                     VerbModuloBasedBinaryArithmeticCircuit) <> 0 then
-       WriteLn('Modulo[ ', i, '] = ', t2p.ToString);
-  end;
+  Prod := ComputeModuloProduct(Modulos);
+  if (GetRunTimeParameterManager.Verbosity and
+         VerbModuloBasedBinaryArithmeticCircuit) <> 0 then
+    for i := 0 to Modulos.Size - 1 do
+      WriteLn('Modulo[ ', i, '] = 2^', Modulos[i]);
 
   Assert(a.Count + b.Count <= Prod.Log);
   BigIntFactory.ReleaseMemeber(Prod);
-
-  //Result := TBitVector.Create(a.Count + b.Count);
 
   Write(a.Count + b.Count, ':');
   for i:= 0 to Modulos.Size- 1 do
@@ -408,19 +944,21 @@ begin
   for i:= 0 to Modulos.Size- 1 do
   begin
     m := Modulos[i];
+
     assert(m < Max(a.Count, b.Count), 'm  = '+ IntToStr(m) + ' a.Count = ' + IntToStr(a.Count) +  ' b.Count = ' + IntToStr(b.Count));
 
     if (GetRunTimeParameterManager.Verbosity and
                   VerbModuloBasedBinaryArithmeticCircuit) <> 0 then
     begin
-      WriteLn('[BaseFactoringUsingModulo.GenerateCNF]: M [', i, '] = 2^', m, ' - 1 mBin= ', IntToStr(m));
+      WriteLn('[TModuloBasedBinaryArithmeticCircuit]: M [', i, '] = 2^', m, ' - 1 mBin= ', IntToStr(m));
     end;
 
-    WriteLn('m = ', m);
     dWriteLn();
     aModm := Modulo(a, m);
     dWriteLn('amod ' + IntToStr(a.Count));
     SatSolver.AddComment('a and amodM = ' + a.ToString + ' ' + aModm.ToString);
+
+    SatSolver.AddLiteral(GetVariableManager.TrueLiteral);
 
     bModm := Modulo(b, m);
     dWriteLn('bmod ' + IntToStr(b.Count));
@@ -447,16 +985,16 @@ begin
     if (GetRunTimeParameterManager.Verbosity and
                  VerbModuloBasedBinaryArithmeticCircuit) <> 0 then
     begin
-      WriteLn('[BaseFactoringUsingModulo.GenerateCNF]: M [', i, '] = 2^', m, ' - 1 mBin= ', IntToStr(m));
-      WriteLn('a = ' + a.ToString);
-      WriteLn('aMod = ' + aModm.ToString);
-      WriteLn('b = ' + b.ToString);
-      WriteLn('bMod = ' + bModm.ToString);
-      WriteLn('c = ' + c.ToString);
-      WriteLn('cMod = ' + cModm.ToString);
-      WriteLn('aModbMod = ' + aModbMod.ToString);
-      WriteLn('aModbModModm = ' + aModbModModm.ToString);
-      WriteLn('[BaseFactoringUsingModulo.GenerateCNF]: M [', i, '] = 2^', m, ' - 1 mBin= ', IntToStr(m));
+      WriteLn('[TModuloBasedBinaryArithmeticCircuit]: M [', i, '] = 2^', m, ' - 1 mBin= ', IntToStr(m));
+      WriteLn('[TModuloBasedBinaryArithmeticCircuit]: a = ' + a.ToString);
+      WriteLn('[TModuloBasedBinaryArithmeticCircuit]: aMod = ' + aModm.ToString);
+      WriteLn('[TModuloBasedBinaryArithmeticCircuit]: b = ' + b.ToString);
+      WriteLn('[TModuloBasedBinaryArithmeticCircuit]: bMod = ' + bModm.ToString);
+      WriteLn('[TModuloBasedBinaryArithmeticCircuit]: c = ' + c.ToString);
+      WriteLn('[TModuloBasedBinaryArithmeticCircuit]: cMod = ' + cModm.ToString);
+      WriteLn('[TModuloBasedBinaryArithmeticCircuit]: aModbMod = ' + aModbMod.ToString);
+      WriteLn('[TModuloBasedBinaryArithmeticCircuit]: aModbModModm = ' + aModbModModm.ToString);
+      WriteLn('[TModuloBasedBinaryArithmeticCircuit]: M [', i, '] = 2^', m, ' - 1 mBin= ', IntToStr(m));
     end;
 
     aModm.Free;
@@ -476,7 +1014,7 @@ end;
 function TModuloBasedBinaryArithmeticCircuit.Modulo(const a: TBitVector;
   const m: Int64): TBitVector;
 type
-    TBitVectorList= specialize TGenericCollection<TBitVector>;
+    TBitVectorList= specialize TVector<TBitVector>;
 
   function FindConjunction(const vecList: TBitVector): TLiteral;
   var
@@ -556,7 +1094,7 @@ begin
   for i := Current.Count + 1 to m do
     Current.PushBack(GetVariableManager.FalseLiteral);
 
-  Result := ParallelAdder(Mat, 0, Mat.Count - 1);
+  Result := ParallelAdder(Mat, 0, Mat.Size - 1);
   Mat.Free;
 
 end;
@@ -642,6 +1180,11 @@ begin
     SatSolver.SubmitClause;
   end;
 
+  SatSolver.BeginConstraint;
+  for i := 0 to c.Count - 1 do
+    SatSolver.AddLiteral(NegateLiteral(c[i]));
+  SatSolver.SubmitClause;
+
   Sum := Add(a, b);
   l1 := EncodeIsEqual(c, Sum);
 
@@ -661,7 +1204,7 @@ begin
     SatSolver.BeginConstraint;
     SatSolver.AddLiteral(l1);
     SatSolver.AddLiteral(l2);
-    Result := CreateLiteral(GetVariableManager.CreateNewVariable, False);
+     Result := CreateLiteral(GetVariableManager.CreateNewVariable, False);
     SatSolver.SubmitOrGate(Result);
 
     SatSolver.BeginConstraint;
@@ -690,82 +1233,149 @@ function TModuloBasedBinaryArithmeticCircuit.AddModuloMod(const a,
     Result := True;
   end;
 
+  function IsLessThanMForSure(const a: TBitVector): Boolean;
+  var
+    i: Integer;
+
+  begin
+    //assert(a.Count <= m + 1);
+    for i := m to a.Count - 1 do
+      if SatSolver.GetLiteralValue(a[i]) <> gbFalse then
+        Exit(False);
+
+    for i := 0 to m - 1 do
+      if SatSolver.GetLiteralValue(a[i]) = gbFalse then
+        Exit(True);
+
+    Result := False;
+  end;
+
+  function IsEqMForSure(const a: TBitVector): Boolean;
+  var
+    i: Integer;
+
+  begin
+    for i := m to a.Count - 1 do
+      if SatSolver.GetLiteralValue(a[i]) <> gbFalse then
+        Exit(False);
+    for i := 0 to m - 1 do
+      if SatSolver.GetLiteralValue(a[i]) = gbFalse then
+        Exit(False);
+
+    Result := True;
+  end;
+
+  function IsNotEqMForSure(const a: TBitVector): Boolean;
+  var
+    i: Integer;
+
+  begin
+    for i := m to a.Count - 1 do
+      if SatSolver.GetLiteralValue(a[i]) = gbTrue then
+        Exit(True);
+
+    for i := 0 to m - 1 do
+      if SatSolver.GetLiteralValue(a[i]) = gbFalse then
+        Exit(True);
+
+    Result := False;
+  end;
+
 var
-  Sum, SPlusTwoToMMinusOne, One: TBitVector;
-  l1, l2: TLiteral;
+  Sum, RPlusM, One: TBitVector;
   TotalVar: Integer;
+  i, j, k: Integer;
+  Li: array [0..2] of TLiteral;
+  ClausesForLi: array [0..2] of TClauseCollection;
+
 begin
   TotalVar := GetVariableManager.LastUsedCNFIndex;
 
   Assert(a.Count = m);
   Assert(b.Count = m);
-  SPlusTwoToMMinusOne := nil;
+  RPlusM := nil;
 
   Sum := Add(a, b);
-  l1 := GetVariableManager.FalseLiteral;
-  l2 := l1;
-  if (Sum.Count = m) or (SatSolver.GetLiteralValue(Sum[m]) = gbFalse) then // 0..m-1  2^m-1
-  begin
+  Li[0] := GetVariableManager.FalseLiteral;// S < M => R = S
+  Li[1] := Li[1];                          // S = M => R = 0
+  Li[2] := Li[2];                          // S > M  => R + M = S
+  One := TBitVector.Create(m, GetVariableManager.TrueLiteral); // One = M
+  if IsLessThanMForSure(Sum) then // R = S
     Result := Sum.Copy
+  else if IsEqMForSure(Sum) then // R = 0
+    Result := TBitVector.Create(m, GetVariableManager.FalseLiteral)
+  else if IsAllKnown(Sum) then // Sum > M
+  begin
+    Result := Incr(Sum);
+    Result.Count := m;
   end
   else
   begin
-    if IsAllKnown(Sum) then
+    Li[2] := Sum[m];
+    if IsNotEqMForSure(Sum) then
+      Li[1] := GetVariableManager.FalseLiteral
+    else
+      Li[1] := EncodeIsEqual(Sum, One);
+
+    SatSolver.BeginConstraint;
+    SatSolver.AddLiterals([Li[1], Li[2]]);
+    Li[0] := NegateLiteral(SatSolver.GenerateOrGate);
+
+    SatSolver.SubmitExactlyOne(Li);
+
+    Result := TBitVector.Create(m);
+
+    ReNewSatSolver('CNFCollection');
+    SubmitIsEqual(Result, Sum, GetVariableManager.TrueLiteral);
+    ClausesForLi[0] := SatSolver.CNF.Copy;
+    PopBackSatSolver;
+
+    ReNewSatSolver('CNFCollection');
+    for i := 0 to Result.Count - 1 do
     begin
-      // Sum[m] -> gbTrue
-      // Result = Sum - TwoToMMinusOne
-      //        = Sum + 1
-      One := TBitVector.Create(Sum.Count, GetVariableManager.FalseLiteral);
-      One[0] := GetVariableManager.TrueLiteral;
-      Result := Add(Sum, One);
-      if (Result.Count = m + 1)
-             and (SatSolver.GetLiteralValue(Result[m]) = gbTrue) then
-        Result.Count := m;
-      One.Free;
+      SatSolver.BeginConstraint;
+      SatSolver.AddLiteral(NegateLiteral(Result[i]));
+      SatSolver.SubmitClause;
+    end;
+    ClausesForLi[1] := SatSolver.CNF.Copy;
+    PopBackSatSolver;
+
+    ReNewSatSolver('CNFCollection');
+    if GetRunTimeParameterManager.ValueByName['--AddModuloMod'] = 'Decr' then
+    begin // (R - 1) + 2^m
+      RPlusM := Decr(Result);
+      for i := RPlusM.Count to m - 1 do
+       RPlusM.PushBack(GetVariableManager.FalseLiteral);
+      RPlusM.PushBack(GetVariableManager.TrueLiteral);
+    end
+    else if GetRunTimeParameterManager.ValueByName['--AddModuloMod'] = 'IncByTwoToM_1' then
+    begin // R + (2^M - 1)
+      RPlusM := IncByTwoToM_1(Result, m);
     end
     else
+      assert(False);
+    SubmitIsEqual(RPlusM, Sum, GetVariableManager.TrueLiteral);
+    ClausesForLi[2] := SatSolver.CNF.Copy;
+    PopBackSatSolver;
+
+    for k := 0 to 2 do
     begin
-      Result := TBitVector.Create(m);
-
-      if UpperCase(GetRunTimeParameterManager.ValueByName['--AddModuloMod']) = UpperCase('IncByTwoToM_1') then
-        SPlusTwoToMMinusOne := IncByTwoToM_1(Result, m)
-      else if UpperCase(GetRunTimeParameterManager.ValueByName['--AddModuloMod']) = UpperCase('Decr') then
-      begin
-        SPlusTwoToMMinusOne := Decr(Result);
-        SPlusTwoToMMinusOne.Add(GetVariableManager.TrueLiteral);
-      end else
-      begin
-        assert(False, 'Invalid AddModuloMod Parameter' + UpperCase(GetRunTimeParameterManager.ValueByName['--AddModuloMod']));
-        SPlusTwoToMMinusOne := nil;
+      for i := 0 to ClausesForLi[k].Size - 1 do
+      begin// l1 -> l1Clauses[0] & ... l1 ->l1Clauses[n - 1];
+        SatSolver.BeginConstraint;
+        SatSolver.AddLiteral(NegateLiteral(Li[k]));
+        for j := 0 to ClausesForLi[k][i].Size - 1 do
+          SatSolver.AddLiteral(ClausesForLi[k][i][j]);
+        SatSolver.SubmitClause;
       end;
-
-      l1 := CreateLiteral(GetVariableManager.CreateNewVariable(), False);
-      l2 := CreateLiteral(GetVariableManager.CreateNewVariable(), False);
-      SatSolver.BeginConstraint;
-      SatSolver.AddLiteral(l1);
-      SatSolver.AddLiteral(l2);
-      SatSolver.SubmitOrGate(GetVariableManager.TrueLiteral);
-
-      SubmitIsEqual(Result, Sum, l1);
-      SubmitIsEqual(SPlusTwoToMMinusOne, Sum, l2);
-
-      SatSolver.BeginConstraint;
-      SatSolver.AddLiteral(l1);
-      SatSolver.AddLiteral(l2);
-      SatSolver.SubmitXOrGate(GetVariableManager.TrueLiteral);// ! (l1 -> ~l2) and (l2 -> ~l1)
-
-      //Sum[m] <-> l2
-      SatSolver.BeginConstraint;
-      SatSolver.AddLiteral(l2);
-      SatSolver.AddLiteral(Sum[m]);
-      SatSolver.SubmitEquivGate(GetVariableManager.TrueLiteral);
-
-      SatSolver.BeginConstraint;
-      SatSolver.AddLiteral(Sum[0]);
-      SatSolver.AddLiteral(SPlusTwoToMMinusOne[0]);
-      SatSolver.SubmitXOrGate(GetVariableManager.TrueLiteral);// ! (Sum[0] -> ~SPlusTwoToMMinusOne[0]) and (SPlusTwoToMMinusOne[0] -> ~Sum[0])
-
+      ClausesForLi[k].Free;
     end;
+
+{    One := TBitVector.Create(m, GetVariableManager.TrueLiteral); // One = M
+    SubmitIsEqual(Result, One, GetVariableManager.FalseLiteral); { Result != M}
+    One.Free;
+}
+
   end;
 
   if (GetRunTimeParameterManager.Verbosity and
@@ -773,12 +1383,14 @@ begin
   begin
     WriteLn('Result = ', Result.ToString);
     WriteLn('Sum = ', Sum.ToString);
-    if SPlusTwoToMMinusOne <> nil then
-      WriteLn('S + 2^M -1 = ', SPlusTwoToMMinusOne.ToString);
-    WriteLn('l1 = ', LiteralToString(l1));
-    WriteLn('l2 = ', LiteralToString(l2));
+    if RPlusM <> nil then
+      WriteLn('R + 2^M -1 = ', RPlusM.ToString);
+    WriteLn('l1 = ', LiteralToString(Li[0]));
+    WriteLn('l2 = ', LiteralToString(Li[1]));
+    WriteLn('l3 = ', LiteralToString(Li[2]));
   end;
-  SPlusTwoToMMinusOne.Free;
+  One.Free;
+  RPlusM.Free;
   Sum.Free;
 
 end;

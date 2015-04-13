@@ -75,54 +75,15 @@ end;
 
 function TBinaryArithmeticCircuit.Incr(const a: TBitVector): TBitVector;
 var
-  Carry: TBitVector;
-  i: Integer;
-  ai: TLiteral;
-
+  One: TBitVector;
 begin
-  assert(False);
-  assert(1 <= a.Count, 'a.Count must be greater than 1.');
-  Exit(nil);
+  One := TBitVector.Create(a.Count, GetVariableManager.FalseLiteral);
+  One[0] := GetVariableManager.TrueLiteral;
 
-  Carry := TBitVector.Create(a.Count, GetVariableManager.FalseLiteral);
-  Result := TBitVector.Create(a.Count, GetVariableManager.FalseLiteral);
+  Result := Add(a, One);
 
-  Carry[0] :=  a[0];
+  One.Free;
 
-  Result[0] := NegateLiteral(a[0]);
-
-  if StrToInt(GetRunTimeParameterManager.ValueByName['--Verbosity']) and
-   (1 shl VerbBinArithmCircuit)<> 0 then
-  begin
-    WriteLn('[Add]: Carry = ', Carry.ToString);
-    WriteLn('[Add]: Result = ', Result.ToString);
-
-  end;
-
-  for i := 1 to a.Count - 1 do
-  begin
-    ai := a[i];
-
-    SatSolver.BeginConstraint;
-    SatSolver.AddLiteral(ai);
-    SatSolver.AddLiteral(Carry[i- 1]);
-    SatSolver.SubmitXOrGate(Result[i]);
-
-    { Carray }
-    // a[i] and Carry[i- 1] -> Carry[i]
-    SatSolver.BeginConstraint;
-    SatSolver.AddLiteral(NegateLiteral(ai));
-    SatSolver.AddLiteral(NegateLiteral(Carry[i- 1]));
-    SatSolver.AddLiteral(Carry[i]);
-    SatSolver.SubmitClause;
-
-  end;
-
-  if Carry[a.Count - 1] <> TSeitinVariableUnit.GetVariableManager.FalseLiteral
-     then
-    Result.Add(Carry[a.Count - 1]);
-
-  Carry.Free;
 end;
 
 function TBinaryArithmeticCircuit.Decr(const a: TBitVector): TBitVector;
@@ -176,7 +137,7 @@ begin
       end;
       //  ai & ~aj -> ~Result[j]
       // ~ai, aj, ~rj
-      if Pos('Dec_1', GetRunTimeParameterManager.ValueByName['--ExtraClausesMode'])
+      if Pos('Dec_2', GetRunTimeParameterManager.ValueByName['--ExtraClausesMode'])
               <> 0 then
       begin
         SatSolver.BeginConstraint;
@@ -538,6 +499,7 @@ begin
       GetSatSolver.SubmitClause;
     end;
   end;
+
 end;
 
 function TBinaryArithmeticCircuit.EncodeBinaryRep(const n: TBigInt; a: TBitVector;
