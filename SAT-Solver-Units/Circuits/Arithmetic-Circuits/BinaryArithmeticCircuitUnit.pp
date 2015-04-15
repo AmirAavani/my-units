@@ -336,7 +336,7 @@ begin
   // b and c -> r    (~b, ~c, r)
   // r and ~a -> b   (~r, a, b)
   // r and ~a -> c   (~r, a, c)
-  // r and ~b -> c   (~r. b, c)
+  // r and ~c -> b   (~r. b, c)
 
   SatSolver.BeginConstraint;
   SatSolver.AddLiterals([NegateLiteral(a), NegateLiteral(b), Result]);
@@ -367,8 +367,6 @@ end;
 function TBinaryArithmeticCircuit.EncodeIsLessThan(const a, b: TBitVector): TLiteral;
 var
   i: Integer;
-  li: TLiteral;
-  ailebi, aixorbi: TLiteral;
   aIsLessThanb,
   aiIsEqbi, aiIsLbi,
   aIsEqbTillNow: TBitVector;

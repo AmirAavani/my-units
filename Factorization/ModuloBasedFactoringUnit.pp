@@ -70,7 +70,8 @@ type
   end;
 
  const
-    VerbModuloBasedBinaryArithmeticCircuit: Integer = 32;
+   VerbModuloBasedBinaryArithmeticCircuit: Integer = 32;
+   VerbModulo_ModuloBasedBinaryArithmeticCircuit: Integer = 64;
 
 implementation
 uses
@@ -869,6 +870,44 @@ function TModuloBasedBinaryArithmeticCircuit.EncodeMul(const a, b,
   greater than 2n + 2, and returns 2^p_i - 1, for i = 1, ..., m = Log(n).
 }
 
+  procedure AddExtraClausesForModulo(a, r: TBitVector; m: Integer);
+  var
+    b, bShiftLeftBym: TBitVector;
+    LHS, RHS: TBitVector;
+    i: Integer;
+
+  begin // r = a % (2^m - 1) => a - r = b(2^m - 1)
+    { a + b = b * 2^m + r }
+    b := TBitVector.Create(a.Count - r.Count + 1);
+    LHS := Add(a, b);
+    bShiftLeftBym := b.Copy;
+    bShiftLeftBym.Resize(bShiftLeftBym.Count + m);
+    for i := b.Count - 1 downto 0 do
+      bShiftLeftBym[i + m] := bShiftLeftBym[i];
+    for i := 0 to m - 1 do
+      bShiftLeftBym[i] := GetVariableManager.FalseLiteral;
+    RHS := Add(bShiftLeftBym, r);
+
+    if (StrToInt(GetRunTimeParameterManager.ValueByName['--Verbosity']) and
+       VerbModulo_ModuloBasedBinaryArithmeticCircuit)<> 0 then
+    begin
+      WriteLn('[TModuloBasedBinaryArithmeticCircuit.Modulo] a = ', a.ToString);
+      WriteLn('[TModuloBasedBinaryArithmeticCircuit.Modulo] b = ', b.ToString);
+      WriteLn('[TModuloBasedBinaryArithmeticCircuit.Modulo] LHS = ', LHS.ToString);
+      WriteLn('[TModuloBasedBinaryArithmeticCircuit.Modulo] bShiftLeftBym = ', bShiftLeftBym.ToString);
+      WriteLn('[TModuloBasedBinaryArithmeticCircuit.Modulo] r = ', r.ToString);
+      WriteLn('[TModuloBasedBinaryArithmeticCircuit.Modulo] RHS = ', RHS.ToString);
+    end;
+    SatSolver.BeginConstraint;
+    SatSolver.AddLiteral(EncodeIsEqual(LHS, RHS));
+    SatSolver.SubmitClause;
+
+    b.Free;
+    bShiftLeftBym.Free;
+    RHS.Free;
+    LHS.Free;
+
+  end;
 
 var
   i: Integer;
@@ -881,7 +920,7 @@ var
 
 begin
 
-  {  WriteLn('<EncodeMul aCount= "', a.Count, '" bCount= "', b.Count, '">');
+{  WriteLn('<EncodeMul aCount= "', a.Count, '" bCount= "', b.Count, '">');
 }
   assert(a.Count + b.Count <= c.Count);
 
@@ -982,6 +1021,25 @@ begin
     SatSolver.AddLiteral(Self.EncodeIsEqual(cModm, aModbModModm));
     dWriteLn('EncodeIsEqual ' + IntToStr(m));
 
+
+    if (i = 0) and
+    (Pos(UpperCase('Modulo_1:'),
+      UpperCase(GetRunTimeParameterManager.ValueByName['--ExtraClausesLevel'])) <> 0) then
+    begin
+      AddExtraClausesForModulo(c, cModm, m);
+      AddExtraClausesForModulo(b, bModm, m);
+      AddExtraClausesForModulo(a, aModm, m);
+      AddExtraClausesForModulo(aModbMod, aModbModModm, m);
+    end
+    else if Pos(UpperCase('Modulo_2:'),
+      UpperCase(GetRunTimeParameterManager.ValueByName['--ExtraClausesLevel'])) <> 0 then
+    begin
+      AddExtraClausesForModulo(c, cModm, m);
+      AddExtraClausesForModulo(b, bModm, m);
+      AddExtraClausesForModulo(a, aModm, m);
+      AddExtraClausesForModulo(aModbMod, aModbModModm, m);
+    end;
+
     if (GetRunTimeParameterManager.Verbosity and
                  VerbModuloBasedBinaryArithmeticCircuit) <> 0 then
     begin
@@ -1038,7 +1096,7 @@ type
       Result := Mat[Start].Copy;
 
       if (StrToInt(GetRunTimeParameterManager.ValueByName['--Verbosity']) and
-          VerbModuloBasedBinaryArithmeticCircuit)<> 0 then
+          VerbModulo_ModuloBasedBinaryArithmeticCircuit)<> 0 then
         WriteLn('[Mul.ParallelAdder] Mat[', Start, '] = ', Result.ToString);
 
       Exit;
@@ -1047,7 +1105,7 @@ type
     FirstHalf := ParallelAdder(Mat, Start, (Start + Finish) div 2);
     SecondHalf := ParallelAdder(Mat, (Start + Finish) div 2 + 1, Finish);
     if StrToInt(GetRunTimeParameterManager.ValueByName['--Verbosity']) and
-     (1 shl VerbModuloBasedBinaryArithmeticCircuit)<> 0 then
+     (1 shl VerbModulo_ModuloBasedBinaryArithmeticCircuit)<> 0 then
     begin
       WriteLn('[Mul.ParallelAdder] FirstHalf = ', FirstHalf.ToString);
       WriteLn('[Mul.ParallelAdder] SecondHalf = ', SecondHalf.ToString);
@@ -1056,7 +1114,7 @@ type
     Result := AddModuloMod(FirstHalf, SecondHalf, m);
 
     if (StrToInt(GetRunTimeParameterManager.ValueByName['--Verbosity']) and
-       VerbModuloBasedBinaryArithmeticCircuit)<> 0 then
+       VerbModulo_ModuloBasedBinaryArithmeticCircuit)<> 0 then
     begin
       WriteLn('[Mul.ParallelAdder] Mat[', Start, '] + ...+  Mat[', Finish, '] = ', Result.ToString);
     end;
@@ -1070,13 +1128,15 @@ var
   Mat: TBitVectorList;
   Current: TBitVector;
   i: Integer;
+  b, bShiftLeftBym, RHS, LHS: TBitVector;
+
 begin
   if a.Count <= m then
   begin// special case
     Result := a.Copy;
     for i := a.Count to m - 1 do
       Result.PushBack(GetVariableManager.FalseLiteral);
-   Exit;
+    Exit;
   end;
 
   Mat := TBitVectorList.Create;

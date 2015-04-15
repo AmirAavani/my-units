@@ -28,7 +28,7 @@
     <RunParams>
       <local>
         <FormatVersion Value="1"/>
-        <CommandLineParams Value="--Mode RSAFactoring --SatSolverType CNFCollection --OutputFilename inc12.cnf --FactorizerMode ModuloRep --ModuloMode Mode1 --verbosity 255   --AddModuloMod IncByTwoToM_1 --InputNumber 99799811"/>
+        <CommandLineParams Value="--Mode RSAFactoring --SatSolverType CNFCollection --OutputFilename inc12.cnf --FactorizerMode ModuloRep --ModuloMode Mode1 --verbosity 0   --AddModuloMod IncByTwoToM_1 --InputNumber 99799811 --ExtraClausesLevel Modulo_1:"/>
       </local>
     </RunParams>
     <Units Count="10">

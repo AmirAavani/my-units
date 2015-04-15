@@ -135,7 +135,7 @@ begin
   if Odd(Paramcount) then
   begin
     PrintHelp;
-    raise Exception.Create('Invalid set of parameters');
+     raise Exception.Create('Invalid set of parameters');
 
   end;
 
