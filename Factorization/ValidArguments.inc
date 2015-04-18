@@ -35,7 +35,7 @@
 //     '--AddModuloMod',
       'Decr:IncByTwoToM_1:END',
 //     '--Mode',
-      'Factoring:RSAFactoring:END',
+      'Factoring:RSAFactoring:Multiplication:END',
 //     '--InputNumber',
       'None:END',
 //     '--InputSize',

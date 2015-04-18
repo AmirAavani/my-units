@@ -33,6 +33,53 @@ begin
 
 end;
 
+procedure EncodeMultiplication;
+var
+  na, nb: TBigInt;
+  a, b, c: TBitVector;
+  la, lb: TLiteral;
+  sa, sb: AnsiString;
+  ArithmeticCircuit: TModuloBasedBinaryArithmeticCircuit;
+
+begin
+  sa := GetRunTimeParameterManager.ValueByName['a'];
+  sb := GetRunTimeParameterManager.ValueByName['b'];
+
+  na := BigIntFactory.GetNewMember.LoadFromString(@sa[1]);
+  nb := BigIntFactory.GetNewMember.LoadFromString(@sb[1]);
+
+  WriteLn('na.Log = ', na.Log, 'nb.Log = ', nb.Log);
+
+  ArithmeticCircuit := TModuloBasedBinaryArithmeticCircuit.Create;
+
+//      assert(n.Log  mod 2 = 0);
+  a:= TBitVector.Create(na.Log + 1);
+  la := ArithmeticCircuit.EncodeBinaryRep(na, a);
+  lb := ArithmeticCircuit.EncodeBinaryRep(nb, b);
+
+  GetSatSolver.BeginConstraint;
+  GetSatSolver.AddLiteral(la);
+  GetSatSolver.AddLiteral(lb);
+  GetSatSolver.SubmitAndGate(GetVariableManager.TrueLiteral);
+
+  c := TBitVector.Create(a.Count + b.Count);
+  WriteLn('c a = ', a.ToString);
+  WriteLn('c b = ', b.ToString);
+  WriteLn('c n = ', c.ToString);
+
+  SatSolverInterfaceUnit.GetSatSolver.BeginConstraint;
+  SatSolverInterfaceUnit.GetSatSolver.AddLiteral(FactoringUsingSATUnit.GetActiveFactorizer.GenerateCNF(a, b, c));
+  SatSolverInterfaceUnit.GetSatSolver.SubmitClause;
+
+  BigIntFactory.ReleaseMemeber(na);
+  BigIntFactory.ReleaseMemeber(nb);
+  a.Free;
+  b.Free;
+  c.Free;
+
+end;
+
+
 var
   n: TBigInt;
   InputNumber, InputSize: AnsiString;
@@ -151,8 +198,10 @@ begin
 
       BigIntFactory.ReleaseMemeber(n);
 
-    end;
+    end
+  end else if UpperCase(GetRunTimeParameterManager.ValueByName['--Mode']) =
+             UpperCase('Multiplication') then
+      EncodeMultiplication;
 
-  end;
   Finalize;
 end.
