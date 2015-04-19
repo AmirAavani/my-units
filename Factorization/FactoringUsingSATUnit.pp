@@ -56,7 +56,6 @@ function TBaseFactorizerUsingSAT.GenerateCNF(const a, b: TBitVector; n: TBigInt
 var
   aBitCount, bBitCount: Integer;
   c: TBitVector;
-  cBinRep,
   MulEncOutputLit,
   aLEb,
   aG1, bG1: TLiteral;
@@ -65,12 +64,10 @@ var
 begin
   SatSolverInterfaceUnit.GetSatSolver.BeginConstraint;
 
-  c := TBitVector.Create();
-  cBinRep := ArithmeticCircuit.EncodeBinaryRep(n, c);
+  c := ArithmeticCircuit.GenerateBinaryRep(n);
   SatSolverInterfaceUnit.GetSatSolver.AddComment('Factoing n = ' + n.ToString +
                                                   c.ToString);
 
-  SatSolverInterfaceUnit.GetSatSolver.AddLiteral(cBinRep);
   aBitCount := a.Count;
   bBitCount := b.Count;
   assert(aBitCount + bBitCount >= c.Count, 'a.Count + b.Count < c.Count');
@@ -134,7 +131,6 @@ begin
 
   if GetRunTimeParameterManager.Verbosity<> 0 then
   begin
-    WriteLn('cBinRep =', LiteralToString(cBinRep));
     WriteLn('aLEb =', LiteralToString(aLEb));
     WriteLn('aG1 =', LiteralToString(aG1));
     WriteLn('bG1 =', LiteralToString(bG1));
@@ -234,6 +230,7 @@ var
 
 function GetActiveFactorizer: TBaseFactorizerUsingSAT;
 begin
+  assert(ActiveFactorizer <> nil, 'Invalid Factorizer Mode!');
   Result:= ActiveFactorizer;
 
 end;
@@ -247,13 +244,14 @@ begin
            UpperCase ('ModuloRep') then
     ActiveFactorizer:= TBinaryModuloFactorizer.Create
   else
-    raise Exception.Create ('Invalid Factorizer Mode!');
+    ActiveFactorizer := nil;
 
 end;
 
 procedure Finalize;
 begin
-  ActiveFactorizer.Free;
+  if ActiveFactorizer <> nil then
+    ActiveFactorizer.Free;
   ActiveFactorizer:= nil;
 
 end;

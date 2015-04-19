@@ -23,7 +23,8 @@ type
     {
     Generate an encoding for consraint \bar{a}[\tau] = n.
     }
-    function EncodeBinaryRep(const n: TBigInt; a: TBitVector; nbits: Integer = -1): TLiteral; virtual; abstract;
+    // function EncodeBinaryRep(const n: TBigInt; a: TBitVector; nbits: Integer = -1): TLiteral; virtual; abstract;
+    function GenerateBinaryRep(const n: TBigInt; nbits: Integer = -1): TBitVector; virtual; abstract;
     {
     Generate an encoding for constraint a+1=c.
     }

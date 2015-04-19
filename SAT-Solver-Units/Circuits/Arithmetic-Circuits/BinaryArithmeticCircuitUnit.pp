@@ -42,7 +42,7 @@ type
     { Result is True iff a= b}
     procedure SubmitIsEqual(const a, b: TBitVector; l: TLiteral); override;
 
-    function EncodeBinaryRep(const n: TBigInt; a: TBitVector; nbits: Integer = -1): TLiteral; override;
+    function GenerateBinaryRep(const n: TBigInt; nbits: Integer = -1): TBitVector; override;
 
   end;
 
@@ -500,13 +500,12 @@ begin
 
 end;
 
-function TBinaryArithmeticCircuit.EncodeBinaryRep(const n: TBigInt; a: TBitVector;
-  nbits: Integer): TLiteral;
+function TBinaryArithmeticCircuit.GenerateBinaryRep(const n: TBigInt;
+  nbits: Integer): TBitVector;
 var
   P2: TBigInt;
   BitCount: Integer;
   i: Integer;
-  AndResult: TBigInt;
 
 begin
   P2 := BigIntFactory.GetNewMember.SetValue(2);
@@ -525,14 +524,13 @@ begin
     (1 shl VerbBinArithmCircuit)) <> 0 then
     WriteLn(BitCount, ' ', n.ToString, ' ', P2.ToString);
 
-  a.Count := BitCount;
+  Result := TBitVector.Create(BitCount, GetVariableManager.FalseLiteral);
   for i := 0 to BitCount- 1 do
     if n.CheckBit(i) then
-      a[i] := GetVariableManager.TrueLiteral
+      Result[i] := GetVariableManager.TrueLiteral
     else
-      a[i] := GetVariableManager.FalseLiteral;
+      Result[i] := GetVariableManager.FalseLiteral;
 
-  Result := GetVariableManager.TrueLiteral;
 end;
 
 end.
