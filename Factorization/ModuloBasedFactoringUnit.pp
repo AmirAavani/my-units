@@ -919,7 +919,6 @@ var
   TotalVar: Integer;
 
 begin
-
 {  WriteLn('<EncodeMul aCount= "', a.Count, '" bCount= "', b.Count, '">');
 }
   assert(a.Count + b.Count <= c.Count);

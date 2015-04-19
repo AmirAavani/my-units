@@ -28,7 +28,7 @@
     <RunParams>
       <local>
         <FormatVersion Value="1"/>
-        <CommandLineParams Value="--Mode Multiplication  --SatSolverType CNFCollection --OutputFilename inc12.cnf --FactorizerMode ModuloRep --ModuloMode Mode1 --verbosity 0   --AddModuloMod IncByTwoToM_1 --a 99799811 --b 99799811 --ExtraClausesLevel Modulo_1:"/>
+        <CommandLineParams Value="--Mode Division   --SatSolverType CNFCollection --OutputFilename inc12.cnf --MultiplierMode  ModuloRep --ModuloMode Mode1 --verbosity 0   --AddModuloMod IncByTwoToM_1 --InputSize 10"/>
       </local>
     </RunParams>
     <Units Count="10">
@@ -40,12 +40,10 @@
       <Unit1>
         <Filename Value="../General-Purpose-Units/GenericCollectionUnit.pp"/>
         <IsPartOfProject Value="True"/>
-        <UnitName Value="GenericCollectionUnit"/>
       </Unit1>
       <Unit2>
         <Filename Value="../SAT-Solver-Units/General/ClauseUnit.pp"/>
         <IsPartOfProject Value="True"/>
-        <UnitName Value="ClauseUnit"/>
       </Unit2>
       <Unit3>
         <Filename Value="../Algortihmic-Unit/BigInt.pp"/>
@@ -58,27 +56,22 @@
       <Unit5>
         <Filename Value="../SAT-Solver-Units/Circuits/Arithmetic-Circuits/BinaryArithmeticCircuitUnit.pp"/>
         <IsPartOfProject Value="True"/>
-        <UnitName Value="BinaryArithmeticCircuitUnit"/>
       </Unit5>
       <Unit6>
         <Filename Value="../SAT-Solver-Units/SatSolverInterfaceUnit.pp"/>
         <IsPartOfProject Value="True"/>
-        <UnitName Value="SatSolverInterfaceUnit"/>
       </Unit6>
       <Unit7>
         <Filename Value="../SAT-Solver-Units/Circuits/BaseCircuitUnit.pp"/>
         <IsPartOfProject Value="True"/>
-        <UnitName Value="BaseCircuitUnit"/>
       </Unit7>
       <Unit8>
         <Filename Value="../General-Purpose-Units/GenericStackUnit.pp"/>
         <IsPartOfProject Value="True"/>
-        <UnitName Value="GenericStackUnit"/>
       </Unit8>
       <Unit9>
         <Filename Value="../SAT-Solver-Units/MiniSAT/MiniSatSolverInterfaceUnit.pp"/>
         <IsPartOfProject Value="True"/>
-        <UnitName Value="MiniSatSolverInterfaceUnit"/>
       </Unit9>
     </Units>
   </ProjectOptions>
