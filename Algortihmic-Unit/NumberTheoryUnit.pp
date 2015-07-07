@@ -36,6 +36,12 @@ function IsPrime(n: Integer; const Primes: TIntList): Boolean;
 function Factorize(n: Integer; const Primes: TIntList): TFactorization;
 function Factorize(n: Integer): TFactorization;
 function SumOfDivisors(const Factorization: TFactorization): Int64;
+function ToBinary(n: Int64): AnsiString;
+{
+  Returns sqrt(n) iff n is a perfect square
+  Returns -1 o.w.
+}
+function IsPerfectSquare(n: Int64): Int64;
 
 //  function FindPrimes(Max: Integer);
 
@@ -76,7 +82,7 @@ begin
   begin
     if n mod i = 0 then
       Exit;
-    if i * i < n then
+    if n < i * i then
       Break;
   end;
   Result := True;
@@ -86,21 +92,37 @@ end;
 function IsPrime(n: Integer; const Primes: TIntList): Boolean;
 var
   Bot, Top, Mid: Integer;
-begin
-  Bot := 0;
-  Top := Primes.Count - 1;
+  i: Integer;
 
-  while Bot <= Top do
+begin
+  if n < Primes.Last then
   begin
-    Mid := (Bot + Top) div 2;
-    if Primes[Mid] < n then
-      Bot := Mid + 1
-    else if n < Primes[Mid] then
-      Top := Mid - 1
-    else Exit(True);
+    Bot := 0;
+    Top := Primes.Count - 1;
+
+    while Bot <= Top do
+    begin
+      Mid := (Bot + Top) div 2;
+      if Primes[Mid] < n then
+        Bot := Mid + 1
+      else if n < Primes[Mid] then
+        Top := Mid - 1
+      else Exit(True);
+    end;
+    Result := False;
+  end
+  else
+  begin
+    for i := 0 to Primes.Count - 1 do
+    begin
+      if n mod Primes[i] = 0 then
+        Exit(False);
+      if n < Primes[i] * Primes[i] then
+        break;
+    end;
+    Result := True;
   end;
 
-  Result := False;
 end;
 
 function Factorize(n: Integer; const Primes: TIntList): TFactorization;
@@ -139,7 +161,7 @@ var
   i, b, p: Integer;
 begin
   Result := TFactorization.Create;
-  for i := 2 to n - 1 do
+  for i := 2 to n do
   begin
     b := i;
     p := 0;
@@ -184,6 +206,45 @@ begin
     end;
     Result *= Sum;
   end;
+
+end;
+
+function ToBinary(n: Int64): AnsiString;
+begin
+  Result := '';
+
+  while n <> 0 do
+  begin
+    if (n and 1) = 0 then
+      Result += '0'
+    else
+      Result += '1';
+    n := n shr 1;
+  end;
+end;
+
+function IsPerfectSquare(n: Int64): Int64;
+var
+  Bot, Top, Mid: Int64;
+
+begin
+  if n < 0 then
+    Exit(-1);
+  Bot := 0;
+  Top := n;
+
+  while Bot <= Top do
+  begin
+    Mid := (Top + Bot) div 2;
+
+    if Sqr(Mid) < n then
+      Bot := Mid + 1
+    else if n < Sqr(Mid) then
+      Top := Mid - 1
+    else
+      Exit(Mid);
+  end;
+  Result := -1;
 
 end;
 
