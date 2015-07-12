@@ -32,7 +32,7 @@ type
     {
     Returns the number of availabe members
     }
-    function ReleaseMemeber(AMember: T): Integer;
+    function ReleaseMember(AMember: T): Integer;
 
   end;
 implementation
@@ -87,7 +87,7 @@ begin
 
 end;
 
-function TGenericFactoy.ReleaseMemeber(AMember: T): Integer;
+function TGenericFactoy.ReleaseMember(AMember: T): Integer;
 var
   i: Integer;
 
