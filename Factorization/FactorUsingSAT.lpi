@@ -31,11 +31,10 @@
         <CommandLineParams Value="--Mode Division   --SatSolverType CNFCollection --OutputFilename inc12.cnf --MultiplierMode  ModuloRep --ModuloMode Mode1 --verbosity 0   --AddModuloMod IncByTwoToM_1 --InputSize 10"/>
       </local>
     </RunParams>
-    <Units Count="10">
+    <Units Count="12">
       <Unit0>
         <Filename Value="FactorUsingSAT.pp"/>
         <IsPartOfProject Value="True"/>
-        <UnitName Value="FactorUsingSAT"/>
       </Unit0>
       <Unit1>
         <Filename Value="../General-Purpose-Units/GenericCollectionUnit.pp"/>
@@ -73,6 +72,14 @@
         <Filename Value="../SAT-Solver-Units/MiniSAT/MiniSatSolverInterfaceUnit.pp"/>
         <IsPartOfProject Value="True"/>
       </Unit9>
+      <Unit10>
+        <Filename Value="../Unicode-Functions/WideStringUnit.pas"/>
+        <IsPartOfProject Value="True"/>
+      </Unit10>
+      <Unit11>
+        <Filename Value="../../../Mine/FPC/fpc/packages/fcl-stl/src/gvector.pp"/>
+        <IsPartOfProject Value="True"/>
+      </Unit11>
     </Units>
   </ProjectOptions>
   <CompilerOptions>
@@ -81,7 +88,7 @@
       <Filename Value="FactorUsingSAT"/>
     </Target>
     <SearchPaths>
-      <OtherUnitFiles Value="../General-Purpose-Units;../SAT-Solver-Units/General;../Algortihmic-Unit;../SAT-Solver-Units/Circuits/Arithmetic-Circuits;../SAT-Solver-Units;../SAT-Solver-Units/Circuits;../SAT-Solver-Units/MiniSAT"/>
+      <OtherUnitFiles Value="../General-Purpose-Units;../SAT-Solver-Units/General;../Algortihmic-Unit;../SAT-Solver-Units/Circuits/Arithmetic-Circuits;../SAT-Solver-Units;../SAT-Solver-Units/Circuits;../SAT-Solver-Units/MiniSAT;../Unicode-Functions;../../../Mine/FPC/fpc/packages/fcl-stl/src"/>
       <UnitOutputDirectory Value="lib/$(TargetCPU)-$(TargetOS)"/>
     </SearchPaths>
   </CompilerOptions>

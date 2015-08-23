@@ -176,7 +176,7 @@ begin
   for i := 0 to Values.Count - 1 do
   begin
     Temp := Result.Mul(Values[i]);
-    BigIntFactory.ReleaseMemeber(Result);
+    BigIntFactory.ReleaseMember(Result);
 
     Result := Temp;
 
@@ -320,7 +320,7 @@ begin
 
   end;
 
-  BigIntFactory.ReleaseMemeber(P2);
+  BigIntFactory.ReleaseMember(P2);
 
 end;
 
@@ -344,7 +344,7 @@ begin
 
   end;
 
-  BigIntFactory.ReleaseMemeber(P2);
+  BigIntFactory.ReleaseMember(P2);
 
 end;
 
@@ -369,7 +369,7 @@ begin
   begin
     Top *= 2;
     tmp := TopBigInt.Mul(TopBigInt);
-    BigIntFactory.ReleaseMemeber(TopBigInt);
+    BigIntFactory.ReleaseMember(TopBigInt);
     TopBigInt := tmp;
 
     assert(Top <> 0, Self.ToString);
@@ -388,22 +388,22 @@ begin
     if MidBigInt.CompareWith(Self) < 0 then // 2^ Mid < Self
     begin
       Result := Mid;
-      BigIntFactory.ReleaseMemeber(BotBigInt);
+      BigIntFactory.ReleaseMember(BotBigInt);
       BotBigInt := MidBigInt.Copy.Mul2;
-      BigIntFactory.ReleaseMemeber(MidBigInt);
+      BigIntFactory.ReleaseMember(MidBigInt);
       Bot := Mid + 1
     end
     else if MidBigInt.CompareWith(Self) > 0 then
     begin
-      BigIntFactory.ReleaseMemeber(TopBigInt);
+      BigIntFactory.ReleaseMember(TopBigInt);
       TopBigInt := MidBigInt.Div2;
-      BigIntFactory.ReleaseMemeber(MidBigInt);
+      BigIntFactory.ReleaseMember(MidBigInt);
       Top := Mid - 1
     end
     else
     begin
       IsExact := True;
-      BigIntFactory.ReleaseMemeber(MidBigInt);
+      BigIntFactory.ReleaseMember(MidBigInt);
       Result := Mid;
       break;
     end;
@@ -412,8 +412,8 @@ begin
   if IsExact then
     Inc(Result);
 
-  BigIntFactory.ReleaseMemeber(TopBigInt);
-  BigIntFactory.ReleaseMemeber(BotBigInt);
+  BigIntFactory.ReleaseMember(TopBigInt);
+  BigIntFactory.ReleaseMember(BotBigInt);
 
 end;
 
@@ -634,7 +634,7 @@ begin
       if i <> 0 then
         Temp.MulByTenToN(i);
       Result.Add(Temp);
-      BigIntFactory.ReleaseMemeber(Temp);
+      BigIntFactory.ReleaseMember(Temp);
 
     end;
 
@@ -657,13 +657,13 @@ begin
 
     Temp2.Add(Temp2);
     Temp3 := Temp1.Div2;
-    BigIntFactory.ReleaseMemeber(Temp1);
+    BigIntFactory.ReleaseMember(Temp1);
     Temp1 := Temp3;
 
   end;
 
-  BigIntFactory.ReleaseMemeber(Temp1);
-  BigIntFactory.ReleaseMemeber(Temp2);
+  BigIntFactory.ReleaseMember(Temp1);
+  BigIntFactory.ReleaseMember(Temp2);
 
 end;
 
@@ -772,13 +772,13 @@ begin
   while not b.IsZero do
   begin
     c := a.Modulo(b);
-    BigIntFactory.ReleaseMemeber(a);
+    BigIntFactory.ReleaseMember(a);
     a := b;
     b := c;
 
   end;
 
-  BigIntFactory.ReleaseMemeber(b);
+  BigIntFactory.ReleaseMember(b);
   Result := a;
 
 end;
@@ -876,7 +876,7 @@ begin
   while Self.CompareWith(Temp)> 0 do
   begin
     Lower.Mul2;
-    BigIntFactory.ReleaseMemeber(Temp);
+    BigIntFactory.ReleaseMember(Temp);
     Temp := Lower.NewMul(n);
 
   end;
@@ -891,33 +891,33 @@ begin
 
   while 0<= Higher.CompareWith(Lower) do
   begin
-    BigIntFactory.ReleaseMemeber(Temp);
-    BigIntFactory.ReleaseMemeber(Mid);
+    BigIntFactory.ReleaseMember(Temp);
+    BigIntFactory.ReleaseMember(Mid);
 
     Temp := Lower.Copy.Add(Higher);
     Mid := Temp.Div2;
-    BigIntFactory.ReleaseMemeber(Temp);
+    BigIntFactory.ReleaseMember(Temp);
     Temp := n.NewMul(Mid);
 
     CompareRes := Self.CompareWith(Temp);
 
     if 0< CompareRes then
     begin
-      BigIntFactory.ReleaseMemeber(Result);
+      BigIntFactory.ReleaseMember(Result);
       Result := Lower.Copy;
-      BigIntFactory.ReleaseMemeber(Lower);
+      BigIntFactory.ReleaseMember(Lower);
       Lower := Mid.Copy.Incr;
 
     end
     else if CompareRes< 0 then
     begin
-      BigIntFactory.ReleaseMemeber(Higher);
+      BigIntFactory.ReleaseMember(Higher);
       Higher := Mid.Copy.Decr;
 
     end
     else
     begin
-      BigIntFactory.ReleaseMemeber(Result);
+      BigIntFactory.ReleaseMember(Result);
       Result := Mid.Copy;
       Break;
 
@@ -928,10 +928,10 @@ begin
   if Result= nil then
     Result := Lower.Copy;
 
-  BigIntFactory.ReleaseMemeber(Higher);
-  BigIntFactory.ReleaseMemeber(Lower);
-  BigIntFactory.ReleaseMemeber(Mid);
-  BigIntFactory.ReleaseMemeber(Temp);
+  BigIntFactory.ReleaseMember(Higher);
+  BigIntFactory.ReleaseMember(Lower);
+  BigIntFactory.ReleaseMember(Mid);
+  BigIntFactory.ReleaseMember(Temp);
 
 end;
 
@@ -950,33 +950,33 @@ begin
 
   while Self.CompareWith(Temp)> 0 do
   begin
-    BigIntFactory.ReleaseMemeber(Lower);
+    BigIntFactory.ReleaseMember(Lower);
     Lower := Higher.Copy;
-    BigIntFactory.ReleaseMemeber(Higher);
+    BigIntFactory.ReleaseMember(Higher);
     Higher := Lower.MulByDigit(2);
 
-    BigIntFactory.ReleaseMemeber(Temp);
+    BigIntFactory.ReleaseMember(Temp);
     Temp := Higher.Mul(Higher);
 
   end;
 
-  BigIntFactory.ReleaseMemeber(Temp);
+  BigIntFactory.ReleaseMember(Temp);
   Temp := Lower.Mul(Lower);
 
   while Higher.CompareWith(Lower)>= 0 do
   begin
-    BigIntFactory.ReleaseMemeber(Temp);
+    BigIntFactory.ReleaseMember(Temp);
     Temp := Lower.Copy;
     Temp.Add(Higher);
     Mid := Temp.Div2;
 
-    BigIntFactory.ReleaseMemeber(Temp);
+    BigIntFactory.ReleaseMember(Temp);
     Temp := Mid.Mul(Mid);
 
     case Self.CompareWith(Temp) of
     +1:
       begin
-        BigIntFactory.ReleaseMemeber(Lower);
+        BigIntFactory.ReleaseMember(Lower);
         Lower := Mid.Incr;
 
       end;
@@ -985,7 +985,7 @@ begin
 
     -1:
       begin
-        BigIntFactory.ReleaseMemeber(Higher);
+        BigIntFactory.ReleaseMember(Higher);
         Higher := Mid.Decr;
 
       end;
@@ -998,7 +998,7 @@ begin
   Temp.Add(Higher);
   Mid := Temp.Div2;
 
-  BigIntFactory.ReleaseMemeber(Temp);
+  BigIntFactory.ReleaseMember(Temp);
   Temp := Mid.Mul(Mid);
 
   Result := Mid;
@@ -1006,12 +1006,12 @@ begin
     Result.Decr;
 
   if Higher<> Mid then
-    BigIntFactory.ReleaseMemeber(Higher);
+    BigIntFactory.ReleaseMember(Higher);
 
   if Lower<> Mid then
-    BigIntFactory.ReleaseMemeber(Lower);
+    BigIntFactory.ReleaseMember(Lower);
 
-  BigIntFactory.ReleaseMemeber(Temp);
+  BigIntFactory.ReleaseMember(Temp);
 
 end;
 
@@ -1055,7 +1055,7 @@ begin
   for i := 1 to BitIndex do
   begin
     Temp2 := Temp1.Div2;
-    BigIntFactory.ReleaseMemeber(Temp1);
+    BigIntFactory.ReleaseMember(Temp1);
 
     Temp1 := Temp2;
 
@@ -1063,7 +1063,7 @@ begin
 
   Result := Odd(Temp1.Digits[0]);
 
-  BigIntFactory.ReleaseMemeber(Temp1);
+  BigIntFactory.ReleaseMember(Temp1);
 
 end;
 
@@ -1088,13 +1088,13 @@ begin
     Temp := Self.Pow(n div 2);
     Temp1 := Temp.Copy;
     Result := Temp.Mul(Temp1);
-    BigIntFactory.ReleaseMemeber(Temp1);
-    BigIntFactory.ReleaseMemeber(Temp);
+    BigIntFactory.ReleaseMember(Temp1);
+    BigIntFactory.ReleaseMember(Temp);
 
     if n mod 2= 1 then
     begin
       Temp := Result.Mul(Self);
-      BigIntFactory.ReleaseMemeber(Result);
+      BigIntFactory.ReleaseMember(Result);
       Result := Temp;
 
     end;

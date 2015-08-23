@@ -12,7 +12,7 @@ uses
   BinaryEncodingBasedFactoringUnit, BitVectorUnit, ClauseUnit,
   BinaryArithmeticCircuitUnit, BaseArithmeticCircuitUnit, BaseCircuitUnit,
   ModuloBasedFactoringUnit, GenericCollectionUnit, StreamUnit,
-  GenericFactoryUnit, GenericStackUnit;
+  GenericFactoryUnit, GenericStackUnit, WideStringUnit;
 
 procedure Initialize;
 begin
@@ -91,8 +91,8 @@ begin
     GetSatSolver.AddLiteral(ArithmeticCircuit.EncodeIsEqual(brep, b));
     SatSolverInterfaceUnit.GetSatSolver.SubmitAndGate(GetVariableManager.TrueLiteral);
 
-    BigIntFactory.ReleaseMemeber(na);
-    BigIntFactory.ReleaseMemeber(nb);
+    BigIntFactory.ReleaseMember(na);
+    BigIntFactory.ReleaseMember(nb);
     a.Free;
     b.Free;
     c.Free;
@@ -128,8 +128,8 @@ begin
     GetSatSolver.AddLiteral(ArithmeticCircuit.EncodeIsEqual(brep, b));
     SatSolverInterfaceUnit.GetSatSolver.SubmitAndGate(GetVariableManager.TrueLiteral);
 
-    BigIntFactory.ReleaseMemeber(na);
-    BigIntFactory.ReleaseMemeber(nb);
+    BigIntFactory.ReleaseMember(na);
+    BigIntFactory.ReleaseMember(nb);
     a.Free;
     b.Free;
     c.Free;
@@ -297,7 +297,7 @@ begin
       SatSolverInterfaceUnit.GetSatSolver.AddLiteral(FactoringUsingSATUnit.GetActiveFactorizer.GenerateCNF(a, b, n));
       SatSolverInterfaceUnit.GetSatSolver.SubmitClause;
 
-      BigIntFactory.ReleaseMemeber(n);
+      BigIntFactory.ReleaseMember(n);
 
       a.Free;
       b.Free;
@@ -317,12 +317,12 @@ begin
       SatSolverInterfaceUnit.GetSatSolver.AddLiteral(FactoringUsingSATUnit.GetActiveFactorizer.GenerateCNF(a, b, n));
       SatSolverInterfaceUnit.GetSatSolver.SubmitClause;
 
-      BigIntFactory.ReleaseMemeber(n);
+      BigIntFactory.ReleaseMember(n);
 
       a.Free;
       b.Free;
 
-      BigIntFactory.ReleaseMemeber(n);
+      BigIntFactory.ReleaseMember(n);
 
     end;
   end else if UpperCase(GetRunTimeParameterManager.ValueByName['--Mode']) =
@@ -352,7 +352,7 @@ begin
       SatSolverInterfaceUnit.GetSatSolver.AddLiteral(FactoringUsingSATUnit.GetActiveFactorizer.GenerateCNF(a, b, n));
       SatSolverInterfaceUnit.GetSatSolver.SubmitClause;
 
-      BigIntFactory.ReleaseMemeber(n);
+      BigIntFactory.ReleaseMember(n);
 
       a.Free;
       b.Free;
@@ -373,12 +373,12 @@ begin
       SatSolverInterfaceUnit.GetSatSolver.AddLiteral(FactoringUsingSATUnit.GetActiveFactorizer.GenerateCNF(a, b, n));
       SatSolverInterfaceUnit.GetSatSolver.SubmitClause;
 
-      BigIntFactory.ReleaseMemeber(n);
+      BigIntFactory.ReleaseMember(n);
 
       a.Free;
       b.Free;
 
-      BigIntFactory.ReleaseMemeber(n);
+      BigIntFactory.ReleaseMember(n);
 
     end
   end else if UpperCase(GetRunTimeParameterManager.ValueByName['--Mode']) =

@@ -93,7 +93,7 @@ begin
 
   Result := BigIntFactory.ComputeProduct(Modulos);
   for i := 0 to Bases.Size - 1 do
-    BigIntFactory.ReleaseMemeber(Modulos[i]);
+    BigIntFactory.ReleaseMember(Modulos[i]);
   Modulos.Free;
 end;
 
@@ -127,12 +127,12 @@ begin
     if Temp.Log < TargetLog then
     else if MinProd.CompareWith(Temp) > 0 then
     begin
-      BigIntFactory.ReleaseMemeber(MinProd);
+      BigIntFactory.ReleaseMember(MinProd);
       MinProd := Temp.Copy;
       MinSetMask := i;
     end;
 
-    BigIntFactory.ReleaseMemeber(Temp);
+    BigIntFactory.ReleaseMember(Temp);
   end;
   CurrentSet.Free;
 
@@ -203,8 +203,8 @@ begin
     assert(not t2p.IsZero);
 
     Temp := Prod.Mul(t2p);
-    BigIntFactory.ReleaseMemeber(t2p);
-    BigIntFactory.ReleaseMemeber(Prod);
+    BigIntFactory.ReleaseMember(t2p);
+    BigIntFactory.ReleaseMember(Prod);
     Prod := Temp;
 
     Modulos.PushBack(ActivePrime);
@@ -231,8 +231,8 @@ begin
       assert(not t2p.IsZero);
 
       Temp := Prod.Mul(t2p);
-      BigIntFactory.ReleaseMemeber(t2p);
-      BigIntFactory.ReleaseMemeber(Prod);
+      BigIntFactory.ReleaseMember(t2p);
+      BigIntFactory.ReleaseMember(Prod);
       Prod := Temp;
 
       Modulos.PushBack(ActivePrime);
@@ -254,8 +254,8 @@ begin
 
       t2p := BigIntFactory.GetNewMember.SetValue(1).ShiftLeft(ActivePrime).Decr;
       Temp := Prod.Mul(t2p);
-      BigIntFactory.ReleaseMemeber(t2p);
-      BigIntFactory.ReleaseMemeber(Prod);
+      BigIntFactory.ReleaseMember(t2p);
+      BigIntFactory.ReleaseMember(Prod);
       Prod := Temp;
 
       Modulos.PushBack(AllPrimes[i]);
@@ -264,7 +264,7 @@ begin
     end;
   end;
 
-  BigIntFactory.ReleaseMemeber(Prod);
+  BigIntFactory.ReleaseMember(Prod);
   AllPrimes.Free;
 
   Result := SelectSmallestSubset(Modulos, n);
@@ -314,17 +314,17 @@ function TModuloBasedBinaryArithmeticCircuit.GenerateModulos2(n: Integer;
       if Temp.Log < TargetLog then
       else if MinProd.CompareWith(Temp) > 0 then
       begin
-        BigIntFactory.ReleaseMemeber(MinProd);
+        BigIntFactory.ReleaseMember(MinProd);
         MinProd := Temp.Copy;
         MinSetMask := i;
       end;
 
-      BigIntFactory.ReleaseMemeber(Temp);
+      BigIntFactory.ReleaseMember(Temp);
     end;
     CurrentSet.Free;
 
     for i := 0 to ModulosBigInts.Count - 1 do
-      BigIntFactory.ReleaseMemeber(ModulosBigInts[i]);
+      BigIntFactory.ReleaseMember(ModulosBigInts[i]);
     ModulosBigInts.Clear;
     ModulosBigInts.Free;
 
@@ -386,8 +386,8 @@ begin
       assert(not t2p.IsZero);
 
       Temp := Prod.Mul(t2p);
-      BigIntFactory.ReleaseMemeber(t2p);
-      BigIntFactory.ReleaseMemeber(Prod);
+      BigIntFactory.ReleaseMember(t2p);
+      BigIntFactory.ReleaseMember(Prod);
       Prod := Temp;
     end;
 
@@ -447,17 +447,17 @@ function TModuloBasedBinaryArithmeticCircuit.GenerateModulos3(n: Integer
       if Temp.Log < TargetLog then
       else if MinProd.CompareWith(Temp) > 0 then
       begin
-        BigIntFactory.ReleaseMemeber(MinProd);
+        BigIntFactory.ReleaseMember(MinProd);
         MinProd := Temp.Copy;
         MinSetMask := i;
       end;
 
-      BigIntFactory.ReleaseMemeber(Temp);
+      BigIntFactory.ReleaseMember(Temp);
     end;
     CurrentSet.Free;
 
     for i := 0 to ModulosBigInts.Count - 1 do
-      BigIntFactory.ReleaseMemeber(ModulosBigInts[i]);
+      BigIntFactory.ReleaseMember(ModulosBigInts[i]);
     ModulosBigInts.Clear;
     ModulosBigInts.Free;
 
@@ -486,7 +486,7 @@ begin
   for i := 0 to AllPrimes.Size - logn do
   begin
     for j := 0 to Temp.Count - 1 do
-      BigIntFactory.ReleaseMemeber(Temp[j]);
+      BigIntFactory.ReleaseMember(Temp[j]);
 
     Temp.Clear;
     Modulos.Clear;
@@ -508,7 +508,7 @@ begin
       if n < Prod.Log then
         break;
 
-      BigIntFactory.ReleaseMemeber(Prod);
+      BigIntFactory.ReleaseMember(Prod);
       Prod := nil;
     end;
 
@@ -618,13 +618,13 @@ begin
       else
         Bot := Mid + 1;
 
-      BigIntFactory.ReleaseMemeber(Prod);
+      BigIntFactory.ReleaseMember(Prod);
       CurrentModuloSet.Free;
     end;
   end;
 
   OrigAllPrimes.Free;
-  BigIntFactory.ReleaseMemeber(TwoToN);
+  BigIntFactory.ReleaseMember(TwoToN);
 
   for i := 0 to Result.Size - 1 do
     Write(Result[i], ' ');
@@ -718,13 +718,13 @@ begin
       else
         Bot := Mid + 1;
 
-      BigIntFactory.ReleaseMemeber(Prod);
+      BigIntFactory.ReleaseMember(Prod);
       CurrentModuloSet.Free;
     end;
   end;
 
   OrigAllPrimes.Free;
-  BigIntFactory.ReleaseMemeber(TwoToN);
+  BigIntFactory.ReleaseMember(TwoToN);
 
   for i := 0 to Result.Size - 1 do
     Write(Result[i], ' ');
@@ -971,7 +971,7 @@ begin
       WriteLn('Modulo[ ', i, '] = 2^', Modulos[i]);
 
   Assert(a.Count + b.Count <= Prod.Log);
-  BigIntFactory.ReleaseMemeber(Prod);
+  BigIntFactory.ReleaseMember(Prod);
 
   Write(a.Count + b.Count, ':');
   for i:= 0 to Modulos.Size- 1 do

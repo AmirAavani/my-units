@@ -516,7 +516,7 @@ begin
     Inc(BitCount);
     P2.Add(P2);
   end;
-  BigIntFactory.ReleaseMemeber(P2);
+  BigIntFactory.ReleaseMember(P2);
   if BitCount < nbits then
     BitCount := nbits;
 
