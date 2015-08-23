@@ -24,6 +24,7 @@ type
     constructor Create(b, p: Integer);
 
   end;
+
   TFactorization = class(specialize TFPGObjectList<TFactorizationPair>)
   public
     procedure WriteLn;
@@ -33,8 +34,8 @@ type
 function GenerateAllPrimes(Max: Integer): TIntList;
 function IsPrime(n: Integer): Boolean;
 function IsPrime(n: Integer; const Primes: TIntList): Boolean;
-function Factorize(n: Integer; const Primes: TIntList): TFactorization;
-function Factorize(n: Integer): TFactorization;
+function Factorize(n: Int64; const Primes: TIntList): TFactorization;
+function Factorize(n: Int64): TFactorization;
 function SumOfDivisors(const Factorization: TFactorization): Int64;
 function ToBinary(n: Int64): AnsiString;
 {
@@ -42,8 +43,12 @@ function ToBinary(n: Int64): AnsiString;
   Returns -1 o.w.
 }
 function IsPerfectSquare(n: Int64): Int64;
+function CNR(n, r: Integer): UInt64;
+function gcd(a, b: UInt64): UInt64;
+function Pow(a, b: Integer): Int64;
 
-//  function FindPrimes(Max: Integer);
+{Factors is the factorization for n}
+function ComputePhi(n: Int64; Factors: TFactorization): Int64;
 
 implementation
 
@@ -125,7 +130,7 @@ begin
 
 end;
 
-function Factorize(n: Integer; const Primes: TIntList): TFactorization;
+function Factorize(n: Int64; const Primes: TIntList): TFactorization;
 var
   i, b, p: Integer;
   Factor: TFactorizationPair;
@@ -146,7 +151,7 @@ begin
     if p <> 0 then
       Result.Add(TFactorizationPair.Create(b, p));
 
-    if n < b then
+    if n < b * b then
     begin
       if n <> 1 then
         Result.Add(TFactorizationPair.Create(n, 1));
@@ -156,7 +161,7 @@ begin
 
 end;
 
-function Factorize(n: Integer): TFactorization;
+function Factorize(n: Int64): TFactorization;
 var
   i, b, p: Integer;
 begin
@@ -248,6 +253,97 @@ begin
 
 end;
 
+function CNR(n, r: Integer): UInt64;
+var
+  NVals: array of Integer;
+  i, j, k, l: Integer;
+begin
+  SetLength(NVals, n + 1);
+  FillChar(NVals[0], SizeOf(NVals), 0);
+  if n < 2 * r then
+    r := n - r;
+
+  for i := n - r + 1 to n do
+    NVals[i] := 1;
+
+  for i := 1 to r do
+  begin
+    k := i;
+    while k <> 1 do
+    begin
+      for j := 1 to n do
+        if 0 < NVals[j]  then
+        begin
+          l := gcd(k, j);
+          Dec(NVals[j]);
+          Inc(NVals[j div l]);
+          k := k div l;
+          if k = 1 then
+            break;
+        end;
+    end;
+  end;
+
+  Result := 1;
+  for i := 2 to n do
+    Result *= Pow(i, NVals[i]);
+
+  SetLength(NVals, 0);
+
+end;
+
+function gcd(a, b: UInt64): UInt64;
+var
+  c: uInt64;
+
+begin
+  if a < b then
+  begin
+    a := a xor b;
+    b := a xor b;
+    a := a xor b;
+  end;
+
+  while a mod b <> 0 do
+  begin
+    c := a mod b;
+    a := b;
+    b := c;
+  end;
+
+  Result := b;
+end;
+
+function Pow(a, b: Integer): Int64;
+begin
+  if b = 0 then
+    Exit(1);
+  if b = 1 then
+    Exit(a);
+
+  Result := Sqr(Pow(a, b div 2));
+  if Odd(b) then
+    Result *= a;
+
+end;
+
+function ComputePhi(n: Int64; Factors: TFactorization): Int64;
+var
+  i, p: Integer;
+  a, b: Integer;
+
+begin
+  Result := n;
+
+  for i := 0 to Factors.Count - 1 do
+  begin
+    a := Factors[i].Base;
+    b := Factors[i].Power;
+    Result := Result div a;
+    Result *= (a - 1);
+  end;
+end;
+
 { TFactorization }
 
 procedure TFactorization.WriteLn;
@@ -259,6 +355,7 @@ begin
     System.WriteLn(Self[i].Base, '^', Self[i].Power);
 
 end;
+
 
 { TFactorizatonPair }
 
