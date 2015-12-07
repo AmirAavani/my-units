@@ -456,8 +456,8 @@ begin
 
   end;
 
-  Assert(Borrow<> 0, 'Sorry!! TBigInt can not handle Negative Numbers');
-  while FLength> 0 do
+  Assert(Borrow = 0, 'Sorry!! TBigInt can not handle Negative Numbers');
+  while FLength > 0 do
   begin
     if Digits[FLength- 1]= 0 then
       Dec(FLength)
@@ -650,7 +650,7 @@ begin
   Temp1 := Self.Copy;
   Temp2 := n.Copy;
 
-  while 1<= Temp1.Length do
+  while 1 <= Temp1.Length do
   begin
     if Odd(Temp1.FDigits^[0]) then
       Result.Add(Temp2);
@@ -785,7 +785,7 @@ end;
 
 procedure TBigInt.Reset;
 begin
-  FLength := 0;
+  FLength := -1;
 
 end;
 

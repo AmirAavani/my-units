@@ -49,6 +49,10 @@ function Pow(a, b: Integer): Int64;
 
 {Factors is the factorization for n}
 function ComputePhi(n: Int64; Factors: TFactorization): Int64;
+function GenerateAllDivisors(Factors: TFactorization): TIntList;
+
+{Chinese Remainder Theorem}
+function ChineseRemainderTheorem(Modulos, Remainders: TIntList): uInt64;
 
 implementation
 
@@ -320,11 +324,9 @@ begin
     Exit(1);
   if b = 1 then
     Exit(a);
-
   Result := Sqr(Pow(a, b div 2));
   if Odd(b) then
-    Result *= a;
-
+    Result := Result * a;
 end;
 
 function ComputePhi(n: Int64; Factors: TFactorization): Int64;
@@ -342,6 +344,67 @@ begin
     Result := Result div a;
     Result *= (a - 1);
   end;
+end;
+
+function GenerateAllDivisors(Factors: TFactorization): TIntList;
+  procedure RecGen(Index: Integer);
+  var
+    i, j, c: Integer;
+    p, b2p: Integer;
+
+  begin
+    if Index = Factors.Count then
+      Exit;
+
+    c := Result.Count;
+    p := Factors[Index].Base;
+    b2p := p;
+
+    for j := 1 to Factors[Index].Power do
+    begin
+      for i := 0 to c - 1 do
+        Result.Add(Result[i] * b2p);
+      b2p *= p;
+    end;
+
+    RecGen(Index + 1);
+  end;
+
+begin
+  Result := TIntList.Create;
+
+  Result.Add(1);
+
+  if 0 < Factors.Count then
+    RecGen(0);
+end;
+
+function ChineseRemainderTheorem(Modulos, Remainders: TIntList): uInt64;
+var
+  n: UInt64;
+  ms: TIntList;
+  i: Integer;
+  SumMs: Integer;
+
+begin
+  // Result := \sum ri N/ni[(N/ni)^-1]_ni]_N;
+  if Modulos.Count <> Remainders.Count then
+    Halt(1);
+  n := 1;
+
+  for i := 0 to Modulos.Count - 1 do
+    n *= Modulos[i];
+  Result := 0;
+  SumMs := 0;
+  for i := 0 to Modulos.Count - 1 do
+  begin
+    //Result += (m div Modulos[i]) * Remainders[i];
+    //SumMs += m div Modulos[i];
+  end;
+
+  Assert(Result mod SumMs = 0);
+  Result := Result div SumMs;
+
 end;
 
 { TFactorization }

@@ -73,7 +73,9 @@ function TGenericFactoy.GetNewMember: T;
 
 begin
   if not AvailableItems.IsEmpty then
-    Result:= AvailableItems.Pop
+  begin
+    Result:= AvailableItems.Pop;
+  end
   else
   begin
     Result:= T.Create;
@@ -88,12 +90,8 @@ begin
 end;
 
 function TGenericFactoy.ReleaseMember(AMember: T): Integer;
-var
-  i: Integer;
-
 begin
   AMember.Reset;
-
 
   assert(not AvailableItems.Find(AMember));
 
