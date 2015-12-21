@@ -1,52 +1,65 @@
 unit MatchingUnit;
 {$mode Objfpc}
 interface
+uses
+ fgl;
 type
+  TIntList = specialize TFPGList<Integer>;
   TAdjMartix= array of array of Boolean;
 
-  function MaximumBipartiteMatching (M: TAdjMartix; n: Integer): Integer;
+  function MaximumBipartiteMatching (M: TAdjMartix; n: Integer; Left, Right: TIntList): Integer;
 
 implementation
 
-function MaximumBipartiteMatching (M: TAdjMartix; n: Integer): Integer;
-var
-  IsVisited: array [0..100] of Boolean;
-  Prev: array [0..100] of Integer;
+function MaximumBipartiteMatching (M: TAdjMartix; n: Integer; Left, Right: TIntList): Integer;
 
-  function FindNextDFS (v: Integer): Boolean;
+var
+  Visited: array of Boolean;
+
+  function FindNextDFS(l: Integer): Boolean;
   var
-    i: Integer;
+    r: Integer;
 
   begin
-    if IsVisited [v] then
-      Exit (False);
+    if l = -1 then
+      Exit(True);
 
-    IsVisited [v]:= True;
+    if Visited[l] then
+      Exit(False);
 
-    for i:= 0 to n- 1 do
-      if M [v, i] then
-        if FindNextDFS (Prev [i]) then
+    Visited[l]:= True;
+
+    for r := 0 to n - 1 do
+      if M[l, r] then
+        if FindNextDFS(Right[r]) then
         begin
-          Prev [i]:= v;
-          Exit (True);
-
+          Right[r] := l;
+          Left[l] := r;
+          Exit(True);
         end;
 
-    Result:= False;
+    Result := False;
 
   end;
 
 var
-  i: Integer;
+  l: Integer;
 
 begin
-  FillChar (Prev, SizeOf (Prev), 255);
-  Result:= 0;
-
-  for i:= 0 to n- 1 do
+  Result := 0;
+  Left.Count := n;
+  Right.Count := n;
+  SetLength(Visited, n);
+  for l := 0 to n - 1 do
   begin
-    FillChar (IsVisited, SizeOf (IsVisited), 0);
-    if {not??!!} FindNextDFS (i) then
+    Left[l] := -1;
+    Right[l] := -1;
+  end;
+
+  for l := 0 to n - 1 do
+  begin
+    FillChar (Visited[0], SizeOf(Visited), 0);
+    if FindNextDFS(l) then
       Inc (Result);
 
   end;
