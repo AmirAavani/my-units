@@ -35,7 +35,6 @@ type
 
   end;
 
-
   TIntArray= array of Integer;
 
 procedure DijkstraWithAdjMat (const Mat: TAdjMat; Source: Integer; var Cost: TIntArray);

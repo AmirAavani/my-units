@@ -104,8 +104,9 @@ type
   end;
 
   TSortedAdjListGraph= class (TAdjListGraph)
-
   end;
+
+
 
 
 implementation
