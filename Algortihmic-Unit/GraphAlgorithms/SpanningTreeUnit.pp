@@ -5,7 +5,7 @@ unit SpanningTreeUnit;
 interface
 
 uses
-  Classes, SysUtils, HeapUnit;
+  Classes, SysUtils;
 
 type
   TAdjMat = array of array of Extended;
@@ -16,90 +16,80 @@ type
   end;
   TTree = array of TTreeEdge;
 
-function MinWeightSpanningTree(const Mat: TAdjMat; VCount: Integer; var SpanningTree: TTree): Integer;
+function MinWeightSpanningTree(const Mat: TAdjMat; VCount: Integer; var SpanningTree: TTree): Boolean;
 
 implementation
 uses fgl, Math;
 
-type
-
-  { TPair }
-
-  TPair = class(TObject)
-    Node: Integer;
-    Cost: Extended;
-    ParentNode: Integer;
-    constructor Create(n: Integer; c: Extended; p: Integer);
-  end;
-  TPairHeap = specialize THeap<TPair>;
-
-function PairGreaterThan(const P1, P2: TPair): Boolean;
-begin
-  if P1.Node <> P2.Node then
-    Result := P1.Node < P2.Node
-  else
-    Result := P1.Cost < P2.Cost
-end;
-
-function MinWeightSpanningTree(const Mat: TAdjMat; VCount: Integer; var SpanningTree: TTree): Integer;
+function MinWeightSpanningTree(const Mat: TAdjMat; VCount: Integer; var SpanningTree: TTree): Boolean;
 const
   Inf = 1e100;
+
 var
-  Pair: TPair;
-  Heap: TPairHeap;
-  i: Integer;
-  v: Integer;
+  i, j: Integer;
+  MinIndex: Integer;
+  MinCost: Extended;
+  tCount: Integer;
   vCost: Extended;
+  Selected: array of Boolean;
   Costs: array of Extended;
+  Parents: array of Integer;
 
 begin
-  Heap := TPairHeap.Create(@PairGreaterThan, 0);
-
+  Result := True;
   SetLength(Costs, VCount);
+  SetLength(Parents, VCount);
+  SetLength(Selected, VCount);
+
+  SetLength(SpanningTree, VCount - 1);
+  FillChar(SpanningTree[0], SizeOf(SpanningTree), 0);
+  FillChar(Selected[0], SizeOf(Selected), 0);
+  FillChar(Parents[0], SizeOf(Parents), 255);
   for i := 0 to VCount - 1 do
     Costs[i] := Inf;
 
-  Pair := TPair.Create(0, 0, -1);
-  Heap.Insert(Pair);
   Costs[0] := 0;
+  Parents[0] := 0;
 
-  while Heap.Count <> 0 do
+  for i := 1 to VCount - 1 do
   begin
-    Pair := Heap.Min;
-    v := Pair.Node;
-    vCost := Pair.Cost;
-    Heap.DeleteMin;
+    MinIndex := 0;
+    MinCost := Inf;
 
-    if Costs[v] < vCost then
-    begin
-      WriteLn(v, ' ', vCost);
-      continue;
-    end;
-
-
-    for i := 0 to VCount - 1 do
-    begin
-      if vCost + Mat[v, i] < Costs[i] then
+    for j := 0 to VCount - 1 do
+      if (not Selected[j]) and (Costs[j] < MinCost) then
       begin
-        Costs[i] := vCost + Mat[v, i];
-        Pair := TPair.Create(i, Costs[i], v);
-        Heap.Insert(Pair);
+        MinIndex := j;
+        MinCost := Costs[j];
       end;
+
+    if MinCost = Inf then
+    begin
+      Result := False;
+      Break;
     end;
 
+    for j := 0 to VCount - 1 do
+      if (Mat[MinIndex][j] < Costs[j]) and (not Selected[j]) then
+      begin
+        Costs[j] := Mat[MinIndex][j] ;
+        Parents[j] := MinIndex;
+      end;
+    Selected[MinIndex] := True;
   end;
 
-end;
+  SetLength(SpanningTree, VCount - 1);
+  for j := 1 to VCount - 1 do
+  begin
+    SpanningTree[j - 1].Node := j;
+    SpanningTree[j - 1].Parent := Parents[j];
+    SpanningTree[j - 1].Weight := Mat[Parents[j]][j];
+  end;
 
-{ TPair }
+  SetLength(Costs, 0);
+  SetLength(Parents, 0);
+  SetLength(Selected, 0);
 
-constructor TPair.Create(n: Integer; c: Extended; p: Integer);
-begin
-  inherited Create;
-
-  Node := n;
-  Cost := c;
-  ParentNode := p;
 end;
 
 end.
