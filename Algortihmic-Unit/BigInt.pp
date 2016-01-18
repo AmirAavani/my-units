@@ -31,7 +31,7 @@ type
     representation of number and to make the operations faster.
 
   Dec, 27, 2014
-     I implemented a ToInteger mehod(It is not a safe method, use it carefully).
+     I implemented a ToInteger method(It is not a safe method, use it carefully).
 }
   { TBigInt }
 

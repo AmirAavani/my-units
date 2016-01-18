@@ -1,3 +1,4 @@
+{$R+}
 unit NumberTheoryUnit;
 
 {$mode objfpc}{$H+}
@@ -8,7 +9,14 @@ uses
   Classes, SysUtils, fgl;
 
 type
-  TIntList = specialize TFPGList<Integer>;
+
+  { TIntList }
+
+  TIntList = class(specialize TFPGList<Integer>)
+  public
+    procedure Print;
+    function Sum: Int64;
+  end;
 
   { TFactorizationPair }
 
@@ -33,7 +41,7 @@ type
 
 function GenerateAllPrimes(Max: Integer): TIntList;
 function IsPrime(n: Integer): Boolean;
-function IsPrime(n: Integer; const Primes: TIntList): Boolean;
+function IsPrime(n: Int64; const Primes: TIntList): Boolean;
 function Factorize(n: Int64; const Primes: TIntList): TFactorization;
 function Factorize(n: Int64): TFactorization;
 function SumOfDivisors(const Factorization: TFactorization): Int64;
@@ -98,10 +106,11 @@ begin
 
 end;
 
-function IsPrime(n: Integer; const Primes: TIntList): Boolean;
+function IsPrime(n: Int64; const Primes: TIntList): Boolean;
 var
   Bot, Top, Mid: Integer;
   i: Integer;
+  p: Int64;
 
 begin
   if n < Primes.Last then
@@ -126,7 +135,7 @@ begin
     begin
       if n mod Primes[i] = 0 then
         Exit(False);
-      if n < Primes[i] * Primes[i] then
+      if n / Primes[i] < Primes[i] then
         break;
     end;
     Result := True;
@@ -404,6 +413,33 @@ begin
 
   Assert(Result mod SumMs = 0);
   Result := Result div SumMs;
+
+end;
+
+{ TIntList }
+
+procedure TIntList.Print;
+var
+  i: Integer;
+
+begin
+  if Self.Count <> 0 then
+    Write(Self[0]);
+  for i := 1 to Self.Count - 1 do
+    Write(' ', Self[i]);
+  WriteLn;
+
+end;
+
+function TIntList.Sum: Int64;
+var
+  i: Integer;
+
+begin
+  Result := 0;
+
+  for i := 0 to Count - 1 do
+    Result += Self[i];
 
 end;
 
