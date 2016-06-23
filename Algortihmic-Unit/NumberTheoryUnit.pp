@@ -62,6 +62,9 @@ function GenerateAllDivisors(Factors: TFactorization): TIntList;
 {Chinese Remainder Theorem}
 function ChineseRemainderTheorem(Modulos, Remainders: TIntList): uInt64;
 
+{ Modular multiplicative inverse}
+function ModularMultiplicativeInverse(x, m: Int64): Int64;
+
 implementation
 
 function GenerateAllPrimes(Max: Integer): TIntList;
@@ -413,6 +416,42 @@ begin
 
   Assert(Result mod SumMs = 0);
   Result := Result div SumMs;
+
+end;
+
+function ModularMultiplicativeInverse(x, m: Int64): Int64;
+var
+  a, b: Int64;
+
+  procedure RecCompute(x, m: Int64; var a, b: Int64);
+  var
+    a1, b1: Int64;
+  begin
+    if x = 1 then
+    begin
+      //ax + bm = 1
+      b := 1;
+      a := 1 - m;
+    end
+    else
+    begin
+      RecCompute(m mod x, x, a1, b1);
+      // a1 m' + b1 x = 1
+      // (b1 - a1k) x + a1 (kx + m') = 1
+      a := b1 - a1 * (m div x);
+      b := a1;
+    end;
+  end;
+
+begin
+  if x < m then
+    RecCompute(x, m, a, b)
+  else
+    RecCompute(m, x, b, a);
+  Assert(a * x + b * m = 1);
+  Result := a;
+  if Result < 0 then
+    Result := m - ((m - Result) mod m);
 
 end;
 
