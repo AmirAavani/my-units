@@ -45,6 +45,7 @@ function IsPrime(n: Int64; const Primes: TIntList): Boolean;
 function Factorize(n: Int64; const Primes: TIntList): TFactorization;
 function Factorize(n: Int64): TFactorization;
 function SumOfDivisors(const Factorization: TFactorization): Int64;
+function NumberOfDivisors(const Factorization: TFactorization): Int64;
 function ToBinary(n: Int64): AnsiString;
 {
   Returns sqrt(n) iff n is a perfect square
@@ -149,10 +150,10 @@ end;
 function Factorize(n: Int64; const Primes: TIntList): TFactorization;
 var
   i, b, p: Integer;
-  Factor: TFactorizationPair;
 
 begin
   Result := TFactorization.Create;
+  // Assert(Primes.Last * Primes.Last >= n);
   for i := 0 to Primes.Count - 1 do
   begin
     b := Primes[i];
@@ -168,12 +169,11 @@ begin
       Result.Add(TFactorizationPair.Create(b, p));
 
     if n < b * b then
-    begin
-      if n <> 1 then
-        Result.Add(TFactorizationPair.Create(n, 1));
-      break;
-    end;
+      Break;
   end;
+
+  if n <> 1 then
+    Result.Add(TFactorizationPair.Create(n, 1));
 
 end;
 
@@ -228,6 +228,17 @@ begin
     Result *= Sum;
   end;
 
+end;
+
+function NumberOfDivisors(const Factorization: TFactorization): Int64;
+var
+  i: Integer;
+
+begin
+  Result := 1;
+
+  for i := 0 to Factorization.Count - 1 do
+    Result := Result * Factorization[i].Power;
 end;
 
 function ToBinary(n: Int64): AnsiString;
@@ -362,7 +373,7 @@ function GenerateAllDivisors(Factors: TFactorization): TIntList;
   procedure RecGen(Index: Integer);
   var
     i, j, c: Integer;
-    p, b2p: Integer;
+    p, b2p: UInt64;
 
   begin
     if Index = Factors.Count then
