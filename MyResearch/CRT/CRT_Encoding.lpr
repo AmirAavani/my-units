@@ -6,7 +6,7 @@ uses
   {$IFDEF UNIX}{$IFDEF UseCThreads}
   cthreads,
   {$ENDIF}{$ENDIF}
-  Classes, ParameterManagerUnit
+  Classes, gvector, ParameterManagerUnit
   { you can add units after this };
 
 

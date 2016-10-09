@@ -31,7 +31,7 @@ type
 
     procedure AddItem(NewItem: TData);
     procedure Add(NewItem: TData);
-    procedure AddAnotherCollection(AnotherCollection: TList);
+    procedure AddAnotherCollection(AnotherCollection: TGenericCollection);
 
     {
       Deletes the Index-th item from the list and return it.
@@ -150,7 +150,7 @@ begin
 
 end;
 
-procedure TGenericCollection.AddAnotherCollection(AnotherCollection: TList);
+procedure TGenericCollection.AddAnotherCollection(AnotherCollection: TGenericCollection);
 var
   i: Integer;
 
