@@ -5,7 +5,7 @@ unit GenericCollectionUnit;
 interface
 
 uses
-  Classes, SysUtils, StreamUnit, gvector;
+  Classes, SysUtils, gvector;
 
 type
   TSortCompare = function (Item1, Item2: Pointer): Integer;

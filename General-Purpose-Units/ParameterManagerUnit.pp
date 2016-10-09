@@ -5,7 +5,7 @@ unit ParameterManagerUnit;
 interface
 
 uses
-  Classes, SysUtils, SatSolverInterfaceUnit, NameValueCollectionUnit;
+  Classes, SysUtils, NameValueCollectionUnit;
 
 const
   vbNone = 0;
