@@ -13,9 +13,6 @@
       <UseAppBundle Value="False"/>
       <ResourceType Value="res"/>
     </General>
-    <VersionInfo>
-      <StringTable ProductVersion=""/>
-    </VersionInfo>
     <BuildModes Count="1">
       <Item1 Name="Default" Default="True"/>
     </BuildModes>
@@ -25,9 +22,10 @@
     <RunParams>
       <local>
         <FormatVersion Value="1"/>
+        <CommandLineParams Value="Ai 12,15,3,2 Mi 15,17,19,23"/>
       </local>
     </RunParams>
-    <Units Count="3">
+    <Units Count="5">
       <Unit0>
         <Filename Value="CRT_Encoding.lpr"/>
         <IsPartOfProject Value="True"/>
@@ -37,9 +35,17 @@
         <IsPartOfProject Value="True"/>
       </Unit1>
       <Unit2>
-        <Filename Value="../../../../../../../../../Mine/FPC/fpc/packages/fcl-stl/src/gvector.pp"/>
+        <Filename Value="../../General-Purpose-Units/GenericCollectionUnit.pp"/>
         <IsPartOfProject Value="True"/>
       </Unit2>
+      <Unit3>
+        <Filename Value="../../../../../../../../../Mine/FPC/fpc/packages/fcl-stl/src/gvector.pp"/>
+        <IsPartOfProject Value="True"/>
+      </Unit3>
+      <Unit4>
+        <Filename Value="../../SAT-Solver-Units/Encodings/CRT/CRTUnit.pp"/>
+        <IsPartOfProject Value="True"/>
+      </Unit4>
     </Units>
   </ProjectOptions>
   <CompilerOptions>
@@ -49,7 +55,7 @@
     </Target>
     <SearchPaths>
       <IncludeFiles Value="$(ProjOutDir)"/>
-      <OtherUnitFiles Value="../../General-Purpose-Units;../../../../../../../../../Mine/FPC/fpc/packages/fcl-stl/src"/>
+      <OtherUnitFiles Value="../../General-Purpose-Units;/home/rima/Mine/FPC/fpc/packages/fcl-stl/src/;../../SAT-Solver-Units/Encodings/CRT"/>
       <UnitOutputDirectory Value="lib/$(TargetCPU)-$(TargetOS)"/>
     </SearchPaths>
   </CompilerOptions>
