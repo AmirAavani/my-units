@@ -25,6 +25,8 @@ type
     function GenerateModulos3(n: Integer): TIntegerCollection;
     function GenerateModulos4(n: Integer): TIntegerCollection;
     function GenerateModulos5(n: Integer): TIntegerCollection;
+    // Constant number of primes
+    function GenerateModulos6(n: Integer): TIntegerCollection;
     function EncodeMul(const a, b, c: TBitVector; Level: Integer): TLiteral; override;
     {
     Encode c = a mod (2^m-1).
@@ -736,6 +738,20 @@ begin
   Result := CurrentModuloSet;
 end;
 
+function TModuloBasedBinaryArithmeticCircuit.GenerateModulos6(n: Integer
+  ): TIntegerCollection;
+var
+  pCount: Integer;
+  OrigAllPrimes: TIntegerCollection;
+
+begin
+  PCount := 2;
+  OrigAllPrimes := GenerateAllPrimesLessThanEq(n div 2);
+
+  OrigAllPrimes.Free;
+  //
+end;
+
 function TModuloBasedBinaryArithmeticCircuit.GenerateAllPrimesLessThanEq(
   Last: Integer): TIntegerCollection;
 var
@@ -957,10 +973,13 @@ begin
     Modulos := GenerateModulos3(a.Count + b.Count)
   else if UpperCase(GetRunTimeParameterManager.GetValueByName('--ModuloMode'))
                 = UpperCase('Mode4') then
-           Modulos := GenerateModulos4(a.Count + b.Count)
+    Modulos := GenerateModulos4(a.Count + b.Count)
   else if UpperCase(GetRunTimeParameterManager.GetValueByName('--ModuloMode'))
          = UpperCase('Mode5') then
-    Modulos := GenerateModulos5(a.Count + b.Count);
+    Modulos := GenerateModulos5(a.Count + b.Count)
+  else if UpperCase(GetRunTimeParameterManager.GetValueByName('--ModuloMode'))
+         = UpperCase('Mode6') then
+    Modulos := GenerateModulos6(a.Count + b.Count);
 
   assert(Modulos <> nil);
 

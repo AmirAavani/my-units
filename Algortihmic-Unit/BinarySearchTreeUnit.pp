@@ -42,7 +42,7 @@ type
     property Root: PBSTNode read FRoot;
 
     function CreateNewBSTNode (Key: TKey; Data: TData; Parent: PBSTNode): PBSTNode;
-     procedure RecPrint (Node: PBSTNode);
+    procedure RecPrint (Node: PBSTNode);
 
   public
     property DataByKey [Key: TKey]: TData read GetDataByKey;
@@ -50,59 +50,59 @@ type
     property DataByIndex [Index: Integer]: TData read GetDataByIndex;
     property Count: Integer read GetCount;
 
-    procedure Add (Key: TKey; Data: TData);
-    procedure Replace (Key: TKey; Data: TData);
-    function AddOrReplace (Key: TKey; Data: TData): Boolean;
+    procedure Add(Key: TKey; Data: TData);
+    procedure Replace(Key: TKey; Data: TData);
+    function AddOrReplace(Key: TKey; Data: TData): Boolean;
 
-    constructor Create (CompareFunction: TCompareFunction);
+    constructor Create(CompareFunction: TCompareFunction);
     destructor Destroy; override;
 
     procedure Print;
 
   end;
 
-  EInvalidIndex= class (Exception)
+  EInvalidIndex= class(Exception)
   end;
 
-  EKeyExistsInTree= class (Exception)
+  EKeyExistsInTree= class(Exception)
   end;
 
 implementation
 
 { TBST }
 
-procedure TBSTree.FreeNodes (Node: PBSTNode);
+procedure TBSTree.FreeNodes(Node: PBSTNode);
 begin
   if Node= nil then
     Exit;
 
-  FreeNodes (Node^.LChild);
-  FreeNodes (Node^.RChild);
-  Dispose (Node);
+  FreeNodes(Node^.LChild);
+  FreeNodes(Node^.RChild);
+  Dispose(Node);
 
 end;
 
 function TBSTree.GetCount: Integer;
 begin
   if Root= nil then
-    Exit (0)
+    Exit(0)
   else
-    Exit (Root^.ChildrenCount+ 1);
+    Exit(Root^.ChildrenCount+ 1);
 
 end;
 
-function TBSTree.GetDataByIndex (Index: Integer): TData;
+function TBSTree.GetDataByIndex(Index: Integer): TData;
 var
   ActiveNode: PBSTNode;
 
 begin
-  FillChar (Result, SizeOf (Result), 0);
+  FillChar(Result, SizeOf(Result), 0);
 
   if Root= nil then
     Exit;
 
-  assert (Index> 0);
-  assert (Index<= Root^.ChildrenCount+ 1);
+  assert(Index> 0);
+  assert(Index<= Root^.ChildrenCount+ 1);
 
   ActiveNode:= Root;
   while ActiveNode<> nil do
@@ -114,12 +114,12 @@ begin
         ActiveNode:= ActiveNode^.LChild
 
       else if Index= ActiveNode^.LChild^.ChildrenCount+ 2 then
-        Exit (ActiveNode^.Data)
+        Exit(ActiveNode^.Data)
 
       else
       begin
         ActiveNode:= ActiveNode^.RChild;
-        Index-= (ActiveNode^.LChild^.ChildrenCount+ 2);
+        Index-=(ActiveNode^.LChild^.ChildrenCount+ 2);
 
       end;
 
@@ -127,12 +127,12 @@ begin
     else
     begin
       if Index= 1 then
-        Exit (ActiveNode^.Data)
+        Exit(ActiveNode^.Data)
 
       else
       begin
         ActiveNode:= ActiveNode^.RChild;
-        Dec (Index);
+        Dec(Index);
 
       end;
 
@@ -142,18 +142,18 @@ begin
 
 end;
 
-function TBSTree.GetKeyByIndex (Index: Integer): TKey;
+function TBSTree.GetKeyByIndex(Index: Integer): TKey;
 var
   ActiveNode: PBSTNode;
 
 begin
-  FillChar (Result, SizeOf (Result), 0);
+  FillChar(Result, SizeOf(Result), 0);
 
   if Root= nil then
     Exit;
 
-  assert (Index> 0);
-  assert (Index<= Root^.ChildrenCount+ 1);
+  assert(Index> 0);
+  assert(Index<= Root^.ChildrenCount+ 1);
 
   ActiveNode:= Root;
   while ActiveNode<> nil do
@@ -165,12 +165,12 @@ begin
         ActiveNode:= ActiveNode^.LChild
 
       else if Index= ActiveNode^.LChild^.ChildrenCount+ 2 then
-        Exit (ActiveNode^.Key)
+        Exit(ActiveNode^.Key)
 
       else
       begin
         ActiveNode:= ActiveNode^.RChild;
-        Index-= (ActiveNode^.LChild^.ChildrenCount+ 2);
+        Index-=(ActiveNode^.LChild^.ChildrenCount+ 2);
 
       end;
 
@@ -178,12 +178,12 @@ begin
     else
     begin
       if Index= 1 then
-        Exit (ActiveNode^.Key)
+        Exit(ActiveNode^.Key)
 
       else
       begin
         ActiveNode:= ActiveNode^.RChild;
-        Dec (Index);
+        Dec(Index);
 
       end;
 
@@ -193,13 +193,13 @@ begin
 
 end;
 
-function TBSTree.GetDataByKey (Key: TKey): TData;
+function TBSTree.GetDataByKey(Key: TKey): TData;
 var
   ActiveNode: PBSTNode;
   CompareResult: Integer;
 
 begin
-  FillChar (Result, SizeOf (Result), 0);
+  FillChar(Result, SizeOf(Result), 0);
 
   if Root= nil then
     Exit
@@ -207,7 +207,7 @@ begin
   begin
     ActiveNode:= Root;
 
-    CompareResult:= Compare (ActiveNode^.Key, Key);
+    CompareResult:= Compare(ActiveNode^.Key, Key);
 
     while CompareResult<> 0 do
     begin
@@ -219,7 +219,7 @@ begin
       if ActiveNode= nil then
         Exit;
 
-      CompareResult:= Compare (ActiveNode^.Key, Key);
+      CompareResult:= Compare(ActiveNode^.Key, Key);
 
     end;
 
@@ -229,9 +229,9 @@ begin
 
 end;
 
-function TBSTree.CreateNewBSTNode (Key: TKey; Data: TData; Parent: PBSTNode): PBSTNode;
+function TBSTree.CreateNewBSTNode(Key: TKey; Data: TData; Parent: PBSTNode): PBSTNode;
 begin
-  New (Result);
+  New(Result);
   Result^.LChild:= nil;
   Result^.RChild:= nil;
   Result^.Key:= Key;
@@ -241,7 +241,7 @@ begin
 
 end;
 
-procedure TBSTree.Add (Key: TKey; Data: TData);
+procedure TBSTree.Add(Key: TKey; Data: TData);
 var
   ActiveNode, ParentNode: PBSTNode;
   CompareResult: Integer;
@@ -249,7 +249,7 @@ var
 begin
   if Root= nil then
   begin
-    FRoot:= CreateNewBSTNode (Key, Data, nil);
+    FRoot:= CreateNewBSTNode(Key, Data, nil);
 
   end
   else
@@ -257,7 +257,7 @@ begin
     ActiveNode:= Root;
     ParentNode:= nil;
 
-    CompareResult:= Compare (ActiveNode^.Key, Key);
+    CompareResult:= Compare(ActiveNode^.Key, Key);
 
     while CompareResult<> 0 do
     begin
@@ -269,7 +269,7 @@ begin
 
       if ActiveNode= nil then
       begin
-        ActiveNode:= CreateNewBSTNode (Key, Data, ParentNode);
+        ActiveNode:= CreateNewBSTNode(Key, Data, ParentNode);
 
         if CompareResult< 0 then
           ParentNode^.LChild:= ActiveNode
@@ -280,17 +280,17 @@ begin
 
       end;
 
-      CompareResult:= Compare (ActiveNode^.Key, Key);
+      CompareResult:= Compare(ActiveNode^.Key, Key);
 
     end;
 
     if CompareResult= 0 then
-      raise EKeyExistsInTree.Create ('');
+      raise EKeyExistsInTree.Create('');
 
     ActiveNode:= ActiveNode^.Parent;
     while ActiveNode<> nil do
     begin
-      Inc (ActiveNode^.ChildrenCount);
+      Inc(ActiveNode^.ChildrenCount);
       ActiveNode:= ActiveNode^.Parent;
 
     end;
@@ -299,7 +299,7 @@ begin
 
 end;
 
-procedure TBSTree.Replace (Key: TKey; Data: TData);
+procedure TBSTree.Replace(Key: TKey; Data: TData);
 begin
 
 end;
@@ -309,7 +309,7 @@ begin
 
 end;
 
-constructor TBSTree.Create (CompareFunction: TCompareFunction);
+constructor TBSTree.Create(CompareFunction: TCompareFunction);
 begin
   inherited Create;
 
@@ -320,30 +320,30 @@ end;
 
 destructor TBSTree.Destroy;
 begin
-  FreeNodes (Root);
+  FreeNodes(Root);
 
   inherited Destroy;
 
 end;
 
-procedure TBSTree.RecPrint (Node: PBSTNode);
+procedure TBSTree.RecPrint(Node: PBSTNode);
 begin
   if Node<> nil then
   begin
-    Write ('(', Node^.Data.ToString, ',');
-    RecPrint (Node^.LChild);
-    RecPrint (Node^.RChild);
-    Write (')');
+    Write('(', Node^.Data.ToString, ',');
+    RecPrint(Node^.LChild);
+    RecPrint(Node^.RChild);
+    Write(')');
 
   end
   else
-    Write ('()');
+    Write('()');
 
 end;
 
 procedure TBSTree.Print;
 begin
-  RecPrint (Root);
+  RecPrint(Root);
 
 end;
 

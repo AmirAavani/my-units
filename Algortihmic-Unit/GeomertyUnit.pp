@@ -22,11 +22,14 @@ type
       constructor Create(x_, y_: Extended);
 
       function GetDistance(const B: TPoint): Extended;
+      // Returns the angle of ABC.
       function GetAngle(const A, C: TPoint): Extended;
       function Copy: TPoint;
 
       function ToString: AnsiString; override;
   end;
+
+  TPoints = specialize TFPGList<TPoint>;
 
   { TLineSegment }
 
@@ -71,12 +74,12 @@ type
 
   TPolygon = class(TObject)
     private type
-      TPoints = specialize TFPGList<TPoint>;
       TEdges = specialize TFPGList<TLineSegment>;
 
     private
       FVertices: TPoints;
       FEdges: TEdges;
+      FMin, FMax: TPoint;
 
       function GetEdge(Index: Integer): TLineSegment;
       function GetVertex(Index: Integer): TPoint;
@@ -86,12 +89,17 @@ type
       property Edge[Index: Integer]: TLineSegment read GetEdge;
       property Vertex[Index: Integer]: TPoint read GetVertex;
       property VertexCount: Integer read GetVertexCount;
+      property MinCoordinate: TPoint read FMin;
+      property MaxCoordinate: TPoint read FMax;
+
 
       constructor Create(Str: String);
+      constructor Create(Points: TPoints);
       destructor Destroy; override;
 
       function IsInside(const P: TPoint): Integer;
-      function IsInside1(const P: TPoint): Integer;
+      function GetArea: Extended;
+      function GetPerimeter: Extended;
 
       function ToString: AnsiString; override;
   end;
@@ -140,6 +148,47 @@ begin
 
   StrList.Free;
 
+  FMin := Vertex[0].Copy;
+  FMax := Vertex[0].Copy;
+
+  for i := 1 to VertexCount - 1 do
+  begin
+    FMin.Fx := Math.Min(FMin.X, Vertex[i].x);
+    FMin.Fy := Math.Min(FMin.y, Vertex[i].y);
+    FMax.Fx := Math.Max(FMax.x, Vertex[i].x);
+    FMax.Fy := Math.Max(FMax.y, Vertex[i].y);
+  end;
+
+end;
+
+constructor TPolygon.Create(Points: TPoints);
+var
+  i: Integer;
+
+begin
+  inherited Create;
+
+  FVertices := TPoints.Create;
+  FEdges := TEdges.Create;
+
+  for i := 0 to Points.Count - 1 do
+    FVertices.Add(TPoint.Create(Points[i].x, Points[i].y));
+
+  for i := 0 to Points.Count - 2 do
+    FEdges.Add(TLineSegment.Create(Vertex[i], Vertex[i + 1]));
+  FEdges.Add(TLineSegment.Create(Vertex[VertexCount - 1], Vertex[0]));
+
+  FMin := Vertex[0].Copy;
+  FMax := Vertex[0].Copy;
+
+  for i := 1 to VertexCount - 1 do
+  begin
+    FMin.Fx := Math.Min(FMin.X, Vertex[i].x);
+    FMin.Fy := Math.Min(FMin.y, Vertex[i].y);
+    FMax.Fx := Math.Max(FMax.x, Vertex[i].x);
+    FMax.Fy := Math.Max(FMax.y, Vertex[i].y);
+  end;
+
 end;
 
 destructor TPolygon.Destroy;
@@ -157,48 +206,35 @@ begin
   FEdges.Clear;
   FEdges.Free;
 
+  FMin.Free;
+  FMax.Free;
+
   inherited Destroy;
 end;
 
 function TPolygon.IsInside(const P: TPoint): Integer;
-
 var
-  x, y: Integer;
   Flag: Boolean;
+  MaxX, MaxY: Extended;
   T: TPoint;
-  Line, l: TLineSegment;
-  Pos: Integer;
-  MinX, MaxX, MinY, MaxY: Extended;
+  Line: TLineSegment;
   i: Integer;
   IntersectionCount: Integer;
-  tmp: TPoint;
 
 begin
   for i := 0 to VertexCount - 1 do
-    if Abs(Edge[i].Evaluate(P)) < Epsilon then
-    begin
-      WriteLn(Self.ToString);
-      Exit;
-    end;
+    if P.GetDistance(Vertex[i]) < Epsilon then
+      Exit(0);
 
-  MinX := (Vertex[0] as TPoint).x;
-  MaxX := (Vertex[0] as TPoint).x;
-  MinY := (Vertex[0] as TPoint).y;
-  MaxY := (Vertex[0] as TPoint).y;
-  for i := 1 to VertexCount - 1 do
-  begin
-    tmp := Vertex[i];
-    MinX := Math.Min(MinX, tmp.x);
-    MinY := Math.Min(MinY, tmp.y);
-    MaxX := Math.Min(MaxX, tmp.x);
-    MaxY := Math.Min(MaxY, tmp.y);
-  end;
+  MaxX := MaxCoordinate.x;
+  MaxY := MaxCoordinate.y;
   Flag := True;
 
   while Flag do
   begin
     Flag := False;
-    T := TPoint.Create(MaxX + Random(10000),
+    MaxX := MaxX + 1;
+    T := TPoint.Create(MaxX,
                        MaxY + Random(10000));
     Line := TLineSegment.Create(P, T);
     T.Free;
@@ -206,15 +242,16 @@ begin
     for i := 0 to VertexCount - 1 do
       if Abs(Line.Evaluate(Vertex[i])) <= Epsilon then
       begin
+        WriteLn(Line.ToString);
+        WriteLn(Vertex[i].ToString);
+
         Flag := True;
         Break;
       end;
 
     if not Flag then
-      break;
-    T.Free;
+      Break;
   end;
-
 
   IntersectionCount := 0;
   Result := -1;
@@ -236,38 +273,35 @@ begin
 
 end;
 
-function TPolygon.IsInside1(const P: TPoint): Integer;
-  function Area(P1, P2, P3: TPoint): Extended;
-  begin
-    Result :=
-      Abs((P1.x - P3.x) * (P2.y - P1.y) -
-         (P1.x - P2.x) * (P3.y - P1.y)) / 2.0;
-    {Abs((P1.x - P3.x)*(P2.y  -P1.y) -
-                      (P1.x -P2.x)*(P3.y -P1.y));
-    }
-  end;
-
+function TPolygon.GetArea: Extended;
 var
-  C : TPoint;
+  i: Integer;
 
 begin
+  Result := 0.0;
 
-  C := TPoint.Create(0, 0);
-
-  if Abs(area(Vertex[0], Vertex[1], Vertex[2]) -
-        area(Vertex[0], Vertex[1], C) -
-        area(Vertex[0], C, Vertex[2]) -
-        area(C, Vertex[0], Vertex[2])) <= Epsilon then
-        Exit(1)
-  else
+  for i := 0 to VertexCount - 2 do
   begin
-{    WriteLn(area(Vertex[0], Vertex[1], Vertex[2]), ' ', Abs(
-        area(Vertex[0], Vertex[1], C) +
-        area(Vertex[0], C, Vertex[2]) +
-        area(C, Vertex[0], Vertex[2])));
-}    Exit(-1);
+    Result := Result + Vertex[i].x * Vertex[i + 1].y;
+    Result := Result - Vertex[i].y * Vertex[i + 1].x;
   end;
 
+  Result := Result + Vertex[VertexCount - 1].x * Vertex[0].y;
+  Result := Result - Vertex[VertexCount - 1].y * Vertex[0].x;
+
+  Result := Result / 2;
+
+end;
+
+function TPolygon.GetPerimeter: Extended;
+var
+  i: Integer;
+
+begin
+  Result := 0;
+  for i := 0 to VertexCount - 1 do
+    Result += Vertex[i].GetDistance(Vertex[i + 1]);
+  Result += Vertex[0].GetDistance(Vertex[VertexCount - 1]);
 end;
 
 function TPolygon.ToString: AnsiString;

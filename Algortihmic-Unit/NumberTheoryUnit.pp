@@ -72,6 +72,7 @@ function GenerateAllPrimes(Max: Integer): TIntList;
 var
   IsPrime: array of Boolean;
   i, j: Integer;
+
 begin
   Result := TIntList.Create;
 

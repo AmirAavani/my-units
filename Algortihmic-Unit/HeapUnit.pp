@@ -7,7 +7,7 @@ unit HeapUnit;
 interface
 
 uses
-  Classes, SysUtils;
+  Classes, SysUtils, fgl;
 
 type
 
@@ -30,7 +30,7 @@ type
 
   type
     TIsGreaterThanFunction= function (const a: T; const b: T): Boolean;
-
+    TList = specialize TFPGList<T>;
   var
     FMembers: TList;
     FIsGreaterThan: TIsGreaterThanFunction;
@@ -40,8 +40,7 @@ type
     property Capacity: Integer read GetCapacity;
     property Min: T read GetMin;
 
-    constructor Create (GreaterThanFunction: TIsGreaterThanFunction;
-        InitCapacity: Integer);
+    constructor Create (GreaterThanFunction: TIsGreaterThanFunction);
     {
     Destroy calls free of all the objects in the Heap objecty
     }
@@ -142,26 +141,18 @@ begin
 
 end;
 
-constructor THeap.Create (GreaterThanFunction: TIsGreaterThanFunction;
-        InitCapacity: Integer);
+constructor THeap.Create (GreaterThanFunction: TIsGreaterThanFunction);
 begin
   inherited Create;
 
   FMembers:= TList.Create;
-  FMembers.Capacity:= InitCapacity;
 
   FIsGreaterThan:= GreaterThanFunction;
 
 end;
 
 destructor THeap.Destroy;
-var
-  i: Integer;
-
 begin
-  for i:= 0 to Count - 1 do
-    Member [i].Free;
-
   FMembers.Free;
 
   inherited Destroy;
@@ -171,7 +162,6 @@ end;
 procedure THeap.Clear;
 begin
   FMembers.Clear;
-
 end;
 
 procedure THeap.Insert (Data: T);
