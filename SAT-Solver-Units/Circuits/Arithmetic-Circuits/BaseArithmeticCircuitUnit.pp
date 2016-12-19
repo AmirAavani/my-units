@@ -6,7 +6,7 @@ interface
 
 uses
   Classes, SysUtils, BaseCircuitUnit, BitVectorUnit, ClauseUnit,
-  SatSolverInterfaceUnit, fgl, BigInt, GenericCollectionUnit;
+  SatSolverInterfaceUnit, fgl, BigInt, GenericCollectionUnit, Math;
 
 type
   TBitVectorList= specialize TGenericCollection<TBitVector>;
@@ -17,14 +17,19 @@ type
   This class is the base class for arithmetic circuits. It does not
   have any assumption about the representation of numbers.
   }
-  TBaseArithmeticCircuit= class(TBaseCircuit)
+  TBaseArithmeticCircuit = class(TBaseCircuit)
   private
   public
     {
     Generate an encoding for consraint \bar{a}[\tau] = n.
     }
-    // function EncodeBinaryRep(const n: TBigInt; a: TBitVector; nbits: Integer = -1): TLiteral; virtual; abstract;
     function GenerateBinaryRep(const n: TBigInt; nbits: Integer = -1): TBitVector; virtual; abstract;
+    {
+    Generate an encoding for
+      if condition then c = a else c = b;
+    }
+    function EncodeIFE(const Condition: TLiteral; const a, b, c: TBitVector):
+       TLiteral; virtual;
     {
     Generate an encoding for constraint a+1=c.
     }
@@ -34,9 +39,15 @@ type
     }
     function EncodeAdd(const a, b, c: TBitVector): TLiteral; virtual;
     {
+    Generate an encoding for constraint (a+b)/2=c:
+      if a + b is even, c = (a + b) / 2
+      if a + b is odd, c = (a + b - 1) / 2
+    }
+    function EncodeAvg(const a, b, c: TBitVector): TLiteral; virtual;
+    {
     Generate an encoding for constraint a * b = c.
     }
-    function EncodeMul(const a, b, c: TBitVector; Level: Integer): Tliteral; virtual;
+    function EncodeMul(const a, b, c: TBitVector): Tliteral; virtual;
 
     {
     Generates appropriate set clauses(and submits each of them to
@@ -138,6 +149,20 @@ uses
   TSeitinVariableUnit;
 { TBaseArithmeticCircuit }
 
+function TBaseArithmeticCircuit.EncodeIFE(const Condition: TLiteral; const a,
+  b, c: TBitVector): TLiteral;
+var
+  MaxSize: Integer;
+  i: Integer;
+  la, lb, lc: TLiteral;
+
+begin
+  MaxSize := Max(a.Count, Max(b.Count, c.Count));
+
+  for i := 0 to MaxSize do
+  Result := GetVariableManager.FalseLiteral;
+end;
+
 function TBaseArithmeticCircuit.EncodeIncr(const a, c: TBitVector): TLiteral;
 var
   cPrime: TBitVector;
@@ -161,8 +186,26 @@ begin
   cPrime.Free;
 end;
 
-function TBaseArithmeticCircuit.EncodeMul(const a, b, c: TBitVector;
-  Level: Integer): Tliteral;
+function TBaseArithmeticCircuit.EncodeAvg(const a, b, c: TBitVector): TLiteral;
+var
+  s: TBitVector;
+  lits: TLiteralCollection;
+
+begin
+  lits := TLiteralCollection.Create;
+
+  s := TBitVector.Create(Math.Max(a.Count, b.Count) + 1);
+  lits.Add(Self.EncodeAdd(a, b, s));
+  s.Erase(0);
+
+  lits.Add(Self.EncodeIsEqual(s, c));
+
+  Result := GetVariableManager.CreateVariableDescribingAND(lits);
+
+  Lits.Free;
+end;
+
+function TBaseArithmeticCircuit.EncodeMul(const a, b, c: TBitVector): Tliteral;
 var
   cPrime: TBitVector;
 

@@ -11,14 +11,16 @@ uses
 type
 
   {
-  It considers the BitVectors represent the binary representation of numbers.
-  This class assumes all numbers to be non-negative.
+  We assume the BitVectors represent the binary representation of numbers.
+  This class assumes all numbers are non-negative integers.
 
-    BitVector V, with size n, encodes integer:
+    BitVector V, with size n, encodes the integer
       \sum V[i]* 2^i
-    In other word, the variable in V is True iff the integer represented by V is odd.
-    The second variable in V is True iff the integer represented by V has one in its second bit,
-    ....
+    In other word, the first variable in V is True iff the integer represented
+    by V is odd.
+    The second variable in V is True iff the integer represented by V has one in
+    its second bit.
+    And so on.
   }
   { TBinaryArithmeticCircuit }
 
@@ -43,7 +45,6 @@ type
     procedure SubmitIsEqual(const a, b: TBitVector; l: TLiteral); override;
 
     function GenerateBinaryRep(const n: TBigInt; nbits: Integer = -1): TBitVector; override;
-
   end;
 
 const
@@ -366,12 +367,37 @@ end;
 
 function TBinaryArithmeticCircuit.EncodeIsLessThan(const a, b: TBitVector): TLiteral;
 var
+  aCopy, bCopy: TBitVector;
   i: Integer;
   aIsLessThanb,
   aiIsEqbi, aiIsLbi,
   aIsEqbTillNow: TBitVector;
 
 begin//a< b
+  if a.Count <> b.Count then
+  begin
+    aCopy := TBitVector.Create(Max(a.Count, b.Count),
+      GetVariableManager.FalseLiteral);
+    bCopy := TBitVector.Create(Max(a.Count, b.Count),
+      GetVariableManager.FalseLiteral);
+
+    for i := 0 to a.Count - 1 do
+      aCopy[i] := a[i];
+    for i := 0 to b.Count - 1 do
+      bCopy[i] := b[i];
+    if(GetRunTimeParameterManager.Verbosity and(1 shl VerbBinArithmCircuit))<> 0 then
+    begin
+      WriteLn('[IsLessThan] a: ', a.ToString);
+      WriteLn('[IsLessThan] b: ', b.ToString);
+      WriteLn('[IsLessThan] aCopy : ', aCopy.ToString);
+      WriteLn('[IsLessThan] bCopy : ', bCopy.ToString);
+    end;
+    Result := Self.EncodeIsLessThan(aCopy, bCopy);
+    aCopy.Free;
+    bCopy.Free;
+    Exit;
+  end;
+
   WriteLn('[TBinaryArithmeticCircuit.EncodeIsLessThan] This function can be improved!');
   Assert(a.Count = b.Count);
 

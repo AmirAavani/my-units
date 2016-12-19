@@ -34,7 +34,34 @@ type
 
   end;
 
+  { TEncoding }
+
+  TEncoding = class(TObject)
+  private
+    FLit: TLiteral;
+    FValue: TBitVector;
+  public
+    property Lit: TLiteral read FLit;
+    property Value: TBitVector read FValue;
+
+    constructor Create(L: TLiteral; v: TBitVector);
+  end;
+
+
 implementation
+
+{ TEncoding }
+
+{ TEncoding }
+
+constructor TEncoding.Create(L: TLiteral; v: TBitVector);
+begin
+  inherited Create;
+
+  FLit := L;
+  FValue := V.Copy;
+
+end;
 
 { TBitVector }
 
@@ -140,7 +167,7 @@ var
 begin
   Result:= TBitVector.Create(Size, GetVariableManager.FalseLiteral);
 
-  for i:= 0 to Size- 1 do
+  for i:= 0 to Size - 1 do
     Result[i]:= Self[i];
 
 end;

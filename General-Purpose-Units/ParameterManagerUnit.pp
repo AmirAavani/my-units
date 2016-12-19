@@ -141,7 +141,7 @@ begin
 
   i := 1;
 
-  while i<= Paramcount do
+  while i <= Paramcount do
   begin
     Name := ParamStr(i);
     if Paramcount< i+ 1 then
@@ -154,6 +154,16 @@ begin
 
   end;
 
+  for i := Low(ValidArguments) to High(ValidArguments) do
+    if GetValueByName(ValidArguments[i]) = '' then
+    begin
+      AddArgument(ValidArguments[i],
+        Copy(ValidArgumentsValues[i],
+             1,
+             Pos(':', ValidArgumentsValues[i] + ':') - 1
+            )
+        );
+    end;
   Finalize;
 
 end;
