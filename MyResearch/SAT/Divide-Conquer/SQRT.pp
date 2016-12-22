@@ -67,53 +67,90 @@ type
   TBitVectorList = specialize TFPGList<TBitVector>;
 
 function BinSearchSqrtEncoding(n: TBigInt): TEncoding;
+(*
+while (low != high) {
+    int mid = (low + high) / 2; // Or a fancy way to avoid int overflow
+    if (arr[mid] < target) {
+        /* This index, and everything below it, must not be the first element
+         * greater than or eq what we're looking for because this element is no greater
+         * than the element.
+         */
+        low = mid + 1;
+    }
+    else {
+        /* This element is at least as large as the element, so anything after it can't
+         * be the first element that's at least as large.
+         */
+        high = mid;
+    }
+}
+*)
 var
-  nVector: TBitVector;
-  Tops, Bots, Mids: TBitVectorList;
-  Mid2s: TBitVectorList;
-  MLE, MG: TBitVector;
+  Target: TBitVector;
+  Tops, Bots, Mids,
+  MidPlusOnes, MidMinusOnes: TBitVectorList;
+  FMids: TBitVectorList;
+  Ls, Gs, Es: TBitVector;
   i, m: Integer;
-  Lit: TLiteral;
-  Lits: TLiteralCollection;
-  Circuit: TBinaryArithmeticCircuit;
+  ArithCircuit: TBinaryArithmeticCircuit;
+  LogicCircut: TBaseLogicCircuit;
 
 begin
-  Circuit := BinaryArithmeticCircuitUnit.TBinaryArithmeticCircuit.Create;
-  Lits := TLiteralCollection.Create;
-
-  WriteLn('n = ', n.ToString);
-  nVector := Circuit.GenerateBinaryRep(n);
-  WriteLn('nVector = ', nVector.ToString);
-
+  ArithCircuit := BinaryArithmeticCircuitUnit.TBinaryArithmeticCircuit.Create;
+  LogicCircut := TBaseLogicCircuit.Create;
   m := 1 + n.Log div 2;
   Tops := TBitVectorList.Create; Bots := TBitVectorList.Create;
-  Mids := TBitVectorList.Create; Mid2s := TBitVectorList.Create;
+  Mids := TBitVectorList.Create; FMids := TBitVectorList.Create;
+  MidPlusOnes := TBitVectorList.Create; MidMinusOnes := TBitVectorList.Create;
 
   Bots.Add(TBitVector.Create(m, GetVariableManager.FalseLiteral));
   Tops.Add(TBitVector.Create(m, GetVariableManager.TrueLiteral));
-  Mids.add(TBitVector.Create(m)); Mid2s.add(TBitVector.Create(2 * m));
 
-  GetSatSolver.AddComment(Mids[0].ToString);
-  GetSatSolver.AddComment(Mid2s[0].ToString);
-  Lits.Add(Circuit.EncodeAvg(Bots[0], Tops[0], Mids[0]));
-  Lits.Add(Circuit.EncodeMul(Mids[0], Mids[0], Mid2s[0]));
-
-  MLE := TBitVector.Create(m + 1, GetVariableManager.FalseLiteral);
-  MG := TBitVector.Create(m + 1, GetVariableManager.FalseLiteral);
-
-  MLE[0] := Circuit.EncodeIsLessThanOrEq(Mid2s[0], nVector);
-  MG[0] := NegateLiteral(MLE[0]);
-  WriteLn('m[0]= ', Mids[0].ToString, ' m[0]^2=', Mid2s[0].ToString, ' LE=',
-    LiteralToString(MLE[0]), ' vs G=', LiteralToString(MG[0]));
-
-  for i := 1 to m - 1 do
+  for i := 0 to m do
   begin
-    Circuit.EncodeIFE();
+    if i <> 0 then
+    begin
+      Bots.Add(TBitVector.Create(m));
+      Tops.Add(TBitVector.Create(m));
+    end;
+    Mids.Add(ArithCircuit.Avg(Tops[i], Bots[i]));
+    MidPlusOnes.Add(ArithCircuit.Incr(Mids[i]));
+    MidMinusOnes.Add(ArithCircuit.Decr(Mids[i]));
+    FMids.Add(ArithCircuit.Mul(Mids[i], Mids[i]));
   end;
-  Result := TEncoding.Create(GetVariableManager.CreateVariableDescribingAND(Lits),
+
+  WriteLn('n = ', n.ToString);
+  Target := ArithCircuit.GenerateBinaryRep(n);
+  WriteLn('Target = ', Target.ToString);
+
+  // Top[0] = n
+
+  for i := 0 to m do
+  begin
+    WriteLn('Tops[', i, '] = ', Tops[i].ToString);
+    WriteLn('Bots[', i, '] = ', Bots[i].ToString);
+    WriteLn('Mids[', i, '] = ', Mids[i].ToString);
+    WriteLn('MidPlusOnes[', i, '] = ', MidPlusOnes[i].ToString);
+    WriteLn('MidMinusOnes[', i, '] = ', MidMinusOnes[i].ToString);
+    WriteLn('FMids[', i, '] = ', FMids[i].ToString);
+  end;
+
+  Ls := TBitVector.Create(m, GetVariableManager.FalseLiteral);
+
+  for i := 0 to m - 1 do
+  begin
+    Ls[i] := ArithCircuit.EncodeIsLessThan(FMids[i], Target);
+    WriteLn('m[i]= ', Mids[i].ToString, ' m[i]^2=', FMids[i].ToString, ' LE=',
+      LiteralToString(LS[i]));
+    // Bots[i + 1] = MidPlusOnes[i] if Ls[i];
+    // Bots[i + 1] = Bots[i] ow;
+    LogicCircut.IFE(Ls[i], MidPlusOnes[i], Bots[i], Bots[i + 1]);
+    Break;
+  end;
+  Result := TEncoding.Create(GetVariableManager.TrueLiteral,
     Mids[0]);
-  Circuit.Free;
-  nVector.Free;
+  ArithCircuit.Free;
+  Target.Free;
 end;
 var
   n: TBigInt;

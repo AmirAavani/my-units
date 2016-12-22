@@ -28,8 +28,10 @@ type
     constructor Create;
 
     procedure Add(l: TLiteral);
+    // Returns Bit[Index], if Index < Count, or DefaultValue otherwise.
+    function GetBitOrDefault(Index: Integer; DefaultValue: TLiteral): TLiteral;
 
-    function ToString: AnsiString;
+    function ToString: AnsiString; override;
     function Copy: TBitVector;
 
   end;
@@ -121,6 +123,15 @@ end;
 procedure TBitVector.Add(l: TLiteral);
 begin
   Self.PushBack(l);
+end;
+
+function TBitVector.GetBitOrDefault(Index: Integer; DefaultValue: TLiteral
+  ): TLiteral;
+begin
+  if Index < Count then
+    Result := Bit[Index]
+  else
+    Result := DefaultValue;
 end;
 
 function TBitVector.ToString: AnsiString;

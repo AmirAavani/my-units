@@ -24,8 +24,6 @@ type
     constructor Create;
     destructor Destroy; override;
 
-//    procedure GenerateCNF; virtual; abstract;
-
   end;
 
 implementation

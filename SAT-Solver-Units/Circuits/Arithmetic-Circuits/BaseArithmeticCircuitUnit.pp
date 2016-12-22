@@ -25,12 +25,6 @@ type
     }
     function GenerateBinaryRep(const n: TBigInt; nbits: Integer = -1): TBitVector; virtual; abstract;
     {
-    Generate an encoding for
-      if condition then c = a else c = b;
-    }
-    function EncodeIFE(const Condition: TLiteral; const a, b, c: TBitVector):
-       TLiteral; virtual;
-    {
     Generate an encoding for constraint a+1=c.
     }
     function EncodeIncr(const a, c: TBitVector): TLiteral; virtual;
@@ -87,7 +81,6 @@ type
     }
     function EncodeIsGreaterThanOrEq(const a, b: TBitVector): TLiteral; virtual;
 
-  protected
     {
     Generates appropriate set clauses(and submits each of them to
       SatSolver) such that
@@ -123,6 +116,12 @@ type
        the SatSolver) such that
      the returned BitVector is the result of a div b.
     }
+    {
+    Generates appropriate set clauses(and submits each of them to
+      SatSolver) such that
+     we have the returned BitVector is the result of (a + b) div 2.
+    }
+    function Avg(const a, b: TBitVector): TBitVector; virtual;
 
     function Divide(const a, b: TBitVector): TBitVector; virtual;
     {
@@ -140,7 +139,6 @@ type
     }
     function Add(Nums: TBitVectorList): TBitVector; virtual;
 
-
   end;
 
 implementation
@@ -148,20 +146,6 @@ implementation
 uses
   TSeitinVariableUnit;
 { TBaseArithmeticCircuit }
-
-function TBaseArithmeticCircuit.EncodeIFE(const Condition: TLiteral; const a,
-  b, c: TBitVector): TLiteral;
-var
-  MaxSize: Integer;
-  i: Integer;
-  la, lb, lc: TLiteral;
-
-begin
-  MaxSize := Max(a.Count, Max(b.Count, c.Count));
-
-  for i := 0 to MaxSize do
-  Result := GetVariableManager.FalseLiteral;
-end;
 
 function TBaseArithmeticCircuit.EncodeIncr(const a, c: TBitVector): TLiteral;
 var
@@ -189,20 +173,11 @@ end;
 function TBaseArithmeticCircuit.EncodeAvg(const a, b, c: TBitVector): TLiteral;
 var
   s: TBitVector;
-  lits: TLiteralCollection;
 
 begin
-  lits := TLiteralCollection.Create;
-
-  s := TBitVector.Create(Math.Max(a.Count, b.Count) + 1);
-  lits.Add(Self.EncodeAdd(a, b, s));
+  s := Self.Add(a, b);
   s.Erase(0);
-
-  lits.Add(Self.EncodeIsEqual(s, c));
-
-  Result := GetVariableManager.CreateVariableDescribingAND(lits);
-
-  Lits.Free;
+  Result := Self.EncodeIsEqual(s, c);
 end;
 
 function TBaseArithmeticCircuit.EncodeMul(const a, b, c: TBitVector): Tliteral;
@@ -308,6 +283,12 @@ begin
 
 end;
 
+function TBaseArithmeticCircuit.Avg(const a, b: TBitVector): TBitVector;
+begin
+  Result := Self.Add(a, b);
+  Result.Erase(0);
+end;
+
 function TBaseArithmeticCircuit.Divide(const a, b: TBitVector): TBitVector;
 var
   aPrime: TBitVector;
@@ -334,23 +315,23 @@ function TBaseArithmeticCircuit.Add(Nums: TBitVectorList): TBitVector;
 
   begin
     if Low = High then
-      Result:= Nums [Low]
+      Result := Nums [Low]
     else
     begin
-      Left:= RecBuild(Low,(Low+ High) div 2);
-      Right:= RecBuild((Low+ High) div 2+ 1, High);
+      Left := RecBuild(Low,(Low + High) div 2);
+      Right := RecBuild((Low + High) div 2 + 1, High);
 
-      Result:= Self.Add(Left, Right);
+      Result := Self.Add(Left, Right);
 
     end;
 
   end;
 
 begin
-  if Nums.Count= 2 then
-    Result:= Self.Add(Nums [0], Nums [1])
+  if Nums.Count = 2 then
+    Result := Self.Add(Nums[0], Nums[1])
   else
-    Result:= RecBuild(0, Nums.Count- 1);
+    Result := RecBuild(0, Nums.Count - 1);
 
 end;
 

@@ -26,7 +26,7 @@ type
 
   TBinaryArithmeticCircuit = class(TBaseArithmeticCircuit)
   private
-  protected
+  public
     { Result = a + 1}
     function Incr(const a: TBitVector): TBitVector; override;
     { Result = a - 1}
@@ -37,8 +37,7 @@ type
     function Mul(const a, b: TBitVector): TBitVector; override;
 
     function GenerateCarryForAdd(a, b, c: TLiteral): TLiteral;
-  //  function GenerateBrorrowForSub(a, b, c: TLiteral): TLiteral;
-  public
+
     { Result is True iff a< b}
     function EncodeIsLessThan(const a, b: TBitVector): TLiteral; override;
     { Result is True iff a= b}
@@ -473,8 +472,8 @@ begin
 //  WriteLn('[EncodeIsEqual] a = ', a.ToString);
 //  WriteLn('[EncodeIsEqual] b = ', b.ToString);
 
-  for i := Min(a.Count- 1, b.Count- 1)+ 1 to
-                    Max(a.Count- 1, b.Count- 1) do
+  for i := Min(a.Count, b.Count) to
+                    Max(a.Count, b.Count) - 1 do
   begin
     if i < a.Count then
       GetSatSolver.AddLiteral(NegateLiteral(a[i]))
@@ -482,7 +481,7 @@ begin
       GetSatSolver.AddLiteral(NegateLiteral(b[i]));
   end;
 
-  for i := 0 to Min(a.Count- 1, b.Count- 1) do
+  for i := 0 to Min(a.Count, b.Count) - 1 do
   begin
     GetSatSolver.BeginConstraint;
 
@@ -490,7 +489,7 @@ begin
     GetSatSolver.AddLiteral(b[i]);
 
     if SatSolver.GetLiteralValue(l) = gbTrue then
-      SameithBit:= GetVariableManager.TrueLiteral
+      SameithBit := GetVariableManager.TrueLiteral
     else if SatSolver.GetLiteralValue(l) = gbFalse then
       SameithBit:= GetVariableManager.FalseLiteral
     else

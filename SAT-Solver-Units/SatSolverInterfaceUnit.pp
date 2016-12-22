@@ -81,6 +81,8 @@ type
     function GenerateAndGate: TLiteral; virtual;
     function GenerateOrGate: TLiteral; virtual;
     function GenerateXOrGate: TLiteral; virtual;
+    function GenerateITEGate: TLiteral; virtual;
+    function GenerateEquiGate: TLiteral; virtual;
 
     function Solve: Boolean; virtual; abstract;
     function Solve(Literal: TLiteral): Boolean; virtual; abstract;
@@ -483,6 +485,36 @@ begin
 
 end;
 
+function TSATSolverInterface.GenerateITEGate: TLiteral;
+var
+  p, t, e: TLiteral;
+
+begin
+  Assert(TopConstraint.Count = 3);
+
+  p := TopConstraint[0];
+  t := TopConstraint[1];
+  e := TopConstraint[2];
+
+  if GetValue(p) = gbTrue then
+    Exit(t)
+  else if GetValue(p) = gbFalse then
+    Exit(e)
+  else
+  begin
+    Result := CreateLiteral(GetVariableManager.CreateNewVariable, False);
+    SubmitITEGate(Result);
+  end;
+
+end;
+
+function TSATSolverInterface.GenerateEquiGate: TLiteral;
+begin
+  Result := CreateLiteral(GetVariableManager.CreateNewVariable, False);
+
+  SubmitEquivGate(Result);
+end;
+
 procedure TSATSolverInterface.AddComment(const Comment: AnsiString);
 begin
 
@@ -847,9 +879,9 @@ begin
 
 //  ActiveClause.Sort(@CompareLiteral);
 
-  s:= ActiveClause.Items[0];
-  t:= ActiveClause.Items[1];
-  f:= ActiveClause.Items[2];
+  s := ActiveClause.Items[0];
+  t := ActiveClause.Items[1];
+  f := ActiveClause.Items[2];
 
   BeginConstraint;
   AddLiteral(NegateLiteral(s));
@@ -895,6 +927,7 @@ procedure TSATSolverInterface.SubmitEquivGate(p: TLiteral);
 var
   i: Integer;
   a, b: TLiteral;
+
 begin
 //  AddComment('Eq ' + TopConstraint.ToString + ' = ' + LiteralToString(p));
 

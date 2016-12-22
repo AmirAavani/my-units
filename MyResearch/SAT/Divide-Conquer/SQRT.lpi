@@ -22,10 +22,10 @@
     <RunParams>
       <local>
         <FormatVersion Value="1"/>
-        <CommandLineParams Value="--n 81 --Mode Naive --OutputFileName N1024.cnf --Verbosity 1023"/>
+        <CommandLineParams Value="--n 81 --Mode BinSearch --OutputFileName B81.cnf --Verbosity 1023"/>
       </local>
     </RunParams>
-    <Units Count="12">
+    <Units Count="13">
       <Unit0>
         <Filename Value="SQRT.pp"/>
         <IsPartOfProject Value="True"/>
@@ -74,6 +74,10 @@
         <Filename Value="../../../SAT-Solver-Units/General/TSeitinVariableUnit.pp"/>
         <IsPartOfProject Value="True"/>
       </Unit11>
+      <Unit12>
+        <Filename Value="../../../SAT-Solver-Units/Circuits/Logic-Circuits/BaseLogicCircuits.pp"/>
+        <IsPartOfProject Value="True"/>
+      </Unit12>
     </Units>
   </ProjectOptions>
   <CompilerOptions>
@@ -83,7 +87,7 @@
     </Target>
     <SearchPaths>
       <IncludeFiles Value="$(ProjOutDir)"/>
-      <OtherUnitFiles Value="../../General-Purpose-Units;/home/rima/Mine/FPC/fpc/packages/fcl-stl/src/;../../SAT-Solver-Units/Encodings/CRT;../../SAT-Solver-Units/Encodings;../../SAT-Solver-Units/General;../../Unicode-Functions;../../SAT-Solver-Units;../../../SAT-Solver-Units/Circuits/Arithmetic-Circuits;../../../SAT-Solver-Units/Circuits;../../../SAT-Solver-Units/General;../../../SAT-Solver-Units;../../../General-Purpose-Units;../../../../../../../../../../../Mine/FPC/fpc/packages/fcl-base/src;../../../Unicode-Functions;../../../SAT-Solver-Units/MiniSAT;../../../Algortihmic-Unit"/>
+      <OtherUnitFiles Value="../../General-Purpose-Units;/home/rima/Mine/FPC/fpc/packages/fcl-stl/src/;../../SAT-Solver-Units/Encodings/CRT;../../SAT-Solver-Units/Encodings;../../SAT-Solver-Units/General;../../Unicode-Functions;../../SAT-Solver-Units;../../../SAT-Solver-Units/Circuits/Arithmetic-Circuits;../../../SAT-Solver-Units/Circuits;../../../SAT-Solver-Units/General;../../../SAT-Solver-Units;../../../General-Purpose-Units;../../../../../../../../../../../Mine/FPC/fpc/packages/fcl-base/src;../../../Unicode-Functions;../../../SAT-Solver-Units/MiniSAT;../../../Algortihmic-Unit;../../../SAT-Solver-Units/Circuits/Logic-Circuits"/>
       <UnitOutputDirectory Value="lib/$(TargetCPU)-$(TargetOS)"/>
     </SearchPaths>
   </CompilerOptions>
