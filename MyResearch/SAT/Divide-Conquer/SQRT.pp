@@ -1,5 +1,6 @@
 program SQRT;
-uses BinaryArithmeticCircuitUnit, BitVectorUnit, ClauseUnit,
+uses
+  SysUtils, BinaryArithmeticCircuitUnit, BitVectorUnit, ClauseUnit,
   TSeitinVariableUnit, ParameterManagerUnit, SatSolverInterfaceUnit,
   MiniSatSolverInterfaceUnit, GenericStackUnit, WideStringUnit, BigInt, contnrs,
   Math, fgl, BaseLogicCircuits;
@@ -60,7 +61,7 @@ begin
   v.Free; w.Free;
   v2.Free; w2.Free;
 
-  Result := TEncoding.Create(Lit, V);
+  //Result := TEncoding.Create(Lit, V);
 end;
 
 type
@@ -88,7 +89,7 @@ while (low != high) {
 var
   Target: TBitVector;
   Tops, Bots, Mids,
-  MidPlusOnes, MidMinusOnes: TBitVectorList;
+  MidPlusOnes: TBitVectorList;
   FMids: TBitVectorList;
   Ls, Gs, Es: TBitVector;
   i, m: Integer;
@@ -98,10 +99,11 @@ var
 begin
   ArithCircuit := BinaryArithmeticCircuitUnit.TBinaryArithmeticCircuit.Create;
   LogicCircut := TBaseLogicCircuit.Create;
+
   m := 1 + n.Log div 2;
   Tops := TBitVectorList.Create; Bots := TBitVectorList.Create;
   Mids := TBitVectorList.Create; FMids := TBitVectorList.Create;
-  MidPlusOnes := TBitVectorList.Create; MidMinusOnes := TBitVectorList.Create;
+  MidPlusOnes := TBitVectorList.Create;
 
   Bots.Add(TBitVector.Create(m, GetVariableManager.FalseLiteral));
   Tops.Add(TBitVector.Create(m, GetVariableManager.TrueLiteral));
@@ -115,9 +117,10 @@ begin
     end;
     Mids.Add(ArithCircuit.Avg(Tops[i], Bots[i]));
     MidPlusOnes.Add(ArithCircuit.Incr(Mids[i]));
-    MidMinusOnes.Add(ArithCircuit.Decr(Mids[i]));
     FMids.Add(ArithCircuit.Mul(Mids[i], Mids[i]));
+
   end;
+  GetSatSolver.AddComment('**');
 
   WriteLn('n = ', n.ToString);
   Target := ArithCircuit.GenerateBinaryRep(n);
@@ -131,7 +134,6 @@ begin
     WriteLn('Bots[', i, '] = ', Bots[i].ToString);
     WriteLn('Mids[', i, '] = ', Mids[i].ToString);
     WriteLn('MidPlusOnes[', i, '] = ', MidPlusOnes[i].ToString);
-    WriteLn('MidMinusOnes[', i, '] = ', MidMinusOnes[i].ToString);
     WriteLn('FMids[', i, '] = ', FMids[i].ToString);
   end;
 
@@ -140,18 +142,24 @@ begin
   for i := 0 to m - 1 do
   begin
     Ls[i] := ArithCircuit.EncodeIsLessThan(FMids[i], Target);
-    WriteLn('m[i]= ', Mids[i].ToString, ' m[i]^2=', FMids[i].ToString, ' LE=',
+    WriteLn('m[i]= ', Mids[i].ToString, ' m[i]^2=', FMids[i].ToString, ' LS=',
       LiteralToString(LS[i]));
+
     // Bots[i + 1] = MidPlusOnes[i] if Ls[i];
     // Bots[i + 1] = Bots[i] ow;
-    LogicCircut.IFE(Ls[i], MidPlusOnes[i], Bots[i], Bots[i + 1]);
+    LogicCircut.ITE(Ls[i], MidPlusOnes[i], Bots[i], Bots[i + 1]);
+    // Tops[i + 1] = Top[i] if Ls[i];
+    // Tops[i + 1] = Mids[i] ow;
+    LogicCircut.ITE(Ls[i], Tops[i], Mids[i], Tops[i + 1]);
     Break;
   end;
+
   Result := TEncoding.Create(GetVariableManager.TrueLiteral,
     Mids[0]);
   ArithCircuit.Free;
   Target.Free;
 end;
+
 var
   n: TBigInt;
   Encoding: TEncoding;

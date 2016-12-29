@@ -130,18 +130,18 @@ begin
   for i:= 0 to AClause.Count- 1 do
   begin
     Lit:= AClause.Items[i];
-    LiteralValue:= GetValue (GetVar (Lit));
+    LiteralValue:= GetValue(GetVar(Lit));
 
-    if IsNegated (Lit) then;
-      LiteralValue:= TGroundBool (2- Ord (LiteralValue));
+    if IsNegated(Lit) then;
+      LiteralValue:= TGroundBool(2- Ord(LiteralValue));
 
     case LiteralValue of
       gbUnknown:
       begin
-        Inc (Count);
-        Temp:= cAddLiteralToClause (FSolverID, AClause.Items [i]);
-//        Write (LiteralToString (AClause.Item [i]), ' ');
-//        ActiveClause+= LiteralToString (AClause.Item [i])+ ' ';
+        Inc(Count);
+        Temp:= cAddLiteralToClause(FSolverID, AClause.Items [i]);
+//        Write(LiteralToString(AClause.Item [i]), ' ');
+//        ActiveClause+= LiteralToString(AClause.Item [i])+ ' ';
 
       end;
       gbFalse:;
@@ -154,39 +154,39 @@ begin
 
   if not Flag then
   begin
-//    WriteLN ('*', ActiveClause);
+//    WriteLN('*', ActiveClause);
     if Count= 0 then
     begin
-      cAddLiteralToClause (FSolverID, GetVariableManager.FalseLiteral);
-      Result:= MiniSatSolverUnit.cAddClause (FSolverID, 1)<> 0;
+      cAddLiteralToClause(FSolverID, GetVariableManager.FalseLiteral);
+      Result := MiniSatSolverUnit.cAddClause(FSolverID, 1)<> 0;
 
     end
     else
-      Result:= MiniSatSolverUnit.cAddClause (FSolverID, Count)<> 0;
+      Result := MiniSatSolverUnit.cAddClause(FSolverID, Count)<> 0;
 
   end
   else
-    Result:= True;
+    Result := True;
 
   if not IsOK then
-    Exit (False);
+    Exit(False);
 
 end;
 
 function TMiniSatSolver.Solve: Boolean;
 begin
-  Result:= MiniSatSolverUnit.cSolve (FSolverID)<> 0;
-//  Clauses.SaveToFile ('Clauses.cnf');
+  Result := MiniSatSolverUnit.cSolve(FSolverID)<> 0;
+//  Clauses.SaveToFile('Clauses.cnf');
 
 end;
 
-function TMiniSatSolver.Solve (Literal: TLiteral): Boolean;
+function TMiniSatSolver.Solve(Literal: TLiteral): Boolean;
 begin
-  Result:= MiniSatSolverUnit.cSolve1 (FSolverID, Literal)<> 0;
+  Result := MiniSatSolverUnit.cSolve1(FSolverID, Literal)<> 0;
 
 end;
 
-function TMiniSatSolver.GetValue (x: Integer): TGroundBool;
+function TMiniSatSolver.GetValue(x: Integer): TGroundBool;
 var
   v: Integer;
 
@@ -194,43 +194,43 @@ begin
   if GetVariableManager<> nil then
     if GetVariableManager.SimulationMode then
       if NoVars<= x then
-        Exit (gbUnknown);
+        Exit(gbUnknown);
 
   while NoVars<= x do
     GetNewVar;
 
-  v:= MiniSatSolverUnit.cGetValue (FSolverID, x);
+  v := MiniSatSolverUnit.cGetValue(FSolverID, x);
 
   case v of 
-    Ord ('T'): 
-      Result:= gbTrue;
-    Ord ('F'):
-      Result:= gbFalse;
-    Ord ('U'):
-      Result:= gbUnknown
+    Ord('T'): 
+      Result := gbTrue;
+    Ord('F'):
+      Result := gbFalse;
+    Ord('U'):
+      Result := gbUnknown
     else
-      WriteLn ('Error!');
+      WriteLn('Error!');
 
   end;
 
 end;
 
-function TMiniSatSolver.GetValueInModel (x: Integer): TGroundBool;
+function TMiniSatSolver.GetValueInModel(x: Integer): TGroundBool;
 var
   v: Integer;
 
 begin
-  v:= MiniSatSolverUnit.cGetValueInModel (FSolverID, x);
+  v := MiniSatSolverUnit.cGetValueInModel(FSolverID, x);
 
   case v of 
-    Ord ('T'): 
-      Result:= gbTrue;
-    Ord ('F'):
-      Result:= gbFalse;
-    Ord ('U'):
-      Result:= gbUnknown
+    Ord('T'): 
+      Result := gbTrue;
+    Ord('F'):
+      Result := gbFalse;
+    Ord('U'):
+      Result := gbUnknown
     else
-      WriteLn ('Error!');
+      WriteLn('Error!');
 
   end;
 
@@ -238,19 +238,19 @@ end;
 
 function TMiniSatSolver.NoAssigns: Integer;
 begin
-  Result:= MiniSatSolverUnit.cNoAssigns (FSolverID);
+  Result := MiniSatSolverUnit.cNoAssigns(FSolverID);
 
 end;
 
 function TMiniSatSolver.NoClauses: Integer;
 begin
-  Result:= MiniSatSolverUnit.cNoClauses (FSolverID);
+  Result := MiniSatSolverUnit.cNoClauses(FSolverID);
 
 end;
 
 function TMiniSatSolver.NoVars: Integer;
 begin
-  Result:= MiniSatSolverUnit.cNoVars (FSolverID);
+  Result := MiniSatSolverUnit.cNoVars(FSolverID);
 
 end;
 

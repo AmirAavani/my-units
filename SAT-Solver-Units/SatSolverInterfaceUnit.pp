@@ -39,8 +39,6 @@ type
     FVarCount: Int64;
     FClauseCount: Int64;
     FSolverResult: TSolverResult;
-//    Assignements: array of TGroundBool;
-
 
     function GetVarCount: Int64; virtual; 
     function GetClauseCount: Int64; virtual;
@@ -48,6 +46,7 @@ type
     property Stack: TStackOfClauses read FClausesStack;
 
     procedure SyncInteractiveUPInfo; virtual;
+    procedure SubmitContradiction; virtual;
 
   public
     property VarCount: Int64 read GetVarCount;
@@ -60,9 +59,8 @@ type
     procedure AddComment(const Comment: AnsiString); virtual;
     // for debug... should be removed!!
     function CStack: TStackOfClauses;
-//    function GenerateNewVariable(VariablePolrity: TVariablePolarity= vpNone; Decide: Boolean= True): Integer; virtual; abstract;
     function GenerateNewVariable(VariablePolrity: TVariablePolarity; Decide: Boolean): Integer; virtual; abstract;
-    function GetValue (v: Integer): TGroundBool; virtual;
+    function GetValue(v: Integer): TGroundBool; virtual;
 
     function BeginConstraint: TClause; //inline;
     procedure AbortConstraint; virtual; 
@@ -173,7 +171,7 @@ begin
   if UpperCase(GetRunTimeParameterManager.GetValueByName('--SatSolverType'))= UpperCase('CNFCollection') then
   begin
     SatSolver:= TCNFCollection.Create;
-    (SatSolver as TCNFCollection).OutputFilename := GetRunTimeParameterManager.ValueByName['--OutputFileName'];
+   (SatSolver as TCNFCollection).OutputFilename := GetRunTimeParameterManager.ValueByName['--OutputFileName'];
   end
   else if UpperCase(GetRunTimeParameterManager.GetValueByName('--SatSolverType'))= UpperCase('CNFStream') then
     SatSolver:= TCNFStream.Create(GetRunTimeParameterManager.GetValueByName('--OutputFilename'))
@@ -200,6 +198,14 @@ procedure TSATSolverInterface.SyncInteractiveUPInfo;
 begin
   raise Exception.Create('SyncInteractiveUPInfo');
  
+end;
+
+procedure TSATSolverInterface.SubmitContradiction;
+begin
+  BeginConstraint;
+  AddLiteral(GetVariableManager.FalseLiteral);
+  SubmitClause;
+
 end;
 
 function TSATSolverInterface.GetValue(v: Integer): TGroundBool;
@@ -307,7 +313,6 @@ var
   ActiveClause: TClause;
 
 begin
-
   if 0 < NoOfLiteralInTopConstraint[gbFalse] then
   begin
     Result := GetVariableManager.FalseLiteral;
@@ -653,49 +658,73 @@ begin
   case Pv of
    gbFalse:
    begin
+     if NoOfLiteralInTopConstraint[gbTrue] = TopConstraint.Count then // Contradictoin
+     begin
+       SubmitContradiction;
+       Exit;
+     end
+     else if NoOfLiteralInTopConstraint[gbFalse] <> 0 then
+       Exit;
+
    //\lnot l_1\lor \lnor l_2 \lor \cdots \lor \lnot l_n
-     for i:= 0 to ActiveClause.Count- 1 do
+     for i:= 0 to ActiveClause.Count - 1 do
        ActiveClause.Items[i]:= NegateLiteral(ActiveClause.Items[i]);
      SubmitClause;
-
    end;
-
    gbTrue:
    begin
+     if NoOfLiteralInTopConstraint[gbTrue] = TopConstraint.Count then
+       Exit
+     else if NoOfLiteralInTopConstraint[gbFalse] <> 0 then
+     begin
+       SubmitContradiction;
+       Exit;
+     end;
+
    //l_1\land l_2 \land \cdots \land \l_n
-     for i:= 0 to ActiveClause.Count- 1 do
+     for i:= 0 to ActiveClause.Count - 1 do
      begin
        BeginConstraint;
        AddLiteral(ActiveClause.Items[i]);
        SubmitClause;
-
      end;
-
      AbortConstraint;
 
    end;
-
    gbUnknown:
    begin
-     BeginConstraint;
+     if NoOfLiteralInTopConstraint[gbTrue] = TopConstraint.Count then
+     begin
+       BeginConstraint;
+       AddLiteral(p);
+       SubmitClause;
+       Exit;
+     end
+     else if NoOfLiteralInTopConstraint[gbFalse] <> 0 then
+     begin
+       BeginConstraint;
+       AddLiteral(NegateLiteral(p));
+       SubmitClause;
+       Exit;
+     end;
 
-     for i:= 0 to ActiveClause.Count- 1 do
+     BeginConstraint;
+     for i := 0 to ActiveClause.Count - 1 do
      begin
        BeginConstraint;
 
        AddLiteral(ActiveClause.Items[i]);
        AddLiteral(NegateLiteral(p));
        SubmitClause;
-       lit := ActiveClause.Item[i];
-       //ActiveClause.Item[i]:= NegateLiteral(ActiveClause.Item[i]);
-       AddLiteral(NegateLiteral(ActiveClause.Items[i]));
+
+       lit  := ActiveClause.Item[i];
+       AddLiteral(NegateLiteral(lit));
 
      end;
      AddLiteral(p);
      SubmitClause;
 
      AbortConstraint;
-
    end;
 
   end;
@@ -719,14 +748,14 @@ begin
 
 // p <=> l_1 \lor l_2 \lor \cdots l_n;
 
-  pv:= GetValue(GetVar(p));
-  ActiveClause:= TopConstraint;
+  pv := GetValue(GetVar(p));
+  ActiveClause := TopConstraint;
 //  ActiveClause.Sort(@CompareLiteral);
 
   case Pv of
    gbFalse:
    begin
-     if 0< NoOfLiteralInTopConstraint[gbTrue] then//Contradiction
+     if 0 < NoOfLiteralInTopConstraint[gbTrue] then//Contradiction
      begin
        BeginConstraint;
        AddLiteral(p);
@@ -739,7 +768,7 @@ begin
 
     //\lnot l_1\land \lnot l_2 \land \cdots \land \lnot \l_n
      BeginConstraint;
-     for i:= 0 to ActiveClause.Count- 1 do
+     for i := 0 to ActiveClause.Count- 1 do
        AddLiteral(NegateLiteral(ActiveClause.Items[i]));
      SubmitClause;
 
@@ -749,7 +778,7 @@ begin
 
    gbTrue:
    begin
-     if ActiveClause.Count= NoOfLiteralInTopConstraint[gbFalse] then//Contradiction
+     if ActiveClause.Count = NoOfLiteralInTopConstraint[gbFalse] then//Contradiction
      begin
        BeginConstraint;
        AddLiteral(NegateLiteral(p));
@@ -778,7 +807,7 @@ begin
 
      end;
 
-     if ActiveClause.Count= NoOfLiteralInTopConstraint[gbFalse] then
+     if ActiveClause.Count = NoOfLiteralInTopConstraint[gbFalse] then
      begin
        BeginConstraint;
        AddLiteral(NegateLiteral(p));
@@ -789,7 +818,7 @@ begin
      end;
 
      BeginConstraint;
-     for i:= 0 to ActiveClause.Count- 1 do
+     for i  := 0 to ActiveClause.Count- 1 do
      begin
        BeginConstraint;
        AddLiteral(NegateLiteral(ActiveClause.Items[i]));
@@ -797,7 +826,7 @@ begin
        SubmitClause;
 
        AddLiteral(ActiveClause.Items[i]);
-//       ActiveClause.Item[i]:= ActiveClause.Item[i];
+//       ActiveClause.Item[i]  := ActiveClause.Item[i];
 
      end;
 
@@ -828,15 +857,15 @@ begin
   l1, l2, ~p
   }
 
-  ActiveClause:= TopConstraint;
+  ActiveClause := TopConstraint;
 
-  for i:= 0 to(1 shl ActiveClause.Count)- 1 do
+  for i := 0 to(1 shl ActiveClause.Count)- 1 do
   begin
 
     BeginConstraint;
-    Count:= 0;
-    for j:= 0 to ActiveClause.Count- 1 do
-      if(i and(1 shl j))= 0 then
+    Count := 0;
+    for j := 0 to ActiveClause.Count- 1 do
+      if  (i and(1 shl j))= 0 then
       begin
         Inc(Count);
         AddLiteral(NegateLiteral(ActiveClause.Items[j]));
@@ -874,7 +903,7 @@ begin
   t, f, ~p
   }
 
-  ActiveClause:= TopConstraint;
+  ActiveClause := TopConstraint;
   Assert(ActiveClause.Count= 3);
 
 //  ActiveClause.Sort(@CompareLiteral);
@@ -973,11 +1002,11 @@ var
   ActiveClause: TClause;
 
 begin
-  ActiveClause:= TopConstraint;
+  ActiveClause := TopConstraint;
   Assert(ActiveClause.Count= 3);
 
-  for i:= 0 to ActiveClause.Count - 1 do
-    for j:= i+ 1 to ActiveClause.Count - 1 do
+  for i := 0 to ActiveClause.Count - 1 do
+    for j := i+ 1 to ActiveClause.Count - 1 do
     begin
       BeginConstraint;
 
@@ -990,8 +1019,8 @@ begin
     end;
 
 
-  for i:= 0 to ActiveClause.Count - 1 do
-    for j:= i+ 1 to ActiveClause.Count - 1 do
+  for i := 0 to ActiveClause.Count - 1 do
+    for j := i+ 1 to ActiveClause.Count - 1 do
     begin
       BeginConstraint;
 
@@ -1009,7 +1038,7 @@ end;
 
 function TSATSolverInterface.GetResult: TSolverResult;
 begin
-  Result:= FSolverResult;
+  Result := FSolverResult;
 
 end;
 
@@ -1017,10 +1046,10 @@ constructor TSATSolverInterface.Create;
 begin
   inherited Create;
 
-  FClausesStack:= TStackOfClauses.Create;
-  _FTopConstraint:= nil;
-  FVarCount:= 0;
-  FClauseCount:= 0;
+  FClausesStack := TStackOfClauses.Create;
+  _FTopConstraint := nil;
+  FVarCount := 0;
+  FClauseCount := 0;
 
 end;
 
@@ -1043,7 +1072,7 @@ var
 begin
   Write('Forced Variable Status:');
 
-  for i:= 1 to VarCount- 1 do
+  for i := 1 to VarCount- 1 do
     if GetValue(i)<> gbUnknown then
     begin
       if GetValue(i)= gbTrue then
@@ -1058,11 +1087,6 @@ end;
 
 procedure Finalize;
 begin
-{  Stream:= TMyTextStream.Create(
-    TFileStream.Create(GetRunTimeParameterManager.OutputFilename, fmCreate));
- (GetSatSolver as TCNFCollection).SaveToFile(Stream);
-  Stream.Free;
-}
   if SatSolverStack.Count <> 0 then
     WriteLn('Error in SatSolverStack');
 

@@ -16,11 +16,17 @@ type
     { Generate an encoding for
         "if condition then c = a else c = b;"
     }
-    procedure IFE(const Condition: TLiteral; const a, b, c: TBitVector); virtual;
+    procedure ITE(const Condition: TLiteral; const a, b, c: TBitVector); virtual;
+    function EncodeITE(const Condition: TLiteral; const a, b, c: TBitVector):
+      TLiteral; virtual;
+    function GenerateITE(const Condition: TLiteral; const a, b: TBitVector):
+      TBitVector; virtual;
     { Generate an encoding for
         "if condition then c = a;"
     }
     procedure SetIf(const Condition: TLiteral; const a, c: TBitVector); virtual;
+    function EncodeSetIf(const Condition: TLiteral; const a, c: TBitVector):
+      TLiteral; virtual;
   end;
 
 implementation
@@ -30,7 +36,7 @@ uses
 
 { TBaseLogicCircuit }
 
-procedure TBaseLogicCircuit.IFE(const Condition: TLiteral; const a, b,
+procedure TBaseLogicCircuit.ITE(const Condition: TLiteral; const a, b,
   c: TBitVector);
 var
   MaxSize: Integer;
@@ -48,8 +54,8 @@ begin
     lc := c.GetBitOrDefault(i, GetVariableManager.FalseLiteral);
 
     SatSolver.BeginConstraint;
-    SatSolver.AddLiteral(NegateLiteral(Condition));
-    SatSolver.AddLiteral(NegateLiteral(la));
+    SatSolver.AddLiteral(Condition);
+    SatSolver.AddLiteral(la);
     SatSolver.AddLiteral(lb);
     p := SatSolver.GenerateITEGate;
 
@@ -58,6 +64,41 @@ begin
     SatSolver.AddLiteral(lc);
     SatSolver.SubmitEquivGate(GetVariableManager.TrueLiteral);
   end;
+end;
+
+function TBaseLogicCircuit.EncodeITE(const Condition: TLiteral; const a, b,
+  c: TBitVector): TLiteral;
+var
+  cPrime: TBitVector;
+  i: Integer;
+  Lit: TLiteral;
+
+begin
+  cPrime := TBitVector.Create(c.Count);
+
+  Self.ITE(Condition, a, b, cPrime);
+
+  SatSolver.BeginConstraint;
+  for i := 0 to c.Count - 1 do
+  begin
+    SatSolver.BeginConstraint;
+    SatSolver.AddLiteral(c[i]);
+    SatSolver.AddLiteral(cPrime[i]);
+    Lit := SatSolver.GenerateXOrGate;
+
+    SatSolver.AddLiteral(NegateLiteral(Lit));
+  end;
+
+  Result := SatSolver.GenerateAndGate;
+
+end;
+
+function TBaseLogicCircuit.GenerateITE(const Condition: TLiteral; const a,
+  b: TBitVector): TBitVector;
+begin
+  Result := TBitVector.Create(max(a.Count, b.Count));
+  Self.EncodeITE(Condition, a, b, Result);
+
 end;
 
 procedure TBaseLogicCircuit.SetIf(const Condition: TLiteral; const a,
@@ -90,6 +131,33 @@ begin
     SatSolver.AddLiteral(NegateLiteral(lc));
     SatSolver.SubmitClause;
   end;
+
+end;
+
+function TBaseLogicCircuit.EncodeSetIf(const Condition: TLiteral; const a, c:
+  TBitVector): TLiteral;
+var
+  cPrime: TBitVector;
+  i: Integer;
+  Lit: TLiteral;
+
+begin
+  cPrime := TBitVector.Create(c.Count);
+
+  Self.SetIf(Condition, a, cPrime);
+
+  SatSolver.BeginConstraint;
+  for i := 0 to c.Count - 1 do
+  begin
+    SatSolver.BeginConstraint;
+    SatSolver.AddLiteral(c[i]);
+    SatSolver.AddLiteral(cPrime[i]);
+    Lit := SatSolver.GenerateXOrGate;
+
+    SatSolver.AddLiteral(NegateLiteral(Lit));
+  end;
+
+  Result := SatSolver.GenerateAndGate;
 end;
 
 end.

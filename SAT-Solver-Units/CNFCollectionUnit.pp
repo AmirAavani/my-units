@@ -257,7 +257,7 @@ begin
       OutputStringPChar := @(OutputString[1]);
 
       Lit := ActiveClause.Items[0];
-     if((GetValue(GetVar(Lit)) = gbTrue) and IsNegated(Lit)) or
+     if((GetValue(Lit) = gbTrue) and IsNegated(Lit)) or
         ((GetValue(GetVar(Lit)) = gbFalse) and(not IsNegated(Lit))) then
       else
       begin

@@ -373,6 +373,12 @@ var
   aIsEqbTillNow: TBitVector;
 
 begin//a< b
+  if(GetRunTimeParameterManager.Verbosity and(1 shl VerbBinArithmCircuit))<> 0 then
+  begin
+    WriteLn('[IsLessThan] a: ', a.ToString);
+    WriteLn('[IsLessThan] b: ', b.ToString);
+  end;
+
   if a.Count <> b.Count then
   begin
     aCopy := TBitVector.Create(Max(a.Count, b.Count),
@@ -384,13 +390,6 @@ begin//a< b
       aCopy[i] := a[i];
     for i := 0 to b.Count - 1 do
       bCopy[i] := b[i];
-    if(GetRunTimeParameterManager.Verbosity and(1 shl VerbBinArithmCircuit))<> 0 then
-    begin
-      WriteLn('[IsLessThan] a: ', a.ToString);
-      WriteLn('[IsLessThan] b: ', b.ToString);
-      WriteLn('[IsLessThan] aCopy : ', aCopy.ToString);
-      WriteLn('[IsLessThan] bCopy : ', bCopy.ToString);
-    end;
     Result := Self.EncodeIsLessThan(aCopy, bCopy);
     aCopy.Free;
     bCopy.Free;
@@ -400,63 +399,44 @@ begin//a< b
   WriteLn('[TBinaryArithmeticCircuit.EncodeIsLessThan] This function can be improved!');
   Assert(a.Count = b.Count);
 
-  aIsLessThanB := TBitVector.Create(a.Count);
-
-  aIsEqbTillNow := TBitVector.Create(a.Count);
-
-  aiIsEqbi := TBitVector.Create(a.Count);
-  aiIsLbi := TBitVector.Create(a.Count);
-
-  if(GetRunTimeParameterManager.Verbosity and(1 shl VerbBinArithmCircuit))<> 0 then
-  begin
-    WriteLn('[IsLessThan] a: ', a.ToString);
-    WriteLn('[IsLessThan] b: ', b.ToString);
-    WriteLn('[IsLessThan] aiIsEqbi : ', aiIsEqbi.ToString);
-    WriteLn('[IsLessThan] aiIsLbi : ', aiIsLbi.ToString);
-    WriteLn('[IsLessThan] aiIsEqbTillNow : ', aIsEqbTillNow.ToString);
-
-  end;
-
+  aiIsEqbi := TBitVector.Create(a.Count, GetVariableManager.FalseLiteral);
+  aiIsLbi := TBitVector.Create(a.Count, GetVariableManager.FalseLiteral);
+  aIsLessThanB := TBitVector.Create(a.Count, GetVariableManager.FalseLiteral);
+  aIsEqbTillNow := TBitVector.Create(a.Count, GetVariableManager.FalseLiteral);
   aIsEqbTillNow.Add(GetVariableManager.TrueLiteral);
 
   for i := a.Count- 1 downto 0 do
   begin
     GetSatSolver.BeginConstraint;
-
     GetSatSolver.AddLiteral(a[i]);
     GetSatSolver.AddLiteral(b[i]);
-
-    GetSatSolver.SubmitXOrGate(NegateLiteral(aiIsEqbi[i]));//(not aixorbi) <=> ai= bi;
+    aiIsEqbi[i] := GetSatSolver.GenerateXOrGate;
 
     GetSatSolver.BeginConstraint;
-
-    GetSatSolver.AddLiteral(aiIsEqbi[i]);
-    GetSatSolver.AddLiteral(aIsEqbTillNow[i+ 1]);
-    GetSatSolver.SubmitAndGate(aIsEqbTillNow[i]);
-
-  end;
-
-  for i := a.Count- 1 downto 0 do
-  begin
-    GetSatSolver.BeginConstraint;
-
     GetSatSolver.AddLiteral(NegateLiteral(a[i]));
     GetSatSolver.AddLiteral(b[i]);
-    GetSatSolver.SubmitAndGate(aiIsLbi[i]);
+    aiIsLbi[i] := GetSatSolver.GenerateAndGate;
+
+    GetSatSolver.BeginConstraint;
+    GetSatSolver.AddLiteral(aiIsEqbi[i]);
+    GetSatSolver.AddLiteral(aIsEqbTillNow[i + 1]);
+    aIsEqbTillNow[i] := GetSatSolver.GenerateAndGate;
 
     GetSatSolver.BeginConstraint;
     GetSatSolver.AddLiteral(aiIsLbi[i]);
     GetSatSolver.AddLiteral(aIsEqbTillNow[i+ 1]);
-    GetSatSolver.SubmitAndGate(aIsLessThanb[i]);
-
+    aIsLessThanb[i] := GetSatSolver.GenerateAndGate;
   end;
 
-  Result := CreateLiteral(GetVariableManager.CreateNewVariable, False);
   GetSatSolver.BeginConstraint;
-
-  for i := a.Count- 1 downto 0 do
+  for i := 0 to a.Count - 1 do
     GetSatSolver.AddLiteral(aIsLessThanb[i]);
-  GetSatSolver.SubmitOrGate(Result);
+  Result := GetSatSolver.GenerateOrGate;
+
+  if(GetRunTimeParameterManager.Verbosity and(1 shl VerbBinArithmCircuit))<> 0 then
+  begin
+    WriteLn('[IsLessThan] Result = ', LiteralToString(Result));
+  end;
 
 end;
 
