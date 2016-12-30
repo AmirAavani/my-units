@@ -86,12 +86,22 @@ while (low != high) {
     }
 }
 *)
+  function Eval(v: TBitVector): TBitVector;
+  var
+    i: Integer;
+
+  begin
+    Result := V.Copy;
+    for i := 0 to v.Count - 1 do
+      Result[i] := GetValue(v[i]);
+  end;
+
 var
   Target: TBitVector;
   Tops, Bots, Mids,
   MidPlusOnes: TBitVectorList;
   FMids: TBitVectorList;
-  Ls, Gs, Es: TBitVector;
+  Ls: TBitVector;
   i, m: Integer;
   ArithCircuit: TBinaryArithmeticCircuit;
   LogicCircut: TBaseLogicCircuit;
@@ -142,7 +152,7 @@ begin
   for i := 0 to m - 1 do
   begin
     Ls[i] := ArithCircuit.EncodeIsLessThan(FMids[i], Target);
-    WriteLn('m[i]= ', Mids[i].ToString, ' m[i]^2=', FMids[i].ToString, ' LS=',
+    WriteLn('m[', i, ']= ', Mids[i].ToString, ' m[i]^2=', FMids[i].ToString, ' LS=',
       LiteralToString(LS[i]));
 
     // Bots[i + 1] = MidPlusOnes[i] if Ls[i];
@@ -151,11 +161,21 @@ begin
     // Tops[i + 1] = Top[i] if Ls[i];
     // Tops[i + 1] = Mids[i] ow;
     LogicCircut.ITE(Ls[i], Tops[i], Mids[i], Tops[i + 1]);
-    Break;
   end;
 
   Result := TEncoding.Create(GetVariableManager.TrueLiteral,
-    Mids[0]);
+    Mids[m]);
+
+  for i := 0 to m - 1 do
+  begin
+    WriteLn('Tops[', i, '] = ', Eval(Tops[i]).ToString);
+    WriteLn('Bots[', i, '] = ', Eval(Bots[i]).ToString);
+    WriteLn('Mids[', i, '] = ', Eval(Mids[i]).ToString);
+    WriteLn('MidPlusOnes[', i, '] = ', Eval(MidPlusOnes[i]).ToString);
+    WriteLn('FMids[', i, '] = ', Eval(FMids[i]).ToString);
+  end;
+
+
   ArithCircuit.Free;
   Target.Free;
 end;
