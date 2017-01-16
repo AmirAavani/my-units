@@ -372,7 +372,7 @@ var
   aiIsEqbi, aiIsLbi,
   aIsEqbTillNow: TBitVector;
 
-begin//a< b
+begin//a < b
   if(GetRunTimeParameterManager.Verbosity and(1 shl VerbBinArithmCircuit))<> 0 then
   begin
     WriteLn('[IsLessThan] a: ', a.ToString);
@@ -410,7 +410,7 @@ begin//a< b
     GetSatSolver.BeginConstraint;
     GetSatSolver.AddLiteral(a[i]);
     GetSatSolver.AddLiteral(b[i]);
-    aiIsEqbi[i] := GetSatSolver.GenerateXOrGate;
+    aiIsEqbi[i] := NegateLiteral(GetSatSolver.GenerateXOrGate);
 
     GetSatSolver.BeginConstraint;
     GetSatSolver.AddLiteral(NegateLiteral(a[i]));
@@ -427,6 +427,15 @@ begin//a< b
     GetSatSolver.AddLiteral(aIsEqbTillNow[i+ 1]);
     aIsLessThanb[i] := GetSatSolver.GenerateAndGate;
   end;
+
+  if(GetRunTimeParameterManager.Verbosity and(1 shl VerbBinArithmCircuit))<> 0 then
+  begin
+    WriteLn('aiIsEqbi = ', aiIsEqbi.ToString);
+    WriteLn('aiIsLbi = ', aiIsLbi.ToString);
+    WriteLn('aIsLessThanb = ', aIsLessThanb.ToString);
+    WriteLn('aIsEqbTillNow = ', aIsEqbTillNow.ToString);
+  end;
+
 
   GetSatSolver.BeginConstraint;
   for i := 0 to a.Count - 1 do
@@ -447,7 +456,7 @@ var
   SameithBit: TLiteral;
 
 begin
-  GetSatSolver.BeginConstraint;
+     GetSatSolver.BeginConstraint;
 
 //  WriteLn('[EncodeIsEqual] a = ', a.ToString);
 //  WriteLn('[EncodeIsEqual] b = ', b.ToString);
@@ -468,7 +477,7 @@ begin
     GetSatSolver.AddLiteral(a[i]);
     GetSatSolver.AddLiteral(b[i]);
 
-    if SatSolver.GetLiteralValue(l) = gbTrue then
+    if SatSolver.GetLiteralValue(l) <> gbUnknown then
       SameithBit := GetVariableManager.TrueLiteral
     else if SatSolver.GetLiteralValue(l) = gbFalse then
       SameithBit:= GetVariableManager.FalseLiteral

@@ -27,21 +27,21 @@ type
     {
     Generate an encoding for constraint a+1=c.
     }
-    function EncodeIncr(const a, c: TBitVector): TLiteral; virtual;
+    function EncodeIncr(const a: TBitVector): TBitVector; virtual;
     {
     Generate an encoding for constraint a+b=c.
     }
-    function EncodeAdd(const a, b, c: TBitVector): TLiteral; virtual;
+    function EncodeAdd(const a, b: TBitVector): TBitVector; virtual;
     {
     Generate an encoding for constraint (a+b)/2=c:
       if a + b is even, c = (a + b) / 2
       if a + b is odd, c = (a + b - 1) / 2
     }
-    function EncodeAvg(const a, b, c: TBitVector): TLiteral; virtual;
+    function EncodeAvg(const a, b: TBitVector): TBitVector; virtual;
     {
     Generate an encoding for constraint a * b = c.
     }
-    function EncodeMul(const a, b, c: TBitVector): Tliteral; virtual;
+    function EncodeMul(const a, b: TBitVector): TBitVector; virtual;
 
     {
     Generates appropriate set clauses(and submits each of them to
@@ -147,50 +147,25 @@ uses
   TSeitinVariableUnit;
 { TBaseArithmeticCircuit }
 
-function TBaseArithmeticCircuit.EncodeIncr(const a, c: TBitVector): TLiteral;
-var
-  cPrime: TBitVector;
-
+function TBaseArithmeticCircuit.EncodeIncr(const a: TBitVector): TBitVector;
 begin
-  cPrime := Self.Incr(a);
-  Result := EncodeIsEqual(cPrime, c);
-
-  cPrime.Free;
-
+  Result := Self.Incr(a);
 end;
 
-function TBaseArithmeticCircuit.EncodeAdd(const a, b, c: TBitVector): TLiteral;
-var
-  cPrime: TBitVector;
-
+function TBaseArithmeticCircuit.EncodeAdd(const a, b: TBitVector): TBitVector;
 begin
-  cPrime := Add(a, b);
-  Result := EncodeIsEqual(cPrime, c);
-
-  cPrime.Free;
+  Result := Add(a, b);
 end;
 
-function TBaseArithmeticCircuit.EncodeAvg(const a, b, c: TBitVector): TLiteral;
-var
-  s: TBitVector;
-
+function TBaseArithmeticCircuit.EncodeAvg(const a, b: TBitVector): TBitVector;
 begin
-  s := Self.Add(a, b);
-  s.Erase(0);
-  Result := Self.EncodeIsEqual(s, c);
+  Result := Self.Add(a, b);
+  Result.Erase(0);
 end;
 
-function TBaseArithmeticCircuit.EncodeMul(const a, b, c: TBitVector): Tliteral;
-var
-  cPrime: TBitVector;
-
+function TBaseArithmeticCircuit.EncodeMul(const a, b: TBitVector): TBitVector;
 begin
-  cPrime := Mul(a, b);
-//  WriteLn('[EncodeMul] cPrime = ', cPrime.ToString);
-//  WriteLn('[EncodeMul] c = ', c.ToString);
-  Result := EncodeIsEqual(cPrime, c);
-
-  cPrime.Free;
+  Result := Mul(a, b);
 end;
 
 function TBaseArithmeticCircuit.EncodeIsEqual(const a, b: TBitVector): TLiteral;
@@ -234,10 +209,10 @@ var
   l1, l2: TLiteral;
 
 begin
-  l1:= EncodeIsLessThan(a, b);
-  l2:= EncodeIsEqual(a, b);
+  l1 := EncodeIsLessThan(a, b);
+  l2 := EncodeIsEqual(a, b);
 
-  Result:= CreateLiteral(TSeitinVariableUnit.GetVariableManager.
+  Result := CreateLiteral(TSeitinVariableUnit.GetVariableManager.
                         CreateNewVariable, False);
 
   SatSolver.BeginConstraint;
@@ -249,14 +224,14 @@ end;
 
 function TBaseArithmeticCircuit.EncodeIsGreaterThan(const a, b: TBitVector): TLiteral;
 begin
-  Result:= NegateLiteral(Self.EncodeIsLessThanOrEq(a, b));
+  Result := NegateLiteral(Self.EncodeIsLessThanOrEq(a, b));
 
 end;
 
 function TBaseArithmeticCircuit.EncodeIsGreaterThanOrEq(const a, b: TBitVector
   ): TLiteral;
 begin
-  Result:= NegateLiteral(EncodeIsLessThan(a, b));
+  Result := NegateLiteral(EncodeIsLessThan(a, b));
 
 end;
 
@@ -270,11 +245,11 @@ var
   aPrimeEqa: TLiteral;
 
 begin
-  Result:= TBitVector.Create(a.Size);
+  Result := TBitVector.Create(a.Size);
 
-  aPrime:= Self.Add(b, Result);
+  aPrime := Self.Add(b, Result);
 
-  aPrimeEqa:= Self.EncodeIsEqual(aPrime, a);
+  aPrimeEqa := Self.EncodeIsEqual(aPrime, a);
 
   SatSolver.BeginConstraint;
   SatSolver.AddLiteral(aPrimeEqa);
@@ -285,7 +260,7 @@ end;
 
 function TBaseArithmeticCircuit.Avg(const a, b: TBitVector): TBitVector;
 begin
-  Result := Self.Add(a, b);
+  Result  := Self.Add(a, b);
   Result.Erase(0);
 end;
 
@@ -295,11 +270,11 @@ var
   aPrimeEqa: TLiteral;
 
 begin
-  Result:= TBitVector.Create(a.Size);
+  Result := TBitVector.Create(a.Size);
 
-  aPrime:= Self.Mul(b, Result);
+  aPrime := Self.Mul(b, Result);
 
-  aPrimeEqa:= Self.EncodeIsEqual(aPrime, a);
+  aPrimeEqa := Self.EncodeIsEqual(aPrime, a);
 
   SatSolver.BeginConstraint;
   SatSolver.AddLiteral(aPrimeEqa);
@@ -315,7 +290,7 @@ function TBaseArithmeticCircuit.Add(Nums: TBitVectorList): TBitVector;
 
   begin
     if Low = High then
-      Result := Nums [Low]
+      Result  := Nums [Low]
     else
     begin
       Left := RecBuild(Low,(Low + High) div 2);

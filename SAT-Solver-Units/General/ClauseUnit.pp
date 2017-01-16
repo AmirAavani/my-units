@@ -69,7 +69,7 @@ type
 
   function GetVar(Lit: TLiteral): TVariable; inline;
   function IsNegated(Lit: TLiteral): Boolean; inline;
-  function GetValue(Lit: TLiteral): Integer; inline;
+  //function GetValue(Lit: TLiteral): Integer; inline;
   function NegateLiteral  (Lit: TLiteral): TLiteral; inline;
   function CopyLiteral  (Lit: TLiteral): TLiteral; inline;
 //  function CreateLiteral: TLiteral; inline;

@@ -19,17 +19,14 @@ begin
   TSeitinVariableUnit.Finalize;
 end;
 
-function NaiveSqrtEncoding(n: TBigInt): TEncoding;
+function NaiveSqrtEncoding(n: TBigInt): TBitVector;
 var
   nVector: TBitVector;
   v, w: TBitVector;
   v2, w2: TBitVector;
-  Lit: TLiteral;
-  Lits: TLiteralCollection;
   Circuit: TBinaryArithmeticCircuit;
 
 begin
-
   Circuit := BinaryArithmeticCircuitUnit.TBinaryArithmeticCircuit.Create;
 
   WriteLn(n.ToString);
@@ -37,28 +34,29 @@ begin
   WriteLn(nVector.ToString);
 
   v := TBitVector.Create(1 + n.Log div 2);
+  Result := v;
   w := TBitVector.Create(v.Count + 1);
   WriteLn('v = ' + v.ToString);
   WriteLn('w = ' + w.ToString);
   GetSatSolver.AddComment('v = ' + v.ToString);
   GetSatSolver.AddComment('w = ' + w.ToString);
 
-  Lits := TLiteralCollection.Create;
-  v2 := TBitVector.Create(2 * v.Count);
-  Lits.Add(Circuit.EncodeMul(v, v, v2));
-  Lits.Add(Circuit.EncodeIsLessThanOrEq(v2, nVector));
+  v2 := Circuit.EncodeMul(v, v);
+  GetSatSolver.BeginConstraint;
+  GetSatSolver.AddLiteral(Circuit.EncodeIsLessThanOrEq(v2, nVector));
+  GetSatSolver.SubmitClause;
 
   w2 := TBitVector.Create(2 * w.Count);
-  Lits.Add(Circuit.EncodeIncr(v, w));
+  w := Circuit.EncodeIncr(v);
+  w2 := Circuit.EncodeMul(w, w);
 
-  Lits.Add(Circuit.EncodeMul(w, w, w2));
-  Lits.Add(Circuit.EncodeIsLessThan(nVector, w2));
-
-  Lit := GetVariableManager.CreateVariableDescribingAND(Lits);
+  GetSatSolver.BeginConstraint;
+  GetSatSolver.AddLiteral(Circuit.EncodeIsLessThan(nVector, w2));
+  GetSatSolver.SubmitClause;
 
   Circuit.Free;
-  Lits.Free;
-  v.Free; w.Free;
+
+  w.Free;
   v2.Free; w2.Free;
 
   //Result := TEncoding.Create(Lit, V);
@@ -67,7 +65,7 @@ end;
 type
   TBitVectorList = specialize TFPGList<TBitVector>;
 
-function BinSearchSqrtEncoding(n: TBigInt): TEncoding;
+function BinSearchSqrtEncoding(n: TBigInt): TBitVector;
 (*
 while (low != high) {
     int mid = (low + high) / 2; // Or a fancy way to avoid int overflow
@@ -86,15 +84,6 @@ while (low != high) {
     }
 }
 *)
-  function Eval(v: TBitVector): TBitVector;
-  var
-    i: Integer;
-
-  begin
-    Result := V.Copy;
-    for i := 0 to v.Count - 1 do
-      Result[i] := GetValue(v[i]);
-  end;
 
 var
   Target: TBitVector;
@@ -105,6 +94,7 @@ var
   i, m: Integer;
   ArithCircuit: TBinaryArithmeticCircuit;
   LogicCircut: TBaseLogicCircuit;
+  Tmp: TBitVector;
 
 begin
   ArithCircuit := BinaryArithmeticCircuitUnit.TBinaryArithmeticCircuit.Create;
@@ -157,24 +147,18 @@ begin
 
     // Bots[i + 1] = MidPlusOnes[i] if Ls[i];
     // Bots[i + 1] = Bots[i] ow;
-    LogicCircut.ITE(Ls[i], MidPlusOnes[i], Bots[i], Bots[i + 1]);
+    Tmp := LogicCircut.EncodeITE(Ls[i], MidPlusOnes[i], Bots[i]);
+    ArithCircuit.SubmitIsEqual(Tmp, Bots[i + 1], GetVariableManager.TrueLiteral);
+    Tmp.Free;
+
     // Tops[i + 1] = Top[i] if Ls[i];
     // Tops[i + 1] = Mids[i] ow;
-    LogicCircut.ITE(Ls[i], Tops[i], Mids[i], Tops[i + 1]);
+    Tmp := LogicCircut.EncodeITE(Ls[i], Tops[i], Mids[i]);
+    ArithCircuit.SubmitIsEqual(Tmp, Tops[i + 1], GetVariableManager.TrueLiteral);
+    Tmp.Free;
   end;
 
-  Result := TEncoding.Create(GetVariableManager.TrueLiteral,
-    Mids[m]);
-
-  for i := 0 to m - 1 do
-  begin
-    WriteLn('Tops[', i, '] = ', Eval(Tops[i]).ToString);
-    WriteLn('Bots[', i, '] = ', Eval(Bots[i]).ToString);
-    WriteLn('Mids[', i, '] = ', Eval(Mids[i]).ToString);
-    WriteLn('MidPlusOnes[', i, '] = ', Eval(MidPlusOnes[i]).ToString);
-    WriteLn('FMids[', i, '] = ', Eval(FMids[i]).ToString);
-  end;
-
+  Result := Mids[m];
 
   ArithCircuit.Free;
   Target.Free;
@@ -182,7 +166,7 @@ end;
 
 var
   n: TBigInt;
-  Encoding: TEncoding;
+  Encoding: TBitVector;
 
 begin
   Initialize;
@@ -199,9 +183,7 @@ begin
     halt(1);
   end;
 
-  GetSatSolver.BeginConstraint;
-  GetSatSolver.AddLiteral(Encoding.Lit);
-  GetSatSolver.SubmitClause;
+  WriteLn(Encoding.ToString);
   GetSatSolver.Solve;
   Encoding.Free;
 
