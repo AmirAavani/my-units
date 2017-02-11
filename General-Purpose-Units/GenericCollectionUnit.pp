@@ -127,13 +127,13 @@ begin
 end;
 
 destructor TGenericCollection.Destroy;
-{var
+var
   i: Integer;
-}
+
 begin
-{  for i := 0 to Count - 1 do
+  for i := 0 to Count - 1 do
     Item[i].Free;
-}
+
   inherited Destroy;
 
 end;

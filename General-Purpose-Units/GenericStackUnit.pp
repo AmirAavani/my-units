@@ -32,6 +32,7 @@ type
 
     function Find(AValue: TData): Boolean;
     function Pop: TData;
+    procedure Clear;
 
     constructor Create;
     {
@@ -166,6 +167,12 @@ begin
 
 end;
 
+procedure TGenericStack.Clear;
+begin
+  while not IsEmpty do
+    Self.Pop;
+end;
+
 constructor TGenericStack.Create;
 begin
   inherited Create;
@@ -173,8 +180,12 @@ begin
 end;
 
 destructor TGenericStack.Destroy;
+var
+  i: Integer;
+
 begin
-  //Assert(Count = 0);
+  for i := 0 to Count - 1 do
+    Self.Pop.Free;
 
   inherited Destroy;
 end;

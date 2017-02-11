@@ -113,11 +113,10 @@ type
     }
     function CheckBit(BitIndex: Integer): Boolean;
 
-  private
+  public
     constructor Create; overload;
     constructor Create(S: PChar); overload;
     destructor Destroy; override;
-  public
 
     {
       Sets Self to the integer represented by S, and return Self
@@ -649,6 +648,7 @@ begin
   Result.SetValue(0);
   Temp1 := Self.Copy;
   Temp2 := n.Copy;
+  Temp3 := nil;
 
   while 1 <= Temp1.Length do
   begin
@@ -791,7 +791,7 @@ end;
 
 destructor TBigInt.Destroy;
 begin
-  FLength := 0;
+  FLength := -2;
   Dispose(FDigits);
   
   Inherited;
@@ -1212,7 +1212,13 @@ begin
 end;
 
 procedure Finalize;
+var
+  i: Integer;
+
 begin
+  for i := 0 to BigIntFactory.GetAllItems.Size - 1 do
+    BigIntFactory.GetAllItems[i].Free;
+
   BigIntFactory.Free;
 
 end;

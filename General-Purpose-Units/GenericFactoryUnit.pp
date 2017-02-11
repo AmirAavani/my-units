@@ -24,6 +24,7 @@ type
     constructor Create(InitialMember: Integer= 0);
     destructor Destroy; override;
 
+    function GetAllItems: TCollectionOfT;
     {
       Return an availabe member, if one exists, or create a new object of type T,
         otherwise.
@@ -62,15 +63,25 @@ begin
 end;
 
 destructor TGenericFactoy.Destroy;
+var
+  i: Integer;
+
 begin
+  for i := 0 to AllItems.Size - 1 do
+    AllItems[i].Free;
   AllItems.Free;
+  AvailableItems.Clear;
   AvailableItems.Free;
 
   inherited Destroy;
 end;
 
-function TGenericFactoy.GetNewMember: T;
+function TGenericFactoy.GetAllItems: TCollectionOfT;
+begin
+  Result := AllItems;
+end;
 
+function TGenericFactoy.GetNewMember: T;
 begin
   if not AvailableItems.IsEmpty then
   begin
@@ -78,24 +89,20 @@ begin
   end
   else
   begin
-    Result:= T.Create;
-
-//    AvailableItems.Push(T.Create);
-//    Result:= AvailableItems.Pop;
-
+    Result := T.Create;
     AllItems.PushBack(Result);
-
   end;
 
 end;
 
 function TGenericFactoy.ReleaseMember(AMember: T): Integer;
 begin
-  AMember.Reset;
-
-  assert(not AvailableItems.Find(AMember));
-
-  AvailableItems.Push(AMember);
+  if AMember <> nil then
+  begin
+    AMember.Reset;
+    assert(not AvailableItems.Find(AMember));
+    AvailableItems.Push(AMember);
+  end;
 
 end;
 

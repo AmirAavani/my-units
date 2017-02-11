@@ -30,6 +30,7 @@ type
     Second: Type2;
 
     constructor Create (F: Type1; S: Type2);
+    destructor Destroy; override;
 
   end;
 
@@ -67,6 +68,11 @@ begin
   First:= F;
   Second:= S;
 
+end;
+
+destructor TPairForBuiltInData.Destroy;
+begin
+  inherited Destroy;
 end;
 
 end.
