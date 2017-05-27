@@ -426,6 +426,13 @@ begin
   Fb := Q.x - P.x; // Qy
   Fc := -(Fa * P.x + Fb * P.y);
 
+  if Fa < 0 then
+  begin
+    Fa := -Fa;
+    Fb := -Fb;
+    Fc := -Fc;
+  end;
+
 end;
 
 destructor TLineSegment.Destroy;
@@ -506,7 +513,9 @@ function TLineSegment.ToString: AnsiString;
 begin
   Result := FloatToStr(a) + ' * x + ' +
             FloatToStr(b) + ' * y + ' +
-            FloatToStr(c) + ' = 0';
+            FloatToStr(c) + ' = 0' +
+            ' ' + P.ToString + ' ' + Q.ToString;
+
 end;
 
 end.

@@ -7,11 +7,11 @@ type
   TIntList = specialize TFPGList<Integer>;
   TAdjMartix= array of array of Boolean;
 
-  function MaximumBipartiteMatching (M: TAdjMartix; n: Integer; Left, Right: TIntList): Integer;
+  function MaximumBipartiteMatching(M: TAdjMartix; n: Integer; Left, Right: TIntList): Integer;
 
 implementation
 
-function MaximumBipartiteMatching (M: TAdjMartix; n: Integer; Left, Right: TIntList): Integer;
+function MaximumBipartiteMatching(M: TAdjMartix; n: Integer; Left, Right: TIntList): Integer;
 
 var
   Visited: array of Boolean;
@@ -58,10 +58,9 @@ begin
 
   for l := 0 to n - 1 do
   begin
-    FillChar (Visited[0], SizeOf(Visited), 0);
+    FillChar(Visited[0], SizeOf(Visited), 0);
     if FindNextDFS(l) then
-      Inc (Result);
-
+      Inc(Result);
   end;
 
 end;

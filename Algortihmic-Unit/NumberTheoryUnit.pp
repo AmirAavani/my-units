@@ -115,7 +115,6 @@ function IsPrime(n: Int64; const Primes: TIntList): Boolean;
 var
   Bot, Top, Mid: Integer;
   i: Integer;
-  p: Int64;
 
 begin
   if n < Primes.Last then
@@ -355,8 +354,8 @@ end;
 
 function ComputePhi(n: Int64; Factors: TFactorization): Int64;
 var
-  i, p: Integer;
-  a, b: Integer;
+  i: Integer;
+  a: Integer;
 
 begin
   Result := n;
@@ -364,7 +363,6 @@ begin
   for i := 0 to Factors.Count - 1 do
   begin
     a := Factors[i].Base;
-    b := Factors[i].Power;
     Result := Result div a;
     Result *= (a - 1);
   end;
@@ -505,7 +503,6 @@ begin
     System.WriteLn(Self[i].Base, '^', Self[i].Power);
 
 end;
-
 
 { TFactorizatonPair }
 
