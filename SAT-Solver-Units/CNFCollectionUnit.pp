@@ -33,13 +33,15 @@ type
     procedure SaveToFile(AnStream: TMyTextStream);
     procedure LoadFromFile(AnStream: TMyTextStream);
 
+    function GetValue(v: Integer): TGroundBool; override;
+
     procedure AddComment(const Comment: AnsiString); override;
 
   end;
 
 implementation
 uses
-  ParameterManagerUnit, TSeitinVariableUnit;
+  ParameterManagerUnit;
 
 { TCNFCollection }
 
@@ -92,10 +94,31 @@ begin
   Result := AllClauses.Copy;
 end;
 
-procedure TCNFCollection.SubmitClause; 
+procedure TCNFCollection.SubmitClause;
+var
+  i: Integer;
+  ActiveClause: TClause;
+
 begin
   if NoOfLiteralInTopConstraint[gbTrue] = 0 then
-    AllClauses.AddItem(TopConstraint.Copy);
+  begin
+    if (NoOfLiteralInTopConstraint[gbFalse] <> 0) or TopConstraint.HasDuplicate then
+    begin
+      ActiveClause := TopConstraint;
+      BeginConstraint;
+      for i := 0 to ActiveClause.Count - 1 do
+        if (not TopConstraint.Exists(ActiveClause[i])) and
+          (GetLiteralValue(ActiveClause[i]) <> gbFalse) then
+            AddLiteral(ActiveClause[i]);
+      SubmitClause;
+      AbortConstraint;
+      Exit;
+    end
+    else
+    begin
+      AllClauses.AddItem(TopConstraint.Copy);
+    end;
+  end;
 
   inherited;
 
@@ -330,7 +353,21 @@ end;
 
 procedure TCNFCollection.LoadFromFile(AnStream: TMyTextStream);
 begin
+  assert(AnStream <> nil);
+end;
 
+function TCNFCollection.GetValue(v: Integer): TGroundBool;
+begin
+  if UpperCase(ParameterManagerUnit.GetRunTimeParameterManager.ValueByName['--EnableUP']) =
+    UpperCase('True') then
+    Result := inherited GetValue(v)
+  else
+  begin
+    if v = 1 then
+      Exit(gbTrue)
+    else
+      Exit(gbUnknown);
+  end;
 end;
 
 procedure TCNFCollection.AddComment(const Comment: AnsiString);

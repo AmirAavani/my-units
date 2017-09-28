@@ -5,7 +5,7 @@ unit ClauseUnit;
 interface
 
 uses
-  Classes, SysUtils, GenericCollectionUnit, MyTypes, StreamUnit{, gvector};
+  Classes, SysUtils, GenericCollectionUnit, MyTypes, StreamUnit, fgl;
 
 type
   TGroundBool=(gbFalse= 0, gbUnknown= 1, gbTrue= 2);// TODO: Change the default Values ..
@@ -40,14 +40,16 @@ type
 
     function Copy: TLiteralCollection;
 
-    function IsExist(Lit: TLiteral): Boolean;
+    function Exists(Lit: TLiteral): Boolean;
+    function DedupeLiterals: TLiteralCollection;
+    function HasDuplicate: Boolean;
 
     procedure Reset;
   end;
 
-  TListOfLiteralCollection= specialize TGenericCollection<TLiteralCollection>;
+  TListOfLiteralCollection = specialize TGenericCollection<TLiteralCollection>;
 
-  TClause= TLiteralCollection;
+  TClause = TLiteralCollection;
   TGenericCollectionTClause= specialize TGenericCollection<TClause>;
 
   { TClauseCollection }
@@ -164,7 +166,7 @@ begin
 
 end;
 
-function TLiteralCollection.IsExist(Lit: TLiteral): Boolean;
+function TLiteralCollection.Exists(Lit: TLiteral): Boolean;
 var
   i: Integer;
 
@@ -176,6 +178,49 @@ begin
       Exit;
 
   Result:= False;
+
+end;
+
+type
+  TLiteralSet = specialize TFPGMap<Integer, Boolean>;
+
+function TLiteralCollection.DedupeLiterals: TLiteralCollection;
+var
+  LiteralSet: TLiteralSet;
+  i: Integer;
+
+begin
+  LiteralSet := TLiteralSet.Create;
+  LiteralSet.Duplicates:= dupIgnore;
+
+  for i := 0 to Count - 1 do
+    LiteralSet.Add(Item[i]);
+
+  Result := TLiteralCollection.Create;
+  for i := 0 to LiteralSet.Count - 1 do
+    Result.Add(LiteralSet.Keys[i]);
+end;
+
+function TLiteralCollection.HasDuplicate: Boolean;
+var
+  LiteralSet: TLiteralSet;
+  i: Integer;
+
+begin
+  LiteralSet := TLiteralSet.Create;
+  LiteralSet.Duplicates:= dupIgnore;
+
+  Result := False;
+  for i := 0 to Count - 1 do
+    if LiteralSet.IndexOf(Item[i]) < 0 then
+      LiteralSet.Add(Item[i])
+    else
+    begin
+      Result := True;
+      Break;
+    end;
+
+  LiteralSet.Free;
 
 end;
 

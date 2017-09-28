@@ -45,7 +45,7 @@ begin
   MaxSize := Max(a.Count, b.Count);
   Result := TBitVector.Create(MaxSize, GetVariableManager.FalseLiteral);
 
-  for i := 0 to MaxSize do
+  for i := 0 to MaxSize - 1 do
   begin
     la := a.GetBitOrDefault(i, GetVariableManager.FalseLiteral);
     lb := b.GetBitOrDefault(i, GetVariableManager.FalseLiteral);

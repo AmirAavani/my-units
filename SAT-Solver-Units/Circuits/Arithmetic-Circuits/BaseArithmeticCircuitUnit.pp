@@ -260,8 +260,10 @@ end;
 
 function TBaseArithmeticCircuit.Avg(const a, b: TBitVector): TBitVector;
 begin
-  Result  := Self.Add(a, b);
+  Result := Self.Add(a, b);
   Result.Erase(0);
+  if Result.Count = 0 then
+    Result.Add(GetVariableManager.FalseLiteral);
 end;
 
 function TBaseArithmeticCircuit.Divide(const a, b: TBitVector): TBitVector;
