@@ -9,7 +9,7 @@ uses
   Classes, SysUtils, GenericCollectionUnit;
 
 type
-  TIntList = specialize TGenericCollection<Int64>;
+  TIntList = specialize TGenericCollectionForBuiltInData<Int64>;
 
   { TCRTProblem }
 

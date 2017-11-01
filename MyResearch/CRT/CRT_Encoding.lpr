@@ -6,7 +6,7 @@ uses
   {$IFDEF UNIX}{$IFDEF UseCThreads}
   cthreads,
   {$ENDIF}{$ENDIF}
-  Classes, gvector, ParameterManagerUnit, GenericCollectionUnit,
+  Classes, gvector, ParameterManagerUnit,
   SysUtils, CRTUnit
   { you can add units after this };
 
@@ -54,6 +54,7 @@ begin
   SList.Free;
 
   Result := TCRTProblem.Create(Mis, Ais);
+
   Ais.Free;
   Mis.Free;
 

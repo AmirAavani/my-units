@@ -46,6 +46,8 @@ type
 
   generic TGenericCollectionForBuiltInData<TData>= class(specialize TVector<TData>)
   private
+    type
+      TVectorData = specialize TVector<TData>;
     function GetCount: Integer; inline;
     function GetItem(Index: Integer): TData; inline;
     procedure SetCount(AValue: Integer); virtual;
@@ -56,7 +58,7 @@ type
     property Item[Index: Integer]: TData read GetItem write SetItem;
 
     constructor Create(InitSize: Integer; InitValue: TData);
-
+    constructor Create(Vector: TVectorData);
     constructor Create;
     destructor Destroy; override;
 
@@ -209,6 +211,19 @@ begin
 
   for i := 0 to InitSize - 1 do
     Items[i] := InitValue;
+
+end;
+
+constructor TGenericCollectionForBuiltInData.Create(Vector: TVectorData);
+var
+  i: Integer;
+
+begin
+  inherited Create;
+
+  Self.Resize(Vector.Size);
+  for i := 0 to Vector.Size - 1 do
+    Self.Item[i] := Vector[i];
 
 end;
 

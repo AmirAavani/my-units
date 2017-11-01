@@ -9,57 +9,6 @@ type
 
   TCompareFunction= function (Obj1, Obj2: TObject): Boolean;
 
-{
-  TDoubleCollection= class (TObject)
-  protected
-    FMembers: array of Extended;
-    FSize: Integer;
-    
-  private
-    function GetMember (Index: Integer): Extended;
-    function GetPointerToMembers: PExtended;
-    function GetMinIndex: Integer;
-    function GetMaxIndex: Integer;
-    procedure SetMember (Index: Integer; const Value: Extended);
-
-  public
-    property Size: Integer read FSize;
-    property Member [Index: Integer]: Extended read GetMember write SetMember;
-    property PointerToMembers: PExtended read GetPointerToMembers;
-    property MinIndex: Integer read GetMinIndex;
-    property MaxIndex: Integer read GetMaxIndex;
-
-    constructor Create;
-    destructor Destroy; override;
-
-    procedure Add (Data: Extended);
-    procedure Delete (Index: Integer);
-    procedure Allocate (NewSize: Integer);
-    function GetPointerToFirst: PDouble;
-    
-  end;
-
-  TLongWordCollection= class (TBaseCollection)
-  private
-    function GetMember (Index: Integer): LongWord;
-
-  public
-    property MemberAt [Index: Integer]: LongWord read GetMember;
-
-    constructor Create;
-    destructor Destroy; override;
-
-    procedure Add (Data: LongWord); 
-    procedure Delete (Index: Integer); override;
-
-    procedure FillWithZero (Length: Integer);
-    function Min: LongWord;
-    function Max: LongWord;
-    function Avg: LongWord;
-
-  end;
-  }
-
   _TInt64Collection= specialize TGenericCollectionForBuiltInData<Int64>;
 
   { TInt64Collection }
