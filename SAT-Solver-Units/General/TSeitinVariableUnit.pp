@@ -118,15 +118,22 @@ type
   end;
 
 function GetVariableManager: TVariableManager; 
+
+function ReNewVariableManager: TVariableManager;
+function PopVariableManager: TVariableManager;
 procedure Initialize;
 procedure Finalize;
 
 implementation
 uses
-  Math, ParameterManagerUnit;
+  Math, ParameterManagerUnit, GenericStackUnit;
+
+type
+  TVariableManagerStack = specialize TGenericStack<TVariableManager>;
 
 var
   VariableManager: TVariableManager;
+  VariableManagerStack: TVariableManagerStack;
 
 function GetVariableManager: TVariableManager;
 begin
@@ -984,20 +991,43 @@ begin
 
 end;
 }
+function ReNewVariableManager: TVariableManager;
+begin
+  VariableManagerStack.Push(VariableManager);
+  VariableManager := TVariableManager.Create;
+  Result := VariableManager;
+end;
+
+function PopVariableManager: TVariableManager;
+begin
+  VariableManager.Free;
+
+  VariableManager := VariableManagerStack.Pop;
+
+  Result := VariableManager;
+
+end;
 
 procedure Initialize;
 begin
+
   VariableManager := TVariableManager.Create;
 
 end;
 
 procedure Finalize;
 begin
+  if VariableManagerStack.Count <> 0 then
+    WriteLn('Error in SatSolverStack');
+
   GetVariableManager.Free;
 
 end;
 
-finalization
+initialization
+  VariableManagerStack := TVariableManagerStack.Create;
 
+finalization
+  VariableManagerStack.Free;
 end.
 

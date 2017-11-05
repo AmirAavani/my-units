@@ -1,7 +1,7 @@
 unit SatSolverInterfaceUnit;
 
 {$mode objfpc}{$H+}
-//{$Assertions on}
+{$Assertions on}
 interface
 
 uses
@@ -39,11 +39,12 @@ type
     FVarCount: Int64;
     FClauseCount: Int64;
     FSolverResult: TSolverResult;
+    property Stack: TStackOfClauses read FClausesStack;
+
 
     function GetVarCount: Int64; virtual; 
     function GetClauseCount: Int64; virtual;
     function GetCNF: TClauseCollection; virtual; 
-    property Stack: TStackOfClauses read FClausesStack;
 
     procedure SyncInteractiveUPInfo; virtual;
     procedure SubmitContradiction; virtual;
@@ -121,7 +122,7 @@ var
 
 function GetSatSolver: TSATSolverInterface; inline;
 begin
-  Result:= SatSolver;
+  Result := SatSolver;
 
 end;
 
@@ -166,8 +167,6 @@ end;
 
 procedure Initialize;
 begin
-  SatSolverStack := TSatSolverStack.Create;
-
   if UpperCase(GetRunTimeParameterManager.GetValueByName('--SatSolverType'))= UpperCase('CNFCollection') then
   begin
     SatSolver:= TCNFCollection.Create;
@@ -325,7 +324,17 @@ begin
   end
   else
   begin
-    if TopConstraint.Count = 0 then
+    if TopConstraint.HasDuplicate then
+    begin
+      ActiveClause := TopConstraint;
+      BeginConstraint;
+      for i := 0 to ActiveClause.Count - 1 do
+        if not TopConstraint.Exists(ActiveClause[i]) then
+          AddLiteral(ActiveClause[i]);
+      Result := Self.GenerateAndGate;
+      AbortConstraint;
+    end
+    else if TopConstraint.Count = 0 then
     begin
       Result := GetVariableManager.TrueLiteral;
       AbortConstraint;
@@ -378,7 +387,17 @@ begin
   end
   else
   begin
-    if TopConstraint.Count = 0 then
+    if TopConstraint.HasDuplicate then
+    begin
+      ActiveClause := TopConstraint;
+      BeginConstraint;
+      for i := 0 to ActiveClause.Count - 1 do
+        if not TopConstraint.Exists(ActiveClause[i]) then
+          AddLiteral(ActiveClause[i]);
+      Result := Self.GenerateOrGate;
+      AbortConstraint;
+    end
+    else if TopConstraint.Count = 0 then
     begin
       Result := GetVariableManager.TrueLiteral;
       AbortConstraint;
@@ -404,7 +423,7 @@ begin
           if GetLiteralValue(ActiveClause[i]) = gbUnknown then
             AddLiteral(ActiveClause[i])
           else
-            assert(GetLiteralValue(ActiveClause[i]) = gbTrue);
+            assert(GetLiteralValue(ActiveClause[i]) = gbFalse);
 
         Result := Self.GenerateOrGate;
         AbortConstraint;
@@ -548,12 +567,11 @@ var
   Pair: TClauseNoOfLiteralsPair;
 
 begin
-  if Stack.Count > 0 then
+  if 0 < Stack.Count then
   begin
     Pair:= Stack.Pop;
 
     Pair.First.Free;
-    _FTopConstraint:= Pair.First;
     _FTopConstraint := nil;
     Pair.Free;
 
@@ -561,7 +579,7 @@ begin
   else
     raise Exception.Create('Stack is empty!');
 
-  if Stack.Count > 0 then
+  if 0 < Stack.Count then
   begin
     Pair:= Stack.Top;
     _FTopConstraint:= Pair.First;
@@ -585,7 +603,7 @@ begin
 
   TopConstraint.PushBack(Lit);
 
-  LiteralValue:= GetLiteralValue(Lit);
+  LiteralValue := GetLiteralValue(Lit);
 
   case LiteralValue of
     gbTrue: Inc(FNoOfLiteralInTopConstraint.TrueCount);
@@ -652,32 +670,46 @@ var
 begin
 //  AddComment('And ' + TopConstraint.ToString + ' = ' + LiteralToString(p));
 
-  pV:= GetValue(GetVar(p));
-  ActiveClause:= TopConstraint;
+  pV := GetLiteralValue(p);
+  ActiveClause := TopConstraint;
 
   case Pv of
    gbFalse:
    begin
      if NoOfLiteralInTopConstraint[gbTrue] = TopConstraint.Count then // Contradictoin
      begin
+       WriteLn('[SubmitAndGate]: UNchecked Path 0');
        SubmitContradiction;
+       AbortConstraint;
        Exit;
      end
      else if NoOfLiteralInTopConstraint[gbFalse] <> 0 then
+     begin
+       WriteLn('[SubmitAndGate]: UNchecked Path 1');
+       AbortConstraint;
        Exit;
+     end;
 
+     WriteLn('[SubmitAndGate]: UNchecked Path 2');
    //\lnot l_1\lor \lnor l_2 \lor \cdots \lor \lnot l_n
+     BeginConstraint;
      for i:= 0 to ActiveClause.Count - 1 do
-       ActiveClause.Items[i]:= NegateLiteral(ActiveClause.Items[i]);
+       AddLiteral(NegateLiteral(ActiveClause.Items[i]));
      SubmitClause;
    end;
    gbTrue:
    begin
      if NoOfLiteralInTopConstraint[gbTrue] = TopConstraint.Count then
+     begin
+       WriteLn('[SubmitAndGate]: UNchecked Path 3');
+       AbortConstraint;
        Exit
+     end
      else if NoOfLiteralInTopConstraint[gbFalse] <> 0 then
      begin
+       WriteLn('[SubmitAndGate]: UNchecked Path 4');
        SubmitContradiction;
+       AbortConstraint;
        Exit;
      end;
 
@@ -695,34 +727,37 @@ begin
    begin
      if NoOfLiteralInTopConstraint[gbTrue] = TopConstraint.Count then
      begin
+       WriteLn('[SubmitAndGate]: UNchecked Path 6');
        BeginConstraint;
        AddLiteral(p);
        SubmitClause;
-       Exit;
      end
      else if NoOfLiteralInTopConstraint[gbFalse] <> 0 then
      begin
+       WriteLn('[SubmitAndGate]: UNchecked Path 7');
        BeginConstraint;
        AddLiteral(NegateLiteral(p));
        SubmitClause;
-       Exit;
-     end;
-
-     BeginConstraint;
-     for i := 0 to ActiveClause.Count - 1 do
+     end
+     else
      begin
        BeginConstraint;
+       for i := 0 to ActiveClause.Count - 1 do
+       begin
+         BeginConstraint;
 
-       AddLiteral(ActiveClause.Items[i]);
-       AddLiteral(NegateLiteral(p));
+         AddLiteral(ActiveClause.Items[i]);
+         AddLiteral(NegateLiteral(p));
+         SubmitClause;
+
+         lit  := ActiveClause.Item[i];
+         AddLiteral(NegateLiteral(lit));
+
+       end;
+       AddLiteral(p);
        SubmitClause;
 
-       lit  := ActiveClause.Item[i];
-       AddLiteral(NegateLiteral(lit));
-
      end;
-     AddLiteral(p);
-     SubmitClause;
 
      AbortConstraint;
    end;
@@ -757,6 +792,7 @@ begin
    begin
      if 0 < NoOfLiteralInTopConstraint[gbTrue] then//Contradiction
      begin
+       WriteLn('[SubmitOrGate]: UNchecked Path 0');
        BeginConstraint;
        AddLiteral(p);
        SubmitClause;
@@ -766,6 +802,7 @@ begin
 
      end;
 
+     WriteLn('[SubmitOrGate]: UNchecked Path 1');
     //\lnot l_1\land \lnot l_2 \land \cdots \land \lnot \l_n
      BeginConstraint;
      for i := 0 to ActiveClause.Count- 1 do
@@ -773,13 +810,13 @@ begin
      SubmitClause;
 
      AbortConstraint;
-
    end;
 
    gbTrue:
    begin
      if ActiveClause.Count = NoOfLiteralInTopConstraint[gbFalse] then//Contradiction
      begin
+       WriteLn('[SubmitOrGate]: UNchecked Path 2');
        BeginConstraint;
        AddLiteral(NegateLiteral(p));
        SubmitClause;
@@ -789,7 +826,7 @@ begin
 
      end;
 
-
+     WriteLn('[SubmitOrGate]: UNchecked Path 3');
    //l_1\lor l_2 \lor \cdots \lor l_n
      SubmitClause;
 
@@ -797,8 +834,10 @@ begin
 
    gbUnknown:
    begin
-     if 0< NoOfLiteralInTopConstraint[gbTrue] then
+     if 0 < NoOfLiteralInTopConstraint[gbTrue] then
      begin
+       WriteLn('[SubmitOrGate]: UNchecked Path 4');
+
        BeginConstraint;
        AddLiteral(p);
        SubmitClause;
@@ -809,6 +848,7 @@ begin
 
      if ActiveClause.Count = NoOfLiteralInTopConstraint[gbFalse] then
      begin
+       WriteLn('[SubmitOrGate]: UNchecked Path 5');
        BeginConstraint;
        AddLiteral(NegateLiteral(p));
        SubmitClause;
@@ -982,7 +1022,6 @@ begin
     else
       AddLiteral(b);
 
-
     if i in [0, 3] then
       AddLiteral(p)
     else
@@ -1055,9 +1094,8 @@ end;
 
 destructor TSATSolverInterface.Destroy;
 begin
-  if CStack.Count <> 0 then
+  if Stack.Count <> 0 then
     WriteLn('TSATSolverInterface.Destroy: CStack.Count =', CStack.Count);
-
   Assert(Stack.Count = 0);
   FClausesStack.Free;
 
@@ -1091,13 +1129,14 @@ begin
     WriteLn('Error in SatSolverStack');
 
   GetSatSolver.Free;
-  SatSolverStack.Free;
 
 end;
 
 initialization
+  SatSolverStack := TSatSolverStack.Create;
+
 
 finalization
-
+  SatSolverStack.Free;
 end.
 

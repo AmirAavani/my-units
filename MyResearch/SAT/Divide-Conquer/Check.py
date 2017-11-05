@@ -23,16 +23,18 @@ def Eval(data, vector):
 
 def main():
   ans_filename = sys.argv[1]
-  vector = sys.argv[2]
-  vector = vector[1:-2]
-  
   data = ''
   with open (ans_filename, "r") as ans_file:
     data = ans_file.readlines()[1]
   data = data.split(' ')
-  
-  vector = vector.split(',')
-  print(vector)
-  print(Eval(data, vector));
+ 
+  for i in range(len(sys.argv) - 2):
+    print(i)
+    vector = sys.argv[i + 2]
+    vector = vector[1:-2]
+    
+    vector = vector.split(',')
+#    print(vector)
+    print(Eval(data, vector));
 
 if  __name__ =='__main__':main()

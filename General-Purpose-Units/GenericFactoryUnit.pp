@@ -5,7 +5,7 @@ unit GenericFactoryUnit;
 interface
 
 uses
-  Classes, SysUtils, GenericStackUnit, gvector;
+  Classes, SysUtils, GenericStackUnit, GenericCollectionUnit;
 
 type
   { TGenericFactoy }
@@ -14,14 +14,14 @@ type
   private
     type
       TStackOfT= specialize TGenericStack<T>;
-      TCollectionOfT= specialize TVector<T>;
+      TCollectionOfT= specialize TGenericCollection<T>;
 
     var
       AvailableItems: TStackOfT;
       AllItems: TCollectionOfT;
 
   public
-    constructor Create(InitialMember: Integer= 0);
+    constructor Create(InitialMember: Integer = 0);
     destructor Destroy; override;
 
     function GetAllItems: TCollectionOfT;
@@ -67,8 +67,7 @@ var
   i: Integer;
 
 begin
-  for i := 0 to AllItems.Size - 1 do
-    AllItems[i].Free;
+  AllItems.Clear;
   AllItems.Free;
   AvailableItems.Clear;
   AvailableItems.Free;
@@ -85,7 +84,7 @@ function TGenericFactoy.GetNewMember: T;
 begin
   if not AvailableItems.IsEmpty then
   begin
-    Result:= AvailableItems.Pop;
+    Result := AvailableItems.Pop;
   end
   else
   begin
