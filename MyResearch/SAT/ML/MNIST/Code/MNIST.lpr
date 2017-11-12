@@ -6,7 +6,7 @@ uses
   {$IFDEF UNIX}{$IFDEF UseCThreads}
   cthreads,
   {$ENDIF}{$ENDIF}
-  Classes, ParameterManagerUnit, StreamUnit, WideStringUnit, MNISTUnit,
+  Classes, ParameterManagerUnit, MNISTUnit,
   sysutils;
 var
   TrainImages, TestImages: TMNISTImages;
@@ -27,8 +27,14 @@ begin
 
   TrainImages := TMNISTImages.Create(TrainLStream, TrainIStream,
     StrToInt(GetRunTimeParameterManager.ValueByName['--TrainImageCount']));
+  TestImages := TMNISTImages.Create(TestLStream, TestIStream,
+    StrToInt(GetRunTimeParameterManager.ValueByName['--TestImageCount']));
 
   TrainLStream.Free; TrainIStream.Free;
+  TestIStream.Free; TestLStream.Free;
+
+  TrainImages.Free;
+  TestImages.Free;
 
 end.
 

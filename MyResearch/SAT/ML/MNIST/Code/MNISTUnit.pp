@@ -46,7 +46,8 @@ const
   MNISTImageWidth: Integer = 28;
 
 implementation
-
+uses
+  math;
 { TMNISTImages }
 
 constructor TMNISTImages.Create(LabelStream, ImageStream: TStream;
@@ -61,8 +62,8 @@ var
 begin
   inherited Create;
 
-  ImageDataStream := TMyBinStream.Create(ImageStream, True);
-  LabelDataStream := TMyBinStream.Create(LabelStream, True);
+  ImageDataStream := TMyBinStream.Create(ImageStream, False);
+  LabelDataStream := TMyBinStream.Create(LabelStream, False);
 
   Assert(ImageDataStream.ReadInt = 2051, 'Invalid Magic number');
   NumImages:= ImageDataStream.ReadInt;
@@ -72,17 +73,29 @@ begin
   Assert(LabelDataStream.ReadInt = 2049, 'Invalid Magic number');
   Assert(LabelDataStream.ReadInt = NumImages,
     'Invalid number of images in label file');
-  for i := 1 to NumImages do
+
+  for i := 1 to IfThen(ImageCount = -1, NumImages, ImageCount) do
   begin
     ImageLabel := LabelDataStream.ReadByte;
     Assert((0 <=ImageLabel) and (ImageLabel < 10),
       'Invalid label in label file');
     Image := TMNISTImage.Create(ImageDataStream, ImageLabel);
+    Self.Add(Image);
   end;
+
+  ImageDataStream.Free;
+  LabelDataStream.Free;
 end;
 
 destructor TMNISTImages.Destroy;
+var
+  i: Integer;
+
 begin
+
+  for i := 0 to Self.Count - 1 do
+    Self[i].Free;
+
   inherited Destroy;
 end;
 
