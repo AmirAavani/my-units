@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CONFIG>
+  <ProjectOptions>
+    <Version Value="10"/>
+    <General>
+      <Flags>
+        <MainUnitHasCreateFormStatements Value="False"/>
+        <MainUnitHasTitleStatement Value="False"/>
+        <MainUnitHasScaledStatement Value="False"/>
+      </Flags>
+      <SessionStorage Value="InProjectDir"/>
+      <MainUnit Value="0"/>
+      <Title Value="MNIST"/>
+      <UseAppBundle Value="False"/>
+      <ResourceType Value="res"/>
+    </General>
+    <BuildModes Count="1">
+      <Item1 Name="Default" Default="True"/>
+    </BuildModes>
+    <PublishOptions>
+      <Version Value="2"/>
+    </PublishOptions>
+    <RunParams>
+      <local>
+        <FormatVersion Value="1"/>
+        <CommandLineParams Value="--ImageTrainFile  /home/rima/GDrive/Shamloo/Mine/Academia/New-Research/SAT/ML/MNIST/my-units/MyResearch/SAT/ML/MNIST/DataSet/train-images-idx3-ubyte --LabelTrainFile  /home/rima/GDrive/Shamloo/Mine/Academia/New-Research/SAT/ML/MNIST/my-units/MyResearch/SAT/ML/MNIST/DataSet/train-labels-idx1-ubyte --ImageTestFile  /home/rima/GDrive/Shamloo/Mine/Academia/New-Research/SAT/ML/MNIST/my-units/MyResearch/SAT/ML/MNIST/DataSet/t10k-images-idx3-ubyte --LabelTestFile  /home/rima/GDrive/Shamloo/Mine/Academia/New-Research/SAT/ML/MNIST/my-units/MyResearch/SAT/ML/MNIST/DataSet/t10k-labels-idx1-ubyte  --TrainImageCount 3000 --TestImageCount 1000"/>
+      </local>
+    </RunParams>
+    <Units Count="6">
+      <Unit0>
+        <Filename Value="MNIST.lpr"/>
+        <IsPartOfProject Value="True"/>
+      </Unit0>
+      <Unit1>
+        <Filename Value="../../../../../General-Purpose-Units/ParameterManagerUnit.pp"/>
+        <IsPartOfProject Value="True"/>
+      </Unit1>
+      <Unit2>
+        <Filename Value="ValidArguments.inc"/>
+        <IsPartOfProject Value="True"/>
+      </Unit2>
+      <Unit3>
+        <Filename Value="MNISTUnit.pp"/>
+        <IsPartOfProject Value="True"/>
+      </Unit3>
+      <Unit4>
+        <Filename Value="../../../../../General-Purpose-Units/StreamUnit.pas"/>
+        <IsPartOfProject Value="True"/>
+      </Unit4>
+      <Unit5>
+        <Filename Value="../../../../../Unicode-Functions/WideStringUnit.pas"/>
+        <IsPartOfProject Value="True"/>
+      </Unit5>
+    </Units>
+  </ProjectOptions>
+  <CompilerOptions>
+    <Version Value="11"/>
+    <Target>
+      <Filename Value="MNIST"/>
+    </Target>
+    <SearchPaths>
+      <IncludeFiles Value="$(ProjOutDir)"/>
+      <OtherUnitFiles Value="../../../../../General-Purpose-Units;../../../../../Unicode-Functions"/>
+      <UnitOutputDirectory Value="lib/$(TargetCPU)-$(TargetOS)"/>
+    </SearchPaths>
+  </CompilerOptions>
+  <Debugging>
+    <Exceptions Count="4">
+      <Item1>
+        <Name Value="EAbort"/>
+      </Item1>
+      <Item2>
+        <Name Value="ECodetoolError"/>
+      </Item2>
+      <Item3>
+        <Name Value="EFOpenError"/>
+      </Item3>
+      <Item4>
+        <Name Value="ENameNotFound"/>
+      </Item4>
+    </Exceptions>
+  </Debugging>
+</CONFIG>
