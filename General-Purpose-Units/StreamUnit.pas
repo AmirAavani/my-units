@@ -90,18 +90,21 @@ type
 
   TMyBinStream= class (TObject)
   private
+    FDeleteInputStream: Boolean;
     FTargerStream: TStream;
 
   public
     function ReadCh: Char;
     function ReadInt: Integer;
+    function ReadByte: Byte;
     function ReadStr: AnsiString;
 
     procedure WriteChar (const Ch: Char);
     procedure WriteInt (const n: Integer);
     procedure WriteStr (const S: AnsiString);
 
-    constructor Create (AnStream: TStream);
+    constructor Create (AnStream: TStream; DeleteInputStream: Boolean= False);
+    destructor Destroy; override;
 
   end;
 
@@ -364,48 +367,70 @@ end;
 
 function TMyBinStream.ReadCh: Char;
 begin
-  FTargerStream.Read (Result, 1);
+  FTargerStream.Read(Result, 1);
 
 end;
 
 function TMyBinStream.ReadInt: Integer;
+var
+  Data: array[0..3] of Byte;
+  i: Integer;
 begin
-  FTargerStream.Read (Result, 4);
+  FTargerStream.ReadBuffer(Data, 4);
+  Result := 0;
+  for i := 0 to 3 do
+  begin
+    Result := Result shl 8;
+    Result := (Result or Data[i]);
+  end;
+end;
 
+function TMyBinStream.ReadByte: Byte;
+begin
+  FTargerStream.Read (Result, 1);
 end;
 
 function TMyBinStream.ReadStr: AnsiString;
 begin
   Result:= '';
-  raise Exception.Create ('Not Implemented Yet!');
+  raise Exception.Create('Not Implemented Yet!');
 
 end;
 
-procedure TMyBinStream.WriteChar (const Ch: Char);
+procedure TMyBinStream.WriteChar(const Ch: Char);
 begin
-  FTargerStream.Write (Ch, 1);
+  FTargerStream.Write(Ch, 1);
 
 end;
 
-procedure TMyBinStream.WriteInt (const n: Integer);
+procedure TMyBinStream.WriteInt(const n: Integer);
 begin
-  FTargerStream.Write (n, 4);
+  FTargerStream.Write(n, 4);
 
 
 end;
 
-procedure TMyBinStream.WriteStr (const S: AnsiString);
+procedure TMyBinStream.WriteStr(const S: AnsiString);
 begin
-  raise Exception.Create ('Not Implemented Yet!');
+  raise Exception.Create('Not Implemented Yet!');
 
 end;
 
-constructor TMyBinStream.Create (AnStream: TStream);
+constructor TMyBinStream.Create(AnStream: TStream; DeleteInputStream: Boolean);
 begin
   inherited Create;
 
   FTargerStream:= AnStream;
+  FDeleteInputStream := DeleteInputStream;
 
+end;
+
+destructor TMyBinStream.Destroy;
+begin
+  if FDeleteInputStream then
+    FTargerStream.Free;
+
+  inherited Destroy;
 end;
 
 end.
