@@ -63,6 +63,7 @@ type
     function ToString: AnsiString; override;
 
     procedure Load(Stream: TMyTextStream);
+    procedure Save(Stream: TMyTextStream);
 
   end;
 
@@ -367,6 +368,39 @@ begin
     Stream.ReadLine;
 
     Self.AddItem(ActiveClause);
+
+  end;
+
+end;
+
+procedure TClauseCollection.Save(Stream: TMyTextStream);
+var
+  S: AnsiString;
+  ActiveClause: TClause;
+  n: Integer;
+  Lit, MaxLit: TLiteral;
+  i, j: Integer;
+
+begin
+  for i := 0 to Self.Count - 1 do
+    for j := 0 to Item[i].Count - 1 do
+      if Maxlit < Self[i][j] then
+        MaxLit := Self[i][j];
+  Stream.WriteLine('p cnf ' + IntToStr(Self.Count) + ' ' + IntToStr(GetVar(MaxLit) + 1));
+
+  for i := 0 to Self.Count - 1 do
+  begin
+    ActiveClause:= Self[i];
+
+    if ActiveClause.Count <> 0 then
+      Stream.WriteStr(LiteralToString(ActiveClause[0]));
+
+    for j := 1 to ActiveClause.Count - 1 do
+    begin
+      Stream.WriteStr(' ');
+      Stream.WriteStr(LiteralToString(ActiveClause[j]));
+    end;
+    Stream.WriteLine('');
 
   end;
 

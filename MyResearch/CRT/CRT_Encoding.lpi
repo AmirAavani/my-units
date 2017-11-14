@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <CONFIG>
   <ProjectOptions>
-    <Version Value="9"/>
+    <Version Value="10"/>
     <General>
       <Flags>
         <MainUnitHasCreateFormStatements Value="False"/>
@@ -13,6 +13,9 @@
       <UseAppBundle Value="False"/>
       <ResourceType Value="res"/>
     </General>
+    <VersionInfo>
+      <StringTable ProductVersion="0.0.0.0"/>
+    </VersionInfo>
     <BuildModes Count="1">
       <Item1 Name="Default" Default="True"/>
     </BuildModes>
@@ -22,10 +25,10 @@
     <RunParams>
       <local>
         <FormatVersion Value="1"/>
-        <CommandLineParams Value="Ai 12,15,3,2 Mi 15,17,19,23"/>
+        <CommandLineParams Value="--Ai 12,15,3,2 --Mi 15,17,19,23"/>
       </local>
     </RunParams>
-    <Units Count="5">
+    <Units Count="12">
       <Unit0>
         <Filename Value="CRT_Encoding.lpr"/>
         <IsPartOfProject Value="True"/>
@@ -46,6 +49,34 @@
         <Filename Value="../../SAT-Solver-Units/Encodings/CRT/CRTUnit.pp"/>
         <IsPartOfProject Value="True"/>
       </Unit4>
+      <Unit5>
+        <Filename Value="../../SAT-Solver-Units/Encodings/BaseConstraintUnit.pp"/>
+        <IsPartOfProject Value="True"/>
+      </Unit5>
+      <Unit6>
+        <Filename Value="../../SAT-Solver-Units/Encodings/BaseEncoderUnit.pp"/>
+        <IsPartOfProject Value="True"/>
+      </Unit6>
+      <Unit7>
+        <Filename Value="../../SAT-Solver-Units/General/ClauseUnit.pp"/>
+        <IsPartOfProject Value="True"/>
+      </Unit7>
+      <Unit8>
+        <Filename Value="../../Unicode-Functions/WideStringUnit.pas"/>
+        <IsPartOfProject Value="True"/>
+      </Unit8>
+      <Unit9>
+        <Filename Value="../../SAT-Solver-Units/SatSolverInterfaceUnit.pp"/>
+        <IsPartOfProject Value="True"/>
+      </Unit9>
+      <Unit10>
+        <Filename Value="../../SAT-Solver-Units/MiniSAT/MiniSatSolverInterfaceUnit.pp"/>
+        <IsPartOfProject Value="True"/>
+      </Unit10>
+      <Unit11>
+        <Filename Value="../../Algortihmic-Unit/NumberTheoryUnit.pp"/>
+        <IsPartOfProject Value="True"/>
+      </Unit11>
     </Units>
   </ProjectOptions>
   <CompilerOptions>
@@ -55,12 +86,12 @@
     </Target>
     <SearchPaths>
       <IncludeFiles Value="$(ProjOutDir)"/>
-      <OtherUnitFiles Value="../../General-Purpose-Units;/home/rima/Mine/FPC/fpc/packages/fcl-stl/src/;../../SAT-Solver-Units/Encodings/CRT"/>
+      <OtherUnitFiles Value="../../General-Purpose-Units;/home/rima/Mine/FPC/fpc/packages/fcl-stl/src/;../../SAT-Solver-Units/Encodings/CRT;../../SAT-Solver-Units/Encodings;../../SAT-Solver-Units/General;../../Unicode-Functions;../../SAT-Solver-Units;../../SAT-Solver-Units/MiniSAT;../../Algortihmic-Unit"/>
       <UnitOutputDirectory Value="lib/$(TargetCPU)-$(TargetOS)"/>
     </SearchPaths>
   </CompilerOptions>
   <Debugging>
-    <Exceptions Count="3">
+    <Exceptions Count="4">
       <Item1>
         <Name Value="EAbort"/>
       </Item1>
@@ -70,6 +101,9 @@
       <Item3>
         <Name Value="EFOpenError"/>
       </Item3>
+      <Item4>
+        <Name Value="ENameNotFound"/>
+      </Item4>
     </Exceptions>
   </Debugging>
 </CONFIG>

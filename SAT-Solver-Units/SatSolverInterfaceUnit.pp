@@ -1134,9 +1134,10 @@ end;
 
 initialization
   SatSolverStack := TSatSolverStack.Create;
-
+  Initialize;
 
 finalization
+  Finalize;
   SatSolverStack.Free;
 end.
 

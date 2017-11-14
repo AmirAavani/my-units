@@ -50,12 +50,14 @@ type
       TVectorData = specialize TVector<TData>;
     function GetCount: Integer; inline;
     function GetItem(Index: Integer): TData; inline;
+    function GetLast: TData;
     procedure SetCount(AValue: Integer); virtual;
     procedure SetItem(Index: Integer; const AValue: TData); inline;
 
   public
     property Count: Integer read GetCount write SetCount;
     property Item[Index: Integer]: TData read GetItem write SetItem;
+    property Last: TData read GetLast;
 
     constructor Create(InitSize: Integer; InitValue: TData);
     constructor Create(Vector: TVectorData);
@@ -66,13 +68,9 @@ type
     procedure Add(NewItem: TData); inline;
     procedure AddAnotherCollection(AnotherCollection: TGenericCollectionForBuiltInData);
 
-    {
-      Deletes the Index-th item from the list and return it.
-    }
+    { Deletes the Index-th item from the list and return it. }
     function Delete(Index: Integer): TData;
-    {
-      Set Count to 0.
-    }
+    { Set Count to 0.}
     procedure Clear;
   end;
 
@@ -185,6 +183,11 @@ function TGenericCollectionForBuiltInData.GetItem(Index: Integer): TData;
 begin
   Result := Items[Index];
 
+end;
+
+function TGenericCollectionForBuiltInData.GetLast: TData;
+begin
+  Result := Back;
 end;
 
 procedure TGenericCollectionForBuiltInData.SetCount(AValue: Integer);

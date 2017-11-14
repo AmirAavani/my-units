@@ -5,7 +5,7 @@ unit BaseEncoderUnit;
 interface
 
 uses
-  Classes, SysUtils, ClauseUnit, BaseProblemUnit;
+  Classes, SysUtils, ClauseUnit, BaseConstraintUnit;
 
 type
 
@@ -38,8 +38,8 @@ type
     {
       Result.Clauses |- (Result.lit <=> Problem).
     }
-    function Encode(Problem: TBaseProblem): TEncoding; virtual; abstract;
-    function GetEncoder(const EncoderName: AnsiString): TBaseEncoder; virtual; abstract;
+    function Encode(Problem: TBaseConstraint): TEncoding; virtual; abstract;
+    class function GetEncoder(const EncoderName: AnsiString): TBaseEncoder; virtual; abstract;
   end;
 
 implementation

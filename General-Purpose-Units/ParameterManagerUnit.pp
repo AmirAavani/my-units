@@ -189,7 +189,9 @@ end;
 
 initialization
   RunTimeParameterManager := nil;
+  Initialize;
 
-
+finalization
+  Finalize;
 end.
 

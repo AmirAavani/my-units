@@ -6,23 +6,24 @@ uses
   {$IFDEF UNIX}{$IFDEF UseCThreads}
   cthreads,
   {$ENDIF}{$ENDIF}
-  Classes, gvector, ParameterManagerUnit,
-  SysUtils, CRTUnit
+  Classes, gvector, ParameterManagerUnit, WideStringUnit, SysUtils, CRTUnit,
+  BaseEncoderUnit, BaseConstraintUnit, ClauseUnit, SatSolverInterfaceUnit,
+  MiniSatSolverInterfaceUnit, CRTEncoderUnit, StreamUnit, NumberTheoryUnit
   { you can add units after this };
 
 procedure Initialize;
 begin
-  ParameterManagerUnit.Initialize;
+  //ParameterManagerUnit.Initialize;
 
 end;
 
 procedure Finalize;
 begin
 
-  ParameterManagerUnit.Initialize;
+  //ParameterManagerUnit.Finalize;
 end;
 
-function CreateProblemInstance: TCRTProblem;
+function CreateProblemInstance: TCRTConstraint;
   function ToIntList(sList: TStringList): TIntList;
   var
     i: Integer;
@@ -34,26 +35,44 @@ function CreateProblemInstance: TCRTProblem;
   end;
 
 var
+  i, j: Integer;
   Ais, Mis: TIntList;
   SList: TStringList;
+  Error: Boolean;
 
 begin
   SList := TStringList.Create;
   SList.Delimiter := ',';
   sList.StrictDelimiter := True;
-  SList.DelimitedText := GetRunTimeParameterManager.ValueByName['Ai'];
+  SList.DelimitedText := GetRunTimeParameterManager.ValueByName['--Ai'];
 
   Ais := ToIntList(SList);
 
   SList.Clear;
   SList.Delimiter := ',';
   sList.StrictDelimiter := True;
-  SList.DelimitedText := GetRunTimeParameterManager.ValueByName['Mi'];
+  SList.DelimitedText := GetRunTimeParameterManager.ValueByName['--Mi'];
   Mis := ToIntList(SList);
 
   SList.Free;
 
-  Result := TCRTProblem.Create(Mis, Ais);
+  Error := False;
+  for i := 0 to Mis.Count - 1 do
+    for j := i + 1 to Mis.Count - 1 do
+      if gcd(Mis[i], Mis[j]) <> 1 then
+      begin
+        Error := True;
+        Break;
+      end;
+
+  if Error then
+  begin
+    Ais.Free;
+    Mis.Free;
+    Exit(nil);
+  end;
+
+  Result := TCRTConstraint.Create(Mis, Ais);
 
   Ais.Free;
   Mis.Free;
@@ -61,13 +80,33 @@ begin
 end;
 
 var
-  CRTProblem: TCRTProblem;
+  CRTProblem: TCRTConstraint;
+  CRTEncoder: TBaseEncoder;
+  Encoding: TEncoding;
+  OutputCNF: TMyTextStream;
 
 begin
   Initialize;
 
   CRTProblem := CreateProblemInstance;
+  if CRTProblem = nil then
+  begin
+    WriteLn('Some Errors in problem specification');
+    Halt(1);
+  end;
   WriteLn(CRTProblem.ToString);
+
+  CRTEncoder := TBaseCRTEncoder.GetEncoder(GetRunTimeParameterManager.ValueByName['--Encoder']);
+  Encoding := CRTEncoder.Encode(CRTProblem);
+
+  OutputCNF := TMyTextStream.Create(TFileStream.Create(GetRunTimeParameterManager.ValueByName['--CNFOutput'], fmCreate));
+
+  WriteLn(Encoding.Output.ToString);
+  Encoding.Clauses.Save(OutputCNF);
+
+  OutputCNF.Free;
+  CRTEncoder.Free;
+  CRTProblem.Free;
 
   Finalize;
 end.

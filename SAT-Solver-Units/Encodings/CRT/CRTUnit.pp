@@ -6,14 +6,14 @@ unit CRTUnit;
 interface
 
 uses
-  Classes, SysUtils, GenericCollectionUnit;
+  Classes, SysUtils, GenericCollectionUnit, BaseConstraintUnit;
 
 type
   TIntList = specialize TGenericCollectionForBuiltInData<Int64>;
 
   { TCRTProblem }
 
-  TCRTProblem = class(TObject)
+  TCRTConstraint = class(TBaseConstraint)
   private
     function GetAi(Index: Integer): Integer;
     function GetMi(Index: Integer): Integer;
@@ -35,28 +35,30 @@ type
   end;
 
 implementation
+uses
+  NumberTheoryUnit;
 
 { TCRTProblem }
 
-function TCRTProblem.GetAi(Index: Integer): Integer;
+function TCRTConstraint.GetAi(Index: Integer): Integer;
 begin
   Result := FAi[Index];
 
 end;
 
-function TCRTProblem.GetMi(Index: Integer): Integer;
+function TCRTConstraint.GetMi(Index: Integer): Integer;
 begin
   Result := FModulos[Index];
 
 end;
 
-function TCRTProblem.GetN: Integer;
+function TCRTConstraint.GetN: Integer;
 begin
   Result := FAI.Count;
 
 end;
 
-constructor TCRTProblem.Create(Mis, Ais: TIntList);
+constructor TCRTConstraint.Create(Mis, Ais: TIntList);
 begin
   inherited Create;
   Assert(Mis.Count = Ais.Count);
@@ -65,7 +67,7 @@ begin
   FAi := TIntList.Create(Ais);
 end;
 
-destructor TCRTProblem.Destroy;
+destructor TCRTConstraint.Destroy;
 begin
   FAi.Free;
   FModulos.Free;
@@ -73,13 +75,13 @@ begin
   inherited Destroy;
 end;
 
-function TCRTProblem.ToString: AnsiString;
+function TCRTConstraint.ToString: AnsiString;
 var
   i: Integer;
 
 begin
   Result := '';
-  for i := 0 to N do
+  for i := 0 to N - 1 do
     Result += '(' + IntToStr(Ai[i]) + ':' + IntToStr(Mi[i]) + ')';
 end;
 

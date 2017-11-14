@@ -6,13 +6,13 @@ unit NumberTheoryUnit;
 interface
 
 uses
-  Classes, SysUtils, fgl;
+  Classes, SysUtils, fgl, GenericCollectionUnit;
 
 type
 
   { TIntList }
 
-  TIntList = class(specialize TFPGList<Integer>)
+  TIntList = class(specialize TGenericCollectionForBuiltInData<Int64>)
   public
     procedure Print;
     function Sum: Int64;
@@ -53,7 +53,7 @@ function ToBinary(n: Int64): AnsiString;
 }
 function IsPerfectSquare(n: Int64): Int64;
 function CNR(n, r: Integer): UInt64;
-function gcd(a, b: UInt64): UInt64;
+function GCD(a, b: UInt64): UInt64;
 function Pow(a, b: Integer): Int64;
 
 {Factors is the factorization for n}

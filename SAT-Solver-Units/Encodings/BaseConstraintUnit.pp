@@ -1,8 +1,8 @@
 unit BaseConstraintUnit;
+interface
+
 
 {$mode objfpc}{$H+}
-
-interface
 
 uses
   Classes, SysUtils;

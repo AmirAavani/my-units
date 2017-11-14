@@ -5,7 +5,7 @@ unit CRTEncoderUnit;
 interface
 
 uses
-  Classes, SysUtils, BaseEncoderUnit, CRTProblemUnit, BaseProblemUnit;
+  Classes, SysUtils, BaseEncoderUnit, BaseConstraintUnit, CRTUnit;
 
 type
 
@@ -13,28 +13,32 @@ type
 
   TBaseCRTEncoder = class(TBaseEncoder)
   protected
-    function Encode(Problem: TCRTProblem): TEncoding; virtual; abstract;
+    function EncodeConstraint(Constraint: TCRTConstraint): TEncoding; virtual; abstract;
+
   public
-    function Encode(Problem: TBaseProblem): TEncoding; override;
-    function GetEncoder(const EncoderName: AnsiString): TBaseEncoder; override;
+    function Encode(Problem: TBaseConstraint): TEncoding; override;
+    class function GetEncoder(const EncoderName: AnsiString): TBaseEncoder; override;
 
   end;
 
 
 implementation
+uses
+  BasicCRTEncoderUnit;
 
 { TBaseCRTEncoder }
 
-function TBaseCRTEncoder.Encode(Problem: TBaseProblem): TEncoding;
+function TBaseCRTEncoder.Encode(Problem: TBaseConstraint): TEncoding;
 begin
-  Result := Self.Encode(Problem as TCRTProblem);
+  Result := Self.EncodeConstraint(Problem as TCRTConstraint);
 end;
 
-function TBaseCRTEncoder.GetEncoder(const EncoderName: AnsiString
+class function TBaseCRTEncoder.GetEncoder(const EncoderName: AnsiString
   ): TBaseEncoder;
 begin
-//  if EncoderName =
   Result := nil;
+  if EncoderName = 'BasicEncoder' then
+    Result := TBasicCRTEncoder.Create;
 end;
 
 
