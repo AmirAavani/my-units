@@ -132,7 +132,7 @@ var
 
 begin
   for i := 0 to Count - 1 do
-    Item[i].Free;
+    TData(Item[i]).Free;
 
   inherited Destroy;
 

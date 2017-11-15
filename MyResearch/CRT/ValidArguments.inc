@@ -1,8 +1,9 @@
 ArgumentCount = 7;
 ValidArguments: array [1..ArgumentCount] of AnsiString =
- ('--N', {Number of Modulos.}
+ ('--ProblemMode', {Problem Mode}
+  '--N', {N : Will be present only if --ProblemMode is FindRs.}
   '--Mi', {A comma separated list of Integers, determining the N modulos.}
-  '--Ai', {A comma separated list of Integers, determining the N remainder.}
+  '--Ri', {A comma separated list of Integers, determining the N remainder.}
   '--Encoder', {Name of the CRTEncoder Modulo.}
   '--SatSolverType',
   '--CNFOutput',
@@ -11,5 +12,5 @@ ValidArguments: array [1..ArgumentCount] of AnsiString =
 
 
 ValidArgumentsValues: array [1..ArgumentCount] of AnsiString =
-('NONE', 'NONE', 'NONE', 'BasicEncoder', 'CNFCollection', 'NONE', 'NONE');
+('FindN:FindRs', 'NONE', 'NONE', 'NONE', 'BasicEncoder', 'CNFCollection', 'NONE', 'NONE');
 

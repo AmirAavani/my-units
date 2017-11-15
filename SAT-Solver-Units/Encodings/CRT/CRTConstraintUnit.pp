@@ -1,4 +1,4 @@
-unit CRTProblemUnit;
+unit CRTConstraintUnit;
 {$ASSERTIONS ON}
 
 {$mode objfpc}{$H+}
@@ -6,17 +6,17 @@ unit CRTProblemUnit;
 interface
 
 uses
-  Classes, SysUtils, GenericCollectionUnit, BaseProblemUnit, BitVectorUnit;
+  Classes, SysUtils, GenericCollectionUnit, BaseConstraintUnit, BitVectorUnit;
 
 type
-  TIntList = specialize TGenericCollection<Int64>;
+  TIntList = specialize TGenericCollectionForBuiltInData<Int64>;
 
   { TCRTProblem }
   {
     States the following problem:
      N mod Mi[i] = Ri[i]
   }
-  TCRTProblem = class(TBaseConstraint)
+  TCRTConstraint = class(TBaseConstraint)
   private
     FN: TBitVector;
     function GetRi(Index: Integer): TBitVector;
@@ -42,7 +42,7 @@ type
 
   { TBinaryCRTProblem }
 
-  TBinaryCRTProblem = class(TCRTProblem)
+  TBinaryCRTProblem = class(TCRTConstraint)
   public
     // This class owns the input parameters
     constructor Create(Num: TBitVector; M1, M2: Int64; R1, R2: TBitVector);
@@ -71,27 +71,27 @@ begin
 
 end;
 
-{ TCRTProblem }
+{ TCRTConstraint }
 
-function TCRTProblem.GetRi(Index: Integer): TBitVector;
+function TCRTConstraint.GetRi(Index: Integer): TBitVector;
 begin
   Result := FRis[Index];
 
 end;
 
-function TCRTProblem.GetMi(Index: Integer): Integer;
+function TCRTConstraint.GetMi(Index: Integer): Integer;
 begin
   Result := FModulos[Index];
 
 end;
 
-function TCRTProblem.GetCount: Integer;
+function TCRTConstraint.GetCount: Integer;
 begin
   Result := FRis.Count;
 
 end;
 
-constructor TCRTProblem.Create(Num: TBitVector; Mis: TIntList;
+constructor TCRTConstraint.Create(Num: TBitVector; Mis: TIntList;
   Ris: TBitVectorList);
 begin
   inherited Create;
@@ -103,7 +103,7 @@ begin
 
 end;
 
-destructor TCRTProblem.Destroy;
+destructor TCRTConstraint.Destroy;
 begin
   FRis.Free;
   FModulos.Free;
@@ -112,7 +112,7 @@ begin
   inherited Destroy;
 end;
 
-function TCRTProblem.ToString: AnsiString;
+function TCRTConstraint.ToString: AnsiString;
 var
   i: Integer;
 

@@ -5,7 +5,7 @@ unit CRTEncoderUnit;
 interface
 
 uses
-  Classes, SysUtils, BaseEncoderUnit, BaseConstraintUnit, CRTUnit;
+  Classes, SysUtils, BaseEncoderUnit, BaseConstraintUnit, CRTConstraintUnit;
 
 type
 

@@ -5,14 +5,13 @@ unit BitVectorUnit;
 interface
 
 uses
-  Classes, SysUtils, fgl, TSeitinVariableUnit, ClauseUnit, gvector;
+  Classes, SysUtils, fgl, TSeitinVariableUnit, ClauseUnit, gvector, GenericCollectionUnit;
 
 type
 
   { TBitVector }
 
-  TSpecializeTVectorTLiteral = specialize TVector<TLiteral>;
-  TBitVector= class(TSpecializeTVectorTLiteral)
+  TBitVector= class(specialize TVector<TLiteral>)
   private
     function GetBit(Index: Integer): TLiteral; inline;
     function GetCount: Integer; inline;
@@ -36,6 +35,7 @@ type
 
   end;
 
+  TBitVectorList = specialize TGenericCollection<TBitVector>;
   { TEncoding }
 
   TEncoding = class(TObject)
@@ -51,8 +51,6 @@ type
 
 
 implementation
-
-{ TEncoding }
 
 { TEncoding }
 

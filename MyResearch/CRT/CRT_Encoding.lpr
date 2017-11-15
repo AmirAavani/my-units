@@ -6,22 +6,11 @@ uses
   {$IFDEF UNIX}{$IFDEF UseCThreads}
   cthreads,
   {$ENDIF}{$ENDIF}
-  Classes, gvector, ParameterManagerUnit, WideStringUnit, SysUtils, CRTUnit,
+  Classes, gvector, ParameterManagerUnit, WideStringUnit, SysUtils,
   BaseEncoderUnit, BaseConstraintUnit, ClauseUnit, SatSolverInterfaceUnit,
-  MiniSatSolverInterfaceUnit, CRTEncoderUnit, StreamUnit, NumberTheoryUnit
+  MiniSatSolverInterfaceUnit, CRTEncoderUnit, StreamUnit, CRTConstraintUnit,
+  NumberTheoryUnit
   { you can add units after this };
-
-procedure Initialize;
-begin
-  //ParameterManagerUnit.Initialize;
-
-end;
-
-procedure Finalize;
-begin
-
-  //ParameterManagerUnit.Finalize;
-end;
 
 function CreateProblemInstance: TCRTConstraint;
   function ToIntList(sList: TStringList): TIntList;
@@ -72,7 +61,7 @@ begin
     Exit(nil);
   end;
 
-  Result := TCRTConstraint.Create(Mis, Ais);
+  Result := TCRTConstraint.Create(nil, Mis, nil);
 
   Ais.Free;
   Mis.Free;

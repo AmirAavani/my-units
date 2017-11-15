@@ -5,7 +5,7 @@ unit BasicCRTEncoderUnit;
 interface
 
 uses
-  Classes, SysUtils, CRTEncoderUnit, CRTUnit, BaseEncoderUnit;
+  Classes, SysUtils, CRTEncoderUnit, CRTConstraintUnit, BaseEncoderUnit;
 
 type
 
@@ -14,7 +14,7 @@ type
   TBasicCRTEncoder = class(TBaseCRTEncoder)
   private
   protected
-    function EncodeConstraint(Constraint: TCRTConstraint): TEncoding;
+    function EncodeConstraint(Constraint: TCRTConstraint): TEncoding; override;
   public
 
   end;
@@ -34,10 +34,15 @@ var
 
 begin
   SatSolverInterfaceUnit.ReNewSatSolver('CNFCollection');
+{
+
+
+}
 
   Lit := CreateLiteral(GetVariableManager.CreateNewVariable, False);
 
   Result := TEncoding.Create(GetSatSolver.CNF.Copy, Lit);
+  SatSolverInterfaceUnit.PopBackSatSolver;
 
 
 end;

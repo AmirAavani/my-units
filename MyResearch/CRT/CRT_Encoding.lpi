@@ -25,10 +25,10 @@
     <RunParams>
       <local>
         <FormatVersion Value="1"/>
-        <CommandLineParams Value="--Ai 12,15,3,2 --Mi 15,17,19,23"/>
+        <CommandLineParams Value="--Mode FindN --Ai 12,15,3,2 --Mi 15,17,19,23"/>
       </local>
     </RunParams>
-    <Units Count="12">
+    <Units Count="13">
       <Unit0>
         <Filename Value="CRT_Encoding.lpr"/>
         <IsPartOfProject Value="True"/>
@@ -77,6 +77,10 @@
         <Filename Value="../../Algortihmic-Unit/NumberTheoryUnit.pp"/>
         <IsPartOfProject Value="True"/>
       </Unit11>
+      <Unit12>
+        <Filename Value="../../SAT-Solver-Units/Encodings/CRT/CRTConstraintUnit.pp"/>
+        <IsPartOfProject Value="True"/>
+      </Unit12>
     </Units>
   </ProjectOptions>
   <CompilerOptions>
