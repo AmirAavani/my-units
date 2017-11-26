@@ -46,6 +46,8 @@ type
     function GenerateBinaryRep(const n: TBigInt; nbits: Integer = -1): TBitVector; override;
   end;
 
+  function GetBinaryArithmeticCircuit: TBinaryArithmeticCircuit;
+
 const
   VerbBinArithmCircuit: Integer = 2;
 
@@ -548,6 +550,21 @@ begin
       Result[i] := GetVariableManager.FalseLiteral;
 
 end;
+
+var
+  BinaryArithmeticCircuit: TBinaryArithmeticCircuit;
+
+function GetBinaryArithmeticCircuit: TBinaryArithmeticCircuit;
+begin
+  Result := BinaryArithmeticCircuit;
+
+end;
+
+initialization
+  BinaryArithmeticCircuit := TBinaryArithmeticCircuit.Create;
+
+finalization
+  BinaryArithmeticCircuit.Free;
 
 end.
 

@@ -1,5 +1,5 @@
 unit GenericFactoryUnit;
-
+{assertions on}
 {$mode objfpc}{$H+}
 
 interface

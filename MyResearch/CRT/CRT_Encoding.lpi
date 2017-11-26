@@ -25,10 +25,10 @@
     <RunParams>
       <local>
         <FormatVersion Value="1"/>
-        <CommandLineParams Value="--Mode FindN --Ai 12,15,3,2 --Mi 15,17,19,23"/>
+        <CommandLineParams Value="--ProblemMode FindN --Ri 12,15,3,2 --Mi 15,17,19,23 --NBit 10"/>
       </local>
     </RunParams>
-    <Units Count="13">
+    <Units Count="17">
       <Unit0>
         <Filename Value="CRT_Encoding.lpr"/>
         <IsPartOfProject Value="True"/>
@@ -81,6 +81,22 @@
         <Filename Value="../../SAT-Solver-Units/Encodings/CRT/CRTConstraintUnit.pp"/>
         <IsPartOfProject Value="True"/>
       </Unit12>
+      <Unit13>
+        <Filename Value="../../SAT-Solver-Units/General/TSeitinVariableUnit.pp"/>
+        <IsPartOfProject Value="True"/>
+      </Unit13>
+      <Unit14>
+        <Filename Value="../../SAT-Solver-Units/Circuits/Arithmetic-Circuits/BinaryArithmeticCircuitUnit.pp"/>
+        <IsPartOfProject Value="True"/>
+      </Unit14>
+      <Unit15>
+        <Filename Value="../../SAT-Solver-Units/Circuits/Arithmetic-Circuits/BaseArithmeticCircuitUnit.pp"/>
+        <IsPartOfProject Value="True"/>
+      </Unit15>
+      <Unit16>
+        <Filename Value="../../SAT-Solver-Units/Circuits/BaseCircuitUnit.pp"/>
+        <IsPartOfProject Value="True"/>
+      </Unit16>
     </Units>
   </ProjectOptions>
   <CompilerOptions>
@@ -90,7 +106,7 @@
     </Target>
     <SearchPaths>
       <IncludeFiles Value="$(ProjOutDir)"/>
-      <OtherUnitFiles Value="../../General-Purpose-Units;/home/rima/Mine/FPC/fpc/packages/fcl-stl/src/;../../SAT-Solver-Units/Encodings/CRT;../../SAT-Solver-Units/Encodings;../../SAT-Solver-Units/General;../../Unicode-Functions;../../SAT-Solver-Units;../../SAT-Solver-Units/MiniSAT;../../Algortihmic-Unit"/>
+      <OtherUnitFiles Value="../../General-Purpose-Units;/home/rima/Mine/FPC/fpc/packages/fcl-stl/src/;../../SAT-Solver-Units/Encodings/CRT;../../SAT-Solver-Units/Encodings;../../SAT-Solver-Units/General;../../Unicode-Functions;../../SAT-Solver-Units;../../SAT-Solver-Units/MiniSAT;../../Algortihmic-Unit;../../SAT-Solver-Units/Circuits/Arithmetic-Circuits;../../SAT-Solver-Units/Circuits"/>
       <UnitOutputDirectory Value="lib/$(TargetCPU)-$(TargetOS)"/>
     </SearchPaths>
   </CompilerOptions>

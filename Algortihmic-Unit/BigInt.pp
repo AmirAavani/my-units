@@ -32,6 +32,9 @@ type
 
   Dec, 27, 2014
      I implemented a ToInteger method(It is not a safe method, use it carefully).
+
+    Nov, 25, 2017
+      Implemented lcm and Release methods.
 }
   { TBigInt }
 
@@ -113,6 +116,8 @@ type
     }
     function CheckBit(BitIndex: Integer): Boolean;
 
+    { Call BigIntFactory.Release(Self).}
+    procedure Release;
   public
     constructor Create; overload;
     constructor Create(S: PChar); overload;
@@ -133,6 +138,10 @@ type
       Result := gcd(self, b).
     }
     function gcd(b: TBigInt): TBigInt;
+    {
+      Result := lcm(self, b).
+    }
+    function lcm(b: TBigInt): TBigInt;
 
     {
     Set Bigint to Zero...
@@ -230,15 +239,15 @@ begin
 
   end;
 
-  for i := Self.FLength- 1 downto 0 do
+  for i := Self.FLength - 1 downto 0 do
   begin
-    if Self.FDigits^[i]< n.FDigits^[i] then
+    if Self.FDigits^[i] < n.FDigits^[i] then
     begin
       Result := -1;
       Exit;
 
     end
-    else if n.FDigits^[i]< Self.FDigits^[i] then
+    else if n.FDigits^[i] < Self.FDigits^[i] then
     begin
       Result := 1;
       Exit;
@@ -688,10 +697,8 @@ end;
 
 constructor TBigInt.Create;
 begin
-//  SetLength(FDigits, MaxLen+ 1);
   New(FDigits);
   FLength := 0;
-//  FillChar(FDigits, SizeOf(FDigits), 0);
 
 end;
 
@@ -703,16 +710,15 @@ begin
   inherited Create;
 
   Assert(System.Length(S)<= MaxLen);
-//  SetLength(FDigits, MaxLen+ 1);
   New(FDigits);
 
   Length := System.Length(S);
   for i := 0 to System.Length(S)- 1 do
-    FDigits^[Length- 1- i] := Ord(S[i])- 48;
+    FDigits^[Length - 1 - i] := Ord(S[i]) - 48;
 
-  while Length> 0 do
+  while 0 < Length do
   begin
-    if FDigits^[FLength- 1]= 0 then
+    if FDigits^[FLength - 1] = 0 then
       Dec(FLength)
     else
       Break;
@@ -723,7 +729,6 @@ end;
 
 function TBigInt.SetValue(n: Int64): TBigInt;
 begin
-//  FillChar(FDigits, SizeOf(FDigits), 0);
   FLength := 0;
 
   while n > 0 do
@@ -748,9 +753,9 @@ begin
 
   for i := FLength- 1 downto 0 do
   begin
-    Result*= 10;
-    Result+= FDigits^[i];
-    if Result< 0 then
+    Result *= 10;
+    Result += FDigits^[i];
+    if Result < 0 then
     begin
       WriteLn('Overflow in GetValue!');
       raise Exception.Create('Overflow in GetValue!');
@@ -783,6 +788,19 @@ begin
 
 end;
 
+function TBigInt.lcm(b: TBigInt): TBigInt;
+var
+  gcd_ab, prod_ab: TBigInt;
+begin
+  gcd_ab := Self.gcd(b);
+  prod_ab := Self.Mul(b);
+
+  Result := prod_ab.Divide(gcd_ab);
+  gcd_ab.Release;
+  prod_ab.Release;
+
+end;
+
 procedure TBigInt.Reset;
 begin
   FLength := -1;
@@ -793,9 +811,9 @@ destructor TBigInt.Destroy;
 begin
   FLength := -2;
   Dispose(FDigits);
-  
+
   Inherited;
-  
+
 end;
 
 function TBigInt.LoadFromString(S: PChar): TBigInt;
@@ -805,14 +823,12 @@ var
 begin
 
   Assert(System.Length(S)<= MaxLen);
-//  SetLength(FDigits, MaxLen+ 1);
-//  New(FDigits);
 
   Length := System.Length(S);
   for i := 0 to System.Length(S)- 1 do
-    FDigits^[Length- 1- i] := Ord(S[i])- 48;
+    FDigits^[Length - 1 - i] := Ord(S[i])- 48;
 
-  while 0< Length do
+  while 0 < Length do
   begin
     if FDigits^[FLength- 1]= 0 then
       Dec(FLength)
@@ -846,11 +862,7 @@ begin
   Result.Length := Self.FLength;
 
   System.Move(FDigits^[0], Result.FDigits^[0], Sizeof(FDigits^[0])*
-                 Min(Length+ 1, MaxLen));
-
-{  for i := 0 to FLength- 1 do
-    Result.FDigits[i] := FDigits[i];
-}
+                 Min(Length + 1, MaxLen));
 
 end;
 
@@ -1065,6 +1077,11 @@ begin
 
   BigIntFactory.ReleaseMember(Temp1);
 
+end;
+
+procedure TBigInt.Release;
+begin
+  BigIntFactory.ReleaseMember(Self);
 end;
 
 function TBigInt.Pow(n: Integer): TBigInt;

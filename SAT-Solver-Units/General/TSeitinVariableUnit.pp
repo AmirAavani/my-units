@@ -1010,7 +1010,6 @@ end;
 
 procedure Initialize;
 begin
-
   VariableManager := TVariableManager.Create;
 
 end;
@@ -1026,8 +1025,10 @@ end;
 
 initialization
   VariableManagerStack := TVariableManagerStack.Create;
+  Initialize;
 
 finalization
+  Finalize;
   VariableManagerStack.Free;
 end.
 
