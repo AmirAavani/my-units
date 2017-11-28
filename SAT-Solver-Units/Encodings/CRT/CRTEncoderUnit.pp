@@ -35,10 +35,14 @@ end;
 
 class function TBaseCRTEncoder.GetEncoder(const EncoderName: AnsiString
   ): TBaseEncoder;
+var
+  Index: Integer;
 begin
-  Result := AllEncoders.;
-  if EncoderName = 'BasicCRTEncoder' then
-    Result := TBasicCRTEncoder.Create;
+  Index := FAllEncoders.IndexOfName(EncoderName);
+  if Index < 0 then
+    Exit(nil);
+  Result := FAllEncoders.Objects[Index] as TBaseEncoder;
+
 end;
 
 

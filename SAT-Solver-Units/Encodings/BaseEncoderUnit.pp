@@ -32,10 +32,8 @@ type
 
   TBaseEncoder = class(TObject)
   private
+  protected
      FAllEncoders: TStringList; static;
-     function GetAllEncoders: TStringList;
-   protected
-     property AllEncoders: TStringList read GetAllEncoders;
 
   public
     constructor Create;
@@ -46,6 +44,7 @@ type
     }
     function Encode(Problem: TBaseConstraint): TEncoding; virtual; abstract;
     class function GetEncoder(const EncoderName: AnsiString): TBaseEncoder; virtual; abstract;
+    class function GetAllEncoders: TStringList;
   end;
 
 implementation
@@ -74,7 +73,7 @@ end;
 
 { TBaseEncoder }
 
-function TBaseEncoder.GetAllEncoders: TStringList;
+class function TBaseEncoder.GetAllEncoders: TStringList;
 begin
   if FAllEncoders = nil then
   begin
