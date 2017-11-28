@@ -25,7 +25,7 @@
     <RunParams>
       <local>
         <FormatVersion Value="1"/>
-        <CommandLineParams Value="--ProblemMode FindN --Ri 12,15,3,2 --Mi 15,17,19,23 --NBit 10"/>
+        <CommandLineParams Value="--ProblemMode FindN --Ri 12,15,3,2 --Mi 15,17,19,23 --Encoder BasicCRTEncoder"/>
       </local>
     </RunParams>
     <Units Count="17">

@@ -36,8 +36,8 @@ end;
 class function TBaseCRTEncoder.GetEncoder(const EncoderName: AnsiString
   ): TBaseEncoder;
 begin
-  Result := nil;
-  if EncoderName = 'BasicEncoder' then
+  Result := AllEncoders.;
+  if EncoderName = 'BasicCRTEncoder' then
     Result := TBasicCRTEncoder.Create;
 end;
 

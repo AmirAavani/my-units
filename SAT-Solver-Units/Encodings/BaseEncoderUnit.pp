@@ -31,6 +31,12 @@ type
   { TBaseEncoder }
 
   TBaseEncoder = class(TObject)
+  private
+     FAllEncoders: TStringList; static;
+     function GetAllEncoders: TStringList;
+   protected
+     property AllEncoders: TStringList read GetAllEncoders;
+
   public
     constructor Create;
     destructor Destroy; override;
@@ -67,6 +73,17 @@ begin
 end;
 
 { TBaseEncoder }
+
+function TBaseEncoder.GetAllEncoders: TStringList;
+begin
+  if FAllEncoders = nil then
+  begin
+    FAllEncoders.Create;
+    FAllEncoders.Sorted := True;
+  end;
+  Result := FAllEncoders;
+
+end;
 
 constructor TBaseEncoder.Create;
 begin
