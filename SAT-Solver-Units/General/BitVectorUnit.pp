@@ -36,17 +36,24 @@ type
   end;
 
   TBitVectorList = specialize TGenericCollection<TBitVector>;
+
   { TEncoding }
 
   TEncoding = class(TObject)
   private
-    FLit: TLiteral;
-    FValue: TBitVector;
-  public
-    property Lit: TLiteral read FLit;
-    property Value: TBitVector read FValue;
+    FClauses: TClauseCollection;
+    FOutput: TLiteral;
 
-    constructor Create(L: TLiteral; v: TBitVector);
+  public
+    property Clauses: TClauseCollection read FClauses;
+    property Output: TLiteral read FOutput;
+
+    // This class owns cl.
+    constructor Create(cl: TClauseCollection; Lit: TLiteral);
+    destructor Destroy; override;
+
+    function ToString: AnsiString; override;
+
   end;
 
 
@@ -54,14 +61,25 @@ implementation
 
 { TEncoding }
 
-constructor TEncoding.Create(L: TLiteral; v: TBitVector);
+constructor TEncoding.Create(cl: TClauseCollection; Lit: TLiteral);
 begin
   inherited Create;
 
-  FLit := L;
-  FValue := V.Copy;
+  FClauses := cl;
+  FOutput := Lit;
+end;
+
+destructor TEncoding.Destroy;
+begin
+  inherited Destroy;
 
 end;
+
+function TEncoding.ToString: AnsiString;
+begin
+  Result:= '(' + Clauses.ToString + ',' + LiteralToString(Output) + ')';
+end;
+
 
 { TBitVector }
 

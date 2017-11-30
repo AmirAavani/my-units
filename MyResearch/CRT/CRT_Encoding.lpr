@@ -107,12 +107,12 @@ begin
   WriteLn(CRTProblem.ToString);
 
   CRTEncoder := TBaseCRTEncoder.GetEncoder(GetRunTimeParameterManager.ValueByName['--Encoder']);
-  //Encoding := CRTEncoder.Encode(CRTProblem);
+  Encoding := CRTEncoder.Encode(CRTProblem);
 
   OutputCNF := TMyTextStream.Create(TFileStream.Create(GetRunTimeParameterManager.ValueByName['--CNFOutput'], fmCreate));
 
-  //WriteLn(Encoding.Output.ToString);
-  ///Encoding.Clauses.Save(OutputCNF);
+  WriteLn(Encoding.Output.ToString);
+  Encoding.Clauses.Save(OutputCNF);
 
   OutputCNF.Free;
   CRTEncoder.Free;

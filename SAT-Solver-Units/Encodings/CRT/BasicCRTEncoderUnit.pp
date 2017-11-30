@@ -5,7 +5,7 @@ unit BasicCRTEncoderUnit;
 interface
 
 uses
-  Classes, SysUtils, CRTEncoderUnit, CRTConstraintUnit, BaseEncoderUnit;
+  Classes, SysUtils, CRTEncoderUnit, CRTConstraintUnit, BaseEncoderUnit, BitVectorUnit;
 
 type
 
@@ -46,6 +46,9 @@ begin
 
 
 end;
+
+initialization
+  TBaseEncoder.RegisterEncoder(TBasicCRTEncoder);
 
 end.
 

@@ -5,27 +5,15 @@ unit BaseEncoderUnit;
 interface
 
 uses
-  Classes, SysUtils, ClauseUnit, BaseConstraintUnit;
+  fgl, Classes, SysUtils, ClauseUnit, BaseConstraintUnit, BitVectorUnit;
 
 type
+  TEncoderClass = class of TBaseEncoder;
+  TClassMap = specialize TFPGMap<string, TEncoderClass>;
 
-  { TEncoding }
+  { EEncoderNotFound }
 
-  TEncoding = class(TObject)
-  private
-    FClauses: TClauseCollection;
-    FOutput: TLiteral;
-
-  public
-    property Clauses: TClauseCollection read FClauses;
-    property Output: TLiteral read FOutput;
-
-    // This class owns cl.
-    constructor Create(cl: TClauseCollection; Lit: TLiteral);
-    destructor Destroy; override;
-
-    function ToString: AnsiString; override;
-
+  EEncoderNotFound = class(Exception)
   end;
 
   { TBaseEncoder }
@@ -33,7 +21,7 @@ type
   TBaseEncoder = class(TObject)
   private
   protected
-     FAllEncoders: TStringList; static;
+     FAllEncoders: TClassMap; static;
 
   public
     constructor Create;
@@ -43,45 +31,31 @@ type
       Result.Clauses |- (Result.lit <=> Problem).
     }
     function Encode(Problem: TBaseConstraint): TEncoding; virtual; abstract;
-    class function GetEncoder(const EncoderName: AnsiString): TBaseEncoder; virtual; abstract;
-    class function GetAllEncoders: TStringList;
+
+    class function GetEncoder(const Name: AnsiString): TBaseEncoder;
+    class function GetAllEncoders: TClassMap;
+    class procedure RegisterEncoder(Encoder: TEncoderClass);
+
   end;
 
 implementation
 
-{ TEncoding }
-
-constructor TEncoding.Create(cl: TClauseCollection; Lit: TLiteral);
-begin
-  inherited Create;
-
-  FClauses := cl;
-  FOutput := Lit;
-end;
-
-destructor TEncoding.Destroy;
-begin
-  FClauses.Free;
-
-  inherited Destroy;
-end;
-
-function TEncoding.ToString: AnsiString;
-begin
-  Result := '(' + Clauses.ToString + ',' + LiteralToString(Output) + ')';
-end;
-
 { TBaseEncoder }
 
-class function TBaseEncoder.GetAllEncoders: TStringList;
+class function TBaseEncoder.GetAllEncoders: TClassMap;
 begin
   if FAllEncoders = nil then
   begin
-    FAllEncoders.Create;
+    FAllEncoders := TClassMap.Create;
     FAllEncoders.Sorted := True;
   end;
   Result := FAllEncoders;
 
+end;
+
+class procedure TBaseEncoder.RegisterEncoder(Encoder: TEncoderClass);
+begin
+  GetAllEncoders.Add(Encoder.ClassName, Encoder);
 end;
 
 constructor TBaseEncoder.Create;
@@ -93,6 +67,19 @@ end;
 destructor TBaseEncoder.Destroy;
 begin
   inherited Destroy;
+end;
+
+class function TBaseEncoder.GetEncoder(const Name: AnsiString): TBaseEncoder;
+var
+  Index: Integer;
+
+begin
+  Index := GetAllEncoders.IndexOf(Name);
+  if Index < 0 then
+    raise EEncoderNotFound.Create('No Encoder with Name = ' + Name +
+      ' is registered');
+  Result := GetAllEncoders.Data[Index].Create;
+
 end;
 
 end.

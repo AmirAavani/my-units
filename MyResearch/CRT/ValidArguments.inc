@@ -13,6 +13,6 @@ ValidArguments: array [1..ArgumentCount] of AnsiString =
 
 
 ValidArgumentsValues: array [1..ArgumentCount] of AnsiString =
-('FindN:FindRs', 'NONE', 'NONE', 'NONE', 'None', 'BasicEncoder', 'CNFCollection',
+('FindN:FindRs', 'NONE', 'NONE', 'NONE', 'None', 'BasicCRTEncoder', 'CNFCollection',
   'NONE', 'NONE');
 

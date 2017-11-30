@@ -5,7 +5,8 @@ unit CRTEncoderUnit;
 interface
 
 uses
-  Classes, SysUtils, BaseEncoderUnit, BaseConstraintUnit, CRTConstraintUnit;
+  Classes, SysUtils, BaseEncoderUnit, BaseConstraintUnit, CRTConstraintUnit,
+  BitVectorUnit;
 
 type
 
@@ -17,7 +18,6 @@ type
 
   public
     function Encode(Problem: TBaseConstraint): TEncoding; override;
-    class function GetEncoder(const EncoderName: AnsiString): TBaseEncoder; override;
 
   end;
 
@@ -33,18 +33,7 @@ begin
   Result := Self.EncodeConstraint(Problem as TCRTConstraint);
 end;
 
-class function TBaseCRTEncoder.GetEncoder(const EncoderName: AnsiString
-  ): TBaseEncoder;
-var
-  Index: Integer;
-begin
-  Index := FAllEncoders.IndexOfName(EncoderName);
-  if Index < 0 then
-    Exit(nil);
-  Result := FAllEncoders.Objects[Index] as TBaseEncoder;
-
-end;
-
+initialization
 
 end.
 
