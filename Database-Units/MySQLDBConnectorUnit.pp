@@ -84,7 +84,7 @@ type
 
 function TMySqlQueryResponse.GetHasNext: Boolean;
 begin
-  Result := FCurrentRow = nil;
+  Result := FCurrentRow <> nil;
 end;
 
 function TMySqlQueryResponse.GetNumColumns: Integer;
