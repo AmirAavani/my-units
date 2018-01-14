@@ -29,8 +29,10 @@ implementation
 
 function THTTPClient.Get(const url: AnsiString; Params: TStringList
   ): AnsiString;
+
 begin
-  Result := inherited Get(Url);
+  Result := inherited Get(Url)
+
 end;
 
 class function THTTPClient.GetClient: THTTPClient;

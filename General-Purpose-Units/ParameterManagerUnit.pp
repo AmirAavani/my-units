@@ -16,7 +16,7 @@ type
 
   { TRunTimeParameterManager }
 
-  TRunTimeParameterManager= class(TParameterList)
+  TRunTimeParameterManager = class(TParameterList)
   private
     function GetVerbosity: Integer;
 
@@ -121,8 +121,6 @@ const
     for i := Low(ValidArguments) to High(ValidArguments)  do
       Write(ValidArguments [i], ' , ');
     Halt(1);
-
-
   end;
 
 var
@@ -136,7 +134,6 @@ begin
   begin
     PrintHelp;
      raise Exception.Create('Invalid set of parameters');
-
   end;
 
   i := 1;

@@ -5,9 +5,29 @@ unit DBConnectorUnit;
 interface
 
 uses
-  Classes, SysUtils, ZConnection, ZDataset;
+  Classes, SysUtils;
 
 type
+
+  { TQueryResponse }
+
+  TQueryResponse = class(TObject)
+  private
+  protected
+    function GetHasNext: Boolean; virtual; abstract;
+    function GetNumColumns: Integer; virtual; abstract;
+    function GetNumRows: Integer; virtual; abstract;
+
+  public
+    property NumRows: Integer read GetNumRows;
+    property NumColumns: Integer read GetNumColumns;
+    property HasNext: Boolean read GetHasNext;
+
+    // Caller is responsibe for freeing the result.
+    function GetRow: TStringList; virtual; abstract;
+    procedure GetRow(Response: TStringList); virtual; abstract;
+
+  end;
 
   { TDatabaseConnection }
 
@@ -16,44 +36,22 @@ type
     FUserName, FPassword, FHost: AnsiString;
     FActiveDB: AnsiString;
 
-    procedure CheckIfConnected; virtual; abstract;
     function GetActiveDB: AnsiString; virtual; abstract;
-    function GetConnected: Boolean; virtual; abstract;
-    function GetDatabases: TStringList; virtual; abstract;
     function GetTables: TStringList; virtual; abstract;
 
     procedure SetActiveDatabase (DBName: AnsiString); virtual; abstract;
 
   public
-    property Connected: Boolean read GetConnected;
-    {
-      The caller is responsible for deleting the returned TStringlist.
-    }
-    property Databases: TStringList read GetDatabases;
-    {
-      The caller is responsible for deleting the returned TStringlist.
-    }
-    property Tables: TStringList read GetTables;
     property ActiveDB: AnsiString read GetActiveDB write SetActiveDatabase;
 
-    constructor Create (Username, Password, Host: AnsiString);
+    constructor Create (const Username, Password, Host: AnsiString);
     destructor Destroy; override;
 
     function Refresh: Boolean; virtual; abstract;
     procedure Disconnect; virtual; abstract;
+    procedure Connect; virtual; abstract;
 
-    {
-      Returns a TZQuery object which is connected using the activeConnection
-    }
-    function InitQuery: TZQuery; virtual; abstract;
-
-    {
-      Fetch the rows in the output of AQuery and put the content of each row in
-      order, i.e., if R1: c1, c2 and R2: c3, c4 the output is going to have
-      c1, c2, c3, c4
-    }
-    function FetchResult (AQuery: TZQuery): TStringList; virtual; abstract;
-
+    function RunQuery(const Query: AnsiString): TQueryResponse; virtual; abstract;
   end;
 
   EConnectionFailed= class (Exception);
@@ -78,6 +76,8 @@ type
 
   end;
 
+{ TQueryResponse }
+
 constructor ENoActiveDB.Create;
 begin
   inherited Create ('There is no Active Database!');
@@ -93,20 +93,18 @@ end;
 
 { TDatabaseConnection }
 
-constructor TDatabaseConnection.Create (Username, Password, Host: AnsiString);
+constructor TDatabaseConnection.Create (const Username, Password, Host: AnsiString);
 begin
   inherited Create;
 
   Self.FUserName:= Username;
   Self.FPassword:= Password;
   Self.FHost:= Host;
-
 end;
 
 destructor TDatabaseConnection.Destroy;
 begin
-  if Connected then
-    Disconnect;
+  Disconnect;
 
   inherited Destroy;
 

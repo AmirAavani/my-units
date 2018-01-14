@@ -5,44 +5,60 @@ unit MySQLDBConnectorUnit;
 interface
 
 uses
-  Classes, SysUtils, DBConnectorUnit, ZConnection, ZDataset;
-
+  Classes, SysUtils, DBConnectorUnit, mysql57dyn;
 
 type
+
+  { TMySqlQueryResponse }
+
+  TMySqlQueryResponse =class(TQueryResponse)
+  private
+    FRes: PMYSQL_RES;
+    FCurrentRow : MYSQL_ROW;
+
+  protected
+    function GetHasNext: Boolean; override;
+    function GetNumColumns: Integer; override;
+    function GetNumRows: Integer; override;
+
+    constructor Create(Res: PMYSQL_RES);
+
+  public
+    destructor Destroy; override;
+
+    function GetRow: TStringList; override;
+    procedure GetRow(Response: TStringList); override;
+
+  end;
+
+  { TMySQLDatabaseConnection }
+
   TMySQLDatabaseConnection= class (TDatabaseConnection)
   private
-    MySQLConnection: TZConnection;
+    MySQLConnection: PMYSQL;
 
   protected
 
-    procedure CheckIfConnected; override;
     function GetActiveDB: AnsiString; override;
-    function GetConnected: Boolean; override;
-    function GetDatabases: TStringList; override;
     function GetTables: TStringList; override;
 
     procedure SetActiveDatabase (DBName: AnsiString); override;
 
   public
-    constructor Create (Username, Password, Host: AnsiString);
+    constructor Create (const Username, Password, Host: AnsiString);
     destructor Destroy; override;
 
     function Refresh: Boolean; override;
     procedure Disconnect;  override;
+    procedure Connect; override;
 
-    {
-      Returns a TZQuery object which is connected using the activeConnection
-    }
-    function InitQuery: TZQuery;  override;
-
-    {
-      Fetch the rows in the output of AQuery and put the context of each row in
-      order, i.e., if R1: c1, c2 and R2: c3, c4 the output is going to have
-      c1, c2, c3, c4
-    }
-    function FetchResult (AQuery: TZQuery): TStringList; override;
+    function RunQuery(const Query: AnsiString): TQueryResponse; override;
 
   end;
+
+  { EMySqlError }
+
+  EMySqlError = class (Exception);
 
 implementation
 
@@ -64,6 +80,62 @@ type
 
   end;
 
+{ TMySqlQueryResponse }
+
+function TMySqlQueryResponse.GetHasNext: Boolean;
+begin
+  Result := FCurrentRow = nil;
+end;
+
+function TMySqlQueryResponse.GetNumColumns: Integer;
+begin
+  Result := mysql_num_fields(FRes);
+
+end;
+
+function TMySqlQueryResponse.GetNumRows: Integer;
+begin
+  Result := mysql_num_rows(FRes);
+
+end;
+
+constructor TMySqlQueryResponse.Create(Res: PMYSQL_RES);
+begin
+  inherited Create;
+
+  FRes := Res;
+  FCurrentRow := mysql_fetch_row(FRes);
+
+end;
+
+destructor TMySqlQueryResponse.Destroy;
+begin
+  mysql_free_result (FRes);
+
+  inherited Destroy;
+end;
+
+function TMySqlQueryResponse.GetRow: TStringList;
+begin
+  Result := TStringList.Create;
+  Self.GetRow(Result);
+
+end;
+
+procedure TMySqlQueryResponse.GetRow(Response: TStringList);
+var
+  i: Integer;
+  Field: PMYSQL_FIELD;
+
+begin
+  for i := 0 to NumColumns - 1 do
+  begin
+    Field := mysql_fetch_field_direct(FRes, i);
+    Response.Add(FCurrentRow[0]);
+  end;
+  FCurrentRow := mysql_fetch_row(FRes);
+end;
+
 constructor ENoActiveDB.Create;
 begin
   inherited Create ('There is no Active Database!');
@@ -79,60 +151,9 @@ end;
 
 { TMySQLDatabaseConnection }
 
-function TMySQLDatabaseConnection.GetDatabases: TStringList;
-var
-  Query: TZQuery;
-
-begin
-  if not Connected then
-    raise ENotConnected.Create;
-
-  Query:= InitQuery;
-  Query.SQL.Text:= 'SHOW databases;';
-  Query.Active:= True;
-
-  Result:= TStringList.Create;
-  while not Query.EOF do
-  begin
-    Result.Add (Query.Fields [0].Text);
-    Query.Next;
-
-  end;
-
-  Query.Free;
-
-end;
 
 function TMySQLDatabaseConnection.GetTables: TStringList;
-var
- Query: TZQuery;
-
 begin
-  ActiveDB;
-  if not Connected then
-    raise ENotConnected.Create;
-
-  Query:= InitQuery;
-  Query.SQL.Text:= 'Show tables;';
-  Query.Active:= True;
-
-  Result:= TStringList.Create;
-  while not Query.EOF do
-  begin
-    Result.Add (Query.Fields [0].Text);
-    Query.Next;
-
-  end;
-
-  Query.Free;
-
-end;
-
-procedure TMySQLDatabaseConnection.CheckIfConnected;
-begin
-  if not Connected then
-    raise ENotConnected.Create;
-
 end;
 
 function TMySQLDatabaseConnection.GetActiveDB: AnsiString;
@@ -144,36 +165,15 @@ begin
 
 end;
 
-function TMySQLDatabaseConnection.GetConnected: Boolean;
+constructor TMySQLDatabaseConnection.Create (
+  const Username, Password, Host: AnsiString);
 begin
-  Result:= MySQLConnection.Connected;
-
-end;
-
-constructor TMySQLDatabaseConnection.Create (Username, Password, Host: AnsiString);
-begin
-  MySQLConnection:= TZConnection.Create (nil);
-  MySQLConnection.User:= Username;
-  MySQLConnection.Password:= Password;
-  MySQLConnection.HostName:= Host;
-  MySQLConnection.Protocol:= 'mysql-5';
-//  MySQLConnection.Database:= 'mysql';
-
-  Self.FUserName:= Username;
-  Self.FPassword:= Password;
-  Self.FHost:= Host;
-//  FActiveDB:= 'mysql';
-
-  MySQLConnection.Connect;
-
-  if not MySQLConnection.Connected then
-    raise EConnectionFailed.Create ('Connection Failed');
+  inherited;
 
 end;
 
 destructor TMySQLDatabaseConnection.Destroy;
 begin
-  MySQLConnection.Free;
 
   inherited Destroy;
 
@@ -181,71 +181,54 @@ end;
 
 function TMySQLDatabaseConnection.Refresh: Boolean;
 begin
-  if Connected then
-    Disconnect;
-
-  MySQLConnection.User:= FUsername;
-  MySQLConnection.Password:= FPassword;
-  MySQLConnection.HostName:= FHost;
-  MySQLConnection.Protocol:= 'mysql-5';
-
-  MySQLConnection.Connect;
-
-  if not MySQLConnection.Connected then
-    raise EConnectionFailed.Create ('Connection Failed');
+  mysql_refresh(MySQLConnection, 0);
 
 end;
 
 procedure TMySQLDatabaseConnection.Disconnect;
 begin
-  CheckIfConnected;
-  MySQLConnection.Disconnect;
+  mysql_close(MySQLConnection);
 
 end;
 
 procedure TMySQLDatabaseConnection.SetActiveDatabase (DBName: AnsiString);
+begin
+  if mysql_select_db(MySQLConnection, PAnsiChar(DBName)) <> 0 then
+    raise EMySqlError.Create('Failed to connect to Database with name: "'
+                              + DBName + '"');
+end;
+
+procedure TMySQLDatabaseConnection.Connect;
+begin
+  MySQLConnection := mysql_init(MySQLConnection);
+  if mysql_real_connect(MySQLConnection, PAnsiChar(FHost), PAnsiChar(FUserName),
+    PAnsiChar(FPassword), nil, 0, nil, CLIENT_MULTI_RESULTS) = nil then
+    begin
+     raise EMySqlError.Create('Couldn''t connect to MySQL.');
+     Exit;
+    end;
+end;
+
+function TMySQLDatabaseConnection.RunQuery(const Query: AnsiString
+  ): TQueryResponse;
 var
-  Query: TZQuery;
-
+  Res: PMYSQL_RES;
 begin
-  MySQLConnection.Disconnect;
-  MySQLConnection.Database:= DBName;
-  MySQLConnection.Connect;
+  if mysql_query(MySQLConnection, PAnsiChar(Query)) <> 0 then
+    raise EMySqlError.Create('Query failed');
 
-  Query:= InitQuery;
-  Query.SQL.Text:= 'use '+ DBName+ ';';
+  Res := mysql_store_result(MySQLConnection);
+  if Res=Nil then
+    raise EMySqlError.Create('Query returned nil result.');
 
-  Query.Active;
-  FActiveDB:= DBName;
-  Query.Free;
-
+  Result := TMySqlQueryResponse.Create(Res);
 end;
 
-function TMySQLDatabaseConnection.InitQuery: TZQuery;
-begin
-  CheckIfConnected;
+initialization
+  InitialiseMySQL;
 
-  Result:= TZQuery.Create (nil);
-  Result.Connection:= MySQLConnection;
-
-end;
-
-function TMySQLDatabaseConnection.FetchResult(AQuery: TZQuery): TStringList;
-var
-  i: Integer;
-begin
-  Result:= TStringList.Create;
-
-  while not AQuery.EOF do
-  begin
-    for i:= 0 to AQuery.FieldCount- 1 do
-      Result.Add (AQuery.Fields [i].Text);
-
-    AQuery.Next;
-
-  end;
-
-end;
+finalization
+  ReleaseMySQL;
 
 end.
 
