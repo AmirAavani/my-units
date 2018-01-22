@@ -28,6 +28,7 @@ type
     constructor Create;
     destructor Destroy; override;
 
+    class function GetInstance: TRunTimeParameterManager;
   end;
 
 procedure Initialize;
@@ -169,6 +170,11 @@ destructor TRunTimeParameterManager.Destroy;
 begin
   inherited Destroy;
 
+end;
+
+class function TRunTimeParameterManager.GetInstance: TRunTimeParameterManager;
+begin
+  Result := GetRunTimeParameterManager;
 end;
 
 function TRunTimeParameterManager.GetValueByName(Name: AnsiString): AnsiString;
