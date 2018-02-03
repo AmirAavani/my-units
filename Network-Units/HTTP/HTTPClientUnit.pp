@@ -17,7 +17,7 @@ type
   public
     function Get(const url: AnsiString; Params: TStringList): AnsiString;
 
-    class function GetClient: THTTPClient; static;
+    class function GetClient: THTTPClient;
   private
     class procedure InitClient;
 
@@ -31,8 +31,15 @@ function THTTPClient.Get(const url: AnsiString; Params: TStringList
   ): AnsiString;
 
 begin
-  Result := inherited Get(Url)
-
+  try
+    Result := inherited Get(Url);
+  except
+    on e: Exception do
+    begin
+      WriteLn(e.Message);
+      Exit('');
+    end;
+  end;
 end;
 
 class function THTTPClient.GetClient: THTTPClient;
@@ -43,10 +50,15 @@ end;
 class procedure THTTPClient.InitClient;
 begin
   Client := THTTPClient.Create(nil);
-
+  Client.AllowRedirect:= True;
+  Client.IOTimeout := 20000;
 end;
 
 initialization
   THTTPClient.InitClient;
+
+finalization
+  THTTPClient.Client.Free;
+
 end.
 

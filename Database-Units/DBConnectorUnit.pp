@@ -5,30 +5,9 @@ unit DBConnectorUnit;
 interface
 
 uses
-  Classes, SysUtils;
+  Classes, SysUtils, QueryResponeUnit;
 
 type
-
-  { TQueryResponse }
-
-  TQueryResponse = class(TObject)
-  private
-  protected
-    function GetHasNext: Boolean; virtual; abstract;
-    function GetNumColumns: Integer; virtual; abstract;
-    function GetNumRows: Integer; virtual; abstract;
-
-  public
-    property NumRows: Integer read GetNumRows;
-    property NumColumns: Integer read GetNumColumns;
-    property HasNext: Boolean read GetHasNext;
-
-    // Caller is responsibe for freeing the result.
-    function GetRow: TStringList; virtual; abstract;
-    procedure GetRow(Response: TStringList); virtual; abstract;
-
-  end;
-
   { TDatabaseConnection }
 
   TDatabaseConnection= class (TObject)
@@ -56,6 +35,8 @@ type
 
   EConnectionFailed= class (Exception);
 
+  function EscapeForQuery(const Query: WideString): WideString;
+
 implementation
 
 type
@@ -76,7 +57,26 @@ type
 
   end;
 
-{ TQueryResponse }
+function EscapeForQuery(const Query: WideString): WideString;
+begin
+  {
+ \0     An ASCII NUL (0x00) character.
+\'     A single quote (“'”) character.
+\"     A double quote (“"”) character.
+\b     A backspace character.
+\n     A newline (linefeed) character.
+\r     A carriage return character.
+\t     A tab character.
+\Z     ASCII 26 (Control-Z). See note following the table.
+\\     A backslash (“\”) character.
+\%     A “%” character. See note following the table.
+\_     A “_” character. See note following the table.
+}
+  Result := WideString(StringReplace(StringReplace(StringReplace(StringReplace(
+     AnsiString(Query), '''', '\''', [rfReplaceAll]),
+     '"', '\"', [rfReplaceAll]), '(', '\(', [rfReplaceAll]), ')', '\)', [rfReplaceAll]));
+//  Result := WideString(StringReplace(Result, #13, '', [rfReplaceAll]);
+end;
 
 constructor ENoActiveDB.Create;
 begin

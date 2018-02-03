@@ -5,7 +5,7 @@ unit MySQLDBConnectorUnit;
 interface
 
 uses
-  Classes, SysUtils, DBConnectorUnit, mysql57dyn;
+  Classes, SysUtils, DBConnectorUnit, mysql57dyn, QueryResponeUnit;
 
 type
 
@@ -14,7 +14,8 @@ type
   TMySqlQueryResponse =class(TQueryResponse)
   private
     FRes: PMYSQL_RES;
-    FCurrentRow : MYSQL_ROW;
+    FCurrentRowRaw : MYSQL_ROW;
+    FCurrentRow: TStringList;
 
   protected
     function GetHasNext: Boolean; override;
@@ -28,6 +29,7 @@ type
 
     function GetRow: TStringList; override;
     procedure GetRow(Response: TStringList); override;
+    procedure Next; override;
 
   end;
 
@@ -61,6 +63,8 @@ type
   EMySqlError = class (Exception);
 
 implementation
+uses
+  LazLogger;
 
 type
 
@@ -84,7 +88,7 @@ type
 
 function TMySqlQueryResponse.GetHasNext: Boolean;
 begin
-  Result := FCurrentRow <> nil;
+  Result := FCurrentRowRaw <> nil;
 end;
 
 function TMySqlQueryResponse.GetNumColumns: Integer;
@@ -104,7 +108,8 @@ begin
   inherited Create;
 
   FRes := Res;
-  FCurrentRow := mysql_fetch_row(FRes);
+  FCurrentRowRaw := mysql_fetch_row(FRes);
+  FCurrentRow := nil;
 
 end;
 
@@ -117,8 +122,13 @@ end;
 
 function TMySqlQueryResponse.GetRow: TStringList;
 begin
-  Result := TStringList.Create;
-  Self.GetRow(Result);
+  if FCurrentRow <> nil then
+    Exit(FCurrentRow);
+
+  FCurrentRow := TStringList.Create;
+  Self.GetRow(FCurrentRow);
+
+  Result := FCurrentRow;
 
 end;
 
@@ -131,9 +141,17 @@ begin
   for i := 0 to NumColumns - 1 do
   begin
     Field := mysql_fetch_field_direct(FRes, i);
-    Response.Add(FCurrentRow[0]);
+    Response.Add(FCurrentRowRaw[i]);
   end;
-  FCurrentRow := mysql_fetch_row(FRes);
+
+end;
+
+procedure TMySqlQueryResponse.Next;
+begin
+  FCurrentRow.Free;
+  FCurrentRow := nil;
+
+  FCurrentRowRaw := mysql_fetch_row(FRes);
 end;
 
 constructor ENoActiveDB.Create;
@@ -215,11 +233,15 @@ var
   Res: PMYSQL_RES;
 begin
   if mysql_query(MySQLConnection, PAnsiChar(Query)) <> 0 then
+  begin
+    WriteLn(Format('Mysql_query: %s', [Query]));
+    WriteLn(mysql_errno(MySQLConnection), ': ', mysql_error(MySQLConnection));
     raise EMySqlError.Create('Query failed');
+  end;
 
   Res := mysql_store_result(MySQLConnection);
-  if Res=Nil then
-    raise EMySqlError.Create('Query returned nil result.');
+  if Res = Nil then
+    Exit(nil);
 
   Result := TMySqlQueryResponse.Create(Res);
 end;
