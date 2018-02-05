@@ -7,7 +7,7 @@ uses
   cthreads,
   {$ENDIF}{$ENDIF}
   Classes, fgl, UTF8Unit, HeapUnit, ParameterManagerUnit, sysutils,
-  LazFileUtils, csvdocument, TextCompressionUnit
+  csvdocument, TextCompressionUnit
   { you can add units after this };
 
 procedure GenerateTable;
@@ -17,7 +17,7 @@ var
 begin
   HTable := THuffmanTable.CreateFromFiles(TRunTimeParameterManager.GetInstance.ValueByName['--RootDir'],
      '*.html', True);
-  HTable.SaveToFile('Encoding.csv');
+  HTable.SaveToFile(TRunTimeParameterManager.GetInstance.ValueByName['--Table']);
   HTable.Free;
 end;
 
@@ -34,8 +34,7 @@ begin
     fmOpenRead);
   OutputStream := TFileStream.Create('compressed.am', fmCreate);
 
-  HTable := THuffmanTable.LoadFromFile('/home/amir/Mine/BotNewsPaper/BotNewsPaper/DataCollector/khabarchin/Tools/HuffmanHeader/Encoding.csv');
-
+  HTable := THuffmanTable.LoadFromFile(TRunTimeParameterManager.GetInstance.ValueByName['--Table']);
   Archiver := TUnicodeStringArchiver.Create(HTable);
   InputStream.Position := 0;
   InputStream.Position := 0;

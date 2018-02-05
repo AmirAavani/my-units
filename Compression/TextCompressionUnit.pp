@@ -5,10 +5,10 @@ unit TextCompressionUnit;
 interface
 
 uses
-  Classes, SysUtils, CompressionBaseUnit, csvdocument, fgl, UTF8Unit;
+  Classes, SysUtils, CompressionBaseUnit, csvdocument, fgl, UTF8Unit, md5;
 
 type
-  TCompressionMode = (cmHuffman = 1);
+  TCompressionMode = (cmNoCompression = 0, cmHuffman = 1);
 
   { TBitStream }
 
@@ -60,6 +60,7 @@ type
 
   private
     FileCount: Integer;
+    EncodingID: TMD5Digest;
     RuneCountMap: specialize TFPGMap<TRune, Integer>;
     ReverseMapRoot: THuffmanTableNode;
 
@@ -235,6 +236,20 @@ begin
 end;
 
 constructor THuffmanTable.LoadFromFile(const Filename: AnsiString);
+  function ParseEncodingID(const S: AnsiString): TMD5Digest;
+  var
+    StrList: TStringList;
+    i: Integer;
+  begin
+    StrList := TStringList.Create;
+    StrList.Delimiter:= ':';
+    StrList.DelimitedText := S;
+
+    for i := 0 to StrList.Count - 1 do
+      Result[i] := StrToInt(StrList[i]);
+
+  end;
+
 var
   Document: TCSVDocument;
   i: Integer;
@@ -246,6 +261,8 @@ begin
 
   Document := TCSVDocument.Create;
   Document.LoadFromFile(Filename);
+  FileCount := -1;
+  FillChar(EncodingID, SizeOf(EncodingID), 0);
 
   for i := 0 to Document.RowCount - 1 do
   begin
@@ -258,7 +275,9 @@ begin
     begin
       case Document.Cells[0, i][16] of
         'F': //--SPECIALTOKEN_FILECOUNT
-          FileCount:= StrToInt(Document.Cells[1, i])
+          FileCount:= StrToInt(Document.Cells[1, i]);
+        'E': //--SPECIALTOKEN_ENCODING
+          EncodingID := ParseEncodingID(Document.Cells[1, i])
         else
           WriteLn(Format('Errror Cell1 = %s Cell2 = %s Cell3= %s',
              [Document.Cells[0, i],
@@ -270,8 +289,8 @@ begin
     end;
     Self.Add(StrToInt(Document.Cells[0, i]),
                              Document.Cells[1, i]);
-    {RuneCountMap.Add(StrToInt(Document.Cells[0, i]),
-                     StrToInt(Document.Cells[2, i]));}
+    RuneCountMap.Add(StrToInt(Document.Cells[0, i]),
+                     StrToInt(Document.Cells[2, i]));
   end;
 
   Document.Free;
@@ -400,9 +419,22 @@ end;
 
 constructor THuffmanTable.CreateFromFiles(const RootDir,
   FilePattern: AnsiString; Recursive: Boolean);
-var
-  i: Integer;
-  Key: TRune;
+
+  function GenerateEncodingID: TMD5Digest;
+  var
+    Text: AnsiString;
+    i: Integer;
+    Key: TRune;
+
+  begin
+    Text := '';
+    for i := 0 to Self.Count - 1 do
+    begin
+      Key := Self.Keys[i];
+      Text += Format('%d->%s\n', [Key, Self[Key]]);
+    end;
+    Result := MD5String(Text);
+  end;
 
 begin
   inherited Create;
@@ -414,6 +446,7 @@ begin
 
   CreateHuffmanTable;
   InitRootNode;
+  EncodingID := GenerateEncodingID;
 end;
 
 type
@@ -578,6 +611,16 @@ begin
 end;
 
 procedure THuffmanTable.SaveToFile(const Filename: AnsiString);
+  function ToString(Digest: TMD5Digest): AnsiString;
+  var
+    i: Integer;
+
+  begin
+    Result := Format('%d', [Digest[0]]);
+    for i := 1 to High(Digest) do
+      Result += Format(':%d', [Digest[i]]);
+  end;
+
 var
   Document: TCSVDocument;
   i: Integer;
@@ -591,13 +634,16 @@ begin
   Document.AddRow('--SPECIALTOKEN_FILECOUNT');
   Document.AddCell(1, IntToStr(FileCount));
   Document.AddCell(1, '');
+  Document.AddRow('--SPECIALTOKEN_ENCODINGID');
+  Document.AddCell(2, ToString(EncodingID));
+  Document.AddCell(2, '');
 
   for i := 0 to Self.Count - 1 do
   begin
     Key := Self.Keys[i];
     Document.AddRow(IntToStr(Key));
-    Document.AddCell(i + 2, Format('%s', [Self[Key]]));
-    Document.AddCell(i + 2, Format('%d', [RuneCountMap[Key]]));
+    Document.AddCell(i + 3, Format('%s', [Self[Key]]));
+    Document.AddCell(i + 3, Format('%d', [RuneCountMap[Key]]));
   end;
 
   Document.SaveToFile(Filename);
@@ -680,7 +726,9 @@ begin
   ChrPtr:= PChar(OutContent);
 
   Result := OStream.Position;
-  b := OutputLen and 7;
+  b := Ord(cmHuffman) * 8 + (OutputLen and 7);
+  OStream.Write(b, 1);
+  b := FHTable.EncodingID[2];
   OStream.Write(b, 1);
 
   for Rune in AllRunes do
@@ -718,14 +766,22 @@ var
   Rune: TRune;
   BitCount: Integer;
   Data: array of Byte;
-  Len: Integer;
+  Len, Mode: Integer;
+  LMode, b: Integer;
 
 begin
   Result :=  IStream.Position - OStream.Position;
 
   SetLength(data, 4);
   IBitStream := TBitStream.Create(IStream);
-  Len := IBitStream.ReadNextByte;
+  LMode := IBitStream.ReadNextByte;
+  Len := LMode and 7;
+  Mode := (LMode and 8) shr 3;
+  assert(Mode = 1, IntToStr(Mode));
+
+  b := IBitStream.ReadNextByte;
+  Assert(FHTable.EncodingID[2] = b, Format('HTable:%d vs Compressed:%d',
+     [FHTable.EncodingID[2], b]));
 
   while IBitStream.Position < IBitStream.Size - (8 - Len) do
   begin
