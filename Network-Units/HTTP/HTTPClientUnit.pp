@@ -36,7 +36,7 @@ begin
   except
     on e: Exception do
     begin
-      WriteLn(e.Message);
+      WriteLn('e:', e.Message);
       Exit('');
     end;
   end;

@@ -63,11 +63,8 @@ type
   EMySqlError = class (Exception);
 
 implementation
-uses
-  LazLogger;
 
 type
-
   { ENotConnected }
 
   ENotConnected= class (Exception)
@@ -231,11 +228,13 @@ function TMySQLDatabaseConnection.RunQuery(const Query: AnsiString
   ): TQueryResponse;
 var
   Res: PMYSQL_RES;
+
 begin
   if mysql_query(MySQLConnection, PAnsiChar(Query)) <> 0 then
   begin
     WriteLn(Format('Mysql_query: %s', [Query]));
     WriteLn(mysql_errno(MySQLConnection), ': ', mysql_error(MySQLConnection));
+    Flush(Output);
     raise EMySqlError.Create('Query failed');
   end;
 

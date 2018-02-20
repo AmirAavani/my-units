@@ -57,8 +57,6 @@ type
   end;
 
 implementation
-uses
-    lazlogger;
 
 { TDBEntityTblAccessory }
 
