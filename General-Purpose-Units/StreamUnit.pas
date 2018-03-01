@@ -351,14 +351,14 @@ end;
 
 procedure TMyTextStream.WriteLine (const S: AnsiString);
 begin
-  FTargerStream.Write (Pointer (@S[1])^, Length (S));
+  FTargerStream.WriteBuffer(S[1], Length(S));
     
 (*$ifdef LINUX*)
-  WriteChar (#10);
+  WriteChar(#10);
    
 (*$else*)
-  WriteChar (#13);
-  WriteChar (#10);
+  WriteChar(#13);
+  WriteChar(#10);
 (*$endif*)
 
 end;
@@ -387,7 +387,7 @@ end;
 
 function TMyBinStream.ReadByte: Byte;
 begin
-  FTargerStream.Read (Result, 1);
+  FTargerStream.Read(Result, 1);
 end;
 
 function TMyBinStream.ReadStr: AnsiString;
