@@ -1,0 +1,16 @@
+syntax = "proto3";
+
+package freshness.twitter_index;
+
+message TestID {
+//  repeated uint64 uid64s = 1;
+//  repeated uint32 uid32s = 2;
+//  repeated int64 id64s = 3;
+//  repeated int32 id32s = 4;
+  uint64 uid64 = 5;
+  uint32 uid32 = 6;
+  int64 id64 = 7;
+  int32 id32 = 8;
+  string idStr = 10;
+}
+
