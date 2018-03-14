@@ -41,7 +41,6 @@ type
     FTableType: AnsiString;
 
     constructor Create(Row: TStringList);
-    destructor Destroy; override;
     function GetIsAutoIncrement: Boolean;
   public
     property Field: Ansistring read FField;
@@ -53,6 +52,7 @@ type
     property IsAutoIncrement: Boolean read GetIsAutoIncrement;
 
     function ToString: AnsiString; override;
+    destructor Destroy; override;
   end;
 
   { TTableInfo }
@@ -60,9 +60,12 @@ type
   TTableInfo = class(specialize TFPGList<TColumnInfo>)
   private
     FTableName: AnsiString;
+
   public
     property TableName: AnsiString read FTableName;
+
     constructor Create(const Name: Ansistring; const Response: TQueryResponse);
+    destructor Destroy; override;
 
   end;
 
@@ -77,8 +80,6 @@ type
 
 constructor TTableInfo.Create(const Name: Ansistring;
   const Response: TQueryResponse);
-var
-  i: Integer;
 begin
   inherited Create;
 
@@ -88,7 +89,19 @@ begin
   begin
     Self.Add(TColumnInfo.Create(Response.Row));
     Response.Next;
+
   end;
+end;
+
+destructor TTableInfo.Destroy;
+var
+  Column: TColumnInfo;
+
+begin
+  for Column in Self do
+    Column.Free;
+
+  inherited Destroy;
 end;
 
 { TColumnInfo }
@@ -98,7 +111,10 @@ begin
   inherited Create;
 
   if Row.Count <> 6 then
+  begin
+    WriteLn(Row.Text);
     raise EExpalinTable.Create('Row: "' + Row.Text + '" is an invalid response');
+  end;
 
   FField := Row[0];
   FTableType := Row[1];
@@ -106,13 +122,14 @@ begin
   FKey := Row[3];
   FDefaultValue := Row[4];
   FExtra := TStringList.Create;
-  FExtra.Sort;
+  FExtra.Sorted := True;
   FExtra.Add(Row[5]);
 end;
 
 destructor TColumnInfo.Destroy;
 begin
   FExtra.Free;
+
   inherited Destroy;
 end;
 

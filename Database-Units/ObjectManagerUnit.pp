@@ -41,8 +41,8 @@ type
 
   TDBEntityAccessor = class(TObject)
   protected
-    class var FdbConnection: TDatabaseConnection;
     FTableInfo: TTableInfo;
+    class var FdbConnection: TDatabaseConnection;
 
     class procedure GetAllEntities(EntityClass: TDBEntityClass; out List: TDBEntitiesList);
     class function AddNewEntity(
@@ -52,7 +52,10 @@ type
     class function ExplainTable(EntityClass: TDBEntityClass): TTableInfo;
 
   public
+    property TableInfo: TTableInfo read FTableInfo;
+
     constructor Create(dbConnection: TDatabaseConnection; EntityClass: TDBEntityClass);
+    destructor Destroy; override;
 
   end;
 
@@ -128,6 +131,14 @@ begin
 
   FdbConnection := dbConnection;
   FTableInfo := ExplainTable(EntityClass);
+
+end;
+
+destructor TDBEntityAccessor.Destroy;
+begin
+  FTableInfo.Free;
+
+  inherited Destroy;
 end;
 
 { TDBEntity }
@@ -158,4 +169,3 @@ begin
 end;
 
 end.
-

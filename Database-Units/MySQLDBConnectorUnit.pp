@@ -106,23 +106,24 @@ begin
 
   FRes := Res;
   FCurrentRowRaw := mysql_fetch_row(FRes);
-  FCurrentRow := nil;
+  FCurrentRow := TStringList.Create;
 
 end;
 
 destructor TMySqlQueryResponse.Destroy;
 begin
-  mysql_free_result (FRes);
+  mysql_free_result(FRes);
+  FCurrentRow.Free;
 
   inherited Destroy;
 end;
 
 function TMySqlQueryResponse.GetRow: TStringList;
 begin
-  if FCurrentRow <> nil then
+  if FCurrentRow.Count <> 0 then
     Exit(FCurrentRow);
 
-  FCurrentRow := TStringList.Create;
+  FCurrentRow.Clear;
   Self.GetRow(FCurrentRow);
 
   Result := FCurrentRow;
@@ -145,10 +146,9 @@ end;
 
 procedure TMySqlQueryResponse.Next;
 begin
-  FCurrentRow.Free;
-  FCurrentRow := nil;
-
+  FCurrentRow.Clear;
   FCurrentRowRaw := mysql_fetch_row(FRes);
+
 end;
 
 constructor ENoActiveDB.Create;
@@ -189,7 +189,6 @@ end;
 
 destructor TMySQLDatabaseConnection.Destroy;
 begin
-
   inherited Destroy;
 
 end;
@@ -202,8 +201,10 @@ end;
 
 procedure TMySQLDatabaseConnection.Disconnect;
 begin
-  mysql_close(MySQLConnection);
+  if MySQLConnection <> nil then
+    mysql_close(MySQLConnection);
 
+  MySQLConnection := nil;
 end;
 
 procedure TMySQLDatabaseConnection.SetActiveDatabase (DBName: AnsiString);

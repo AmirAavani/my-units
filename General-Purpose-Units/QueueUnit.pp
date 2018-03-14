@@ -5,13 +5,13 @@ unit QueueUnit;
 interface
 
 uses
-  Classes, SysUtils, HeapUnit;
+  Classes, SysUtils, HeapUnit, cthreads;
   
 type
 
   { EQueueIsFull }
 
-  EQueueIsFull= class (Exception)
+  EQueueIsFull= class(Exception)
   public
     constructor Create;
     
@@ -19,7 +19,7 @@ type
   
   { EQueueIsEmpty }
 
-  EQueueIsEmpty= class (Exception)
+  EQueueIsEmpty= class(Exception)
   public
     constructor Create;
 
@@ -33,7 +33,7 @@ type
     Jan 1, 2013: I had to make all the abstract functions, explicit to functions
       to avoid some wierd compile errors.
   }
-  generic TGenericAbstractQueue<T>= class (TObject)
+  generic TGenericAbstractQueue<T>= class(TObject)
   private
     {Returns the number of elemnts in the Queue}
     function GetCount: Integer; virtual ; {abstract;}
@@ -44,9 +44,9 @@ type
 
   protected
     {The actual code for Insert goes here}
-    procedure DoInsert (Entry: T); virtual; {abstract;}
+    procedure DoInsert(Entry: T); virtual; {abstract;}
     {The actual code for Delete goes here}
-    procedure DoDelete (var LastElement: T); virtual; {abstract;}
+    procedure DoDelete(var LastElement: T); virtual; {abstract;}
     {The actual code for GetTop goes here}
     function DoGetTop: T; virtual; {abstract;}
 
@@ -55,21 +55,21 @@ type
     property IsFull: Boolean read GetIsFull;
     property IsEmpty: Boolean read GetIsEmpty;
 
-    procedure Insert (Entry: T); virtual;
-    procedure Delete (var LastElement: T); virtual;
+    procedure Insert(Entry: T); virtual;
+    procedure Delete(var LastElement: T); virtual;
     function GetTop: T; virtual;
-    {Removes all the objects from Queue (does not free the objects)}
+    {Removes all the objects from Queue(does not free the objects)}
     procedure Clear; virtual;
 
+    constructor Create;
     {Removes all the objects from Queue and Frees the objects}
     destructor Destroy; override; {abstract}
-
 
   end;
 
   { TGenericCircularQueue }
 
-  generic TGenericCircularQueue<T>= class (specialize TGenericAbstractQueue <T>)
+  generic TGenericCircularQueue<T>= class(specialize TGenericAbstractQueue <T>)
   private
     FData: array of T;
     SoQ, EoQ: Integer;
@@ -81,12 +81,12 @@ type
     function GetIsFull: Boolean; override;
 
   protected
-    procedure DoInsert (Entry: T); override;
-    procedure DoDelete (var LastElement: T); override;
+    procedure DoInsert(Entry: T); override;
+    procedure DoDelete(var LastElement: T); override;
     function DoGetTop: T; override;
 
   public
-    constructor Create (Size: Integer);
+    constructor Create(Size: Integer);
     destructor Destroy; override;
 
     procedure Clear;
@@ -96,10 +96,9 @@ type
 
   { TGenericQueue }
 
-  generic TGenericQueue<T>= class (specialize TGenericAbstractQueue<T>)
+  generic TGenericQueue<T>= class(specialize TGenericAbstractQueue<T>)
   private
     FData: TList;
-
 
   private
     function GetCount: Integer; override;
@@ -107,8 +106,8 @@ type
     function GetIsFull: Boolean; override;
 
   protected
-    procedure DoInsert (Entry: T); override;
-    procedure DoDelete (var LastElement: T); override;
+    procedure DoInsert(Entry: T); override;
+    procedure DoDelete(var LastElement: T); override;
     function DoGetTop: T; override;
 
   public
@@ -121,19 +120,19 @@ type
 
   { TGenericPriorityQueue }
 
-  generic TGenericPriorityQueue<T>= class (specialize TGenericAbstractQueue<T>)
+  generic TGenericPriorityQueue<T>= class(specialize TGenericAbstractQueue<T>)
   private
     function GetCount: Integer; override;
     function GetIsEmpty: Boolean; override;
     function GetIsFull: Boolean; override;
 
   protected
-    procedure DoInsert (Entry: T); override;
-    procedure DoDelete (var LastElement: T); override;
+    procedure DoInsert(Entry: T); override;
+    procedure DoDelete(var LastElement: T); override;
     function DoGetTop: T; override;
 
   type
-    TIsGreaterThanFunction= function (const a: T; const b: T): Boolean;
+    TIsGreaterThanFunction= function(const a: T; const b: T): Boolean;
     TMaxHeapT= specialize THeap<T>;
 
   protected
@@ -142,14 +141,161 @@ type
 
   public
 
-    constructor Create (IsGreaterThanFunction: TIsGreaterThanFunction;
-          InitCapacity: Integer= 1);
-    destructor Destroy;
-    procedure Clear;
+    constructor Create(IsGreaterThanFunction: TIsGreaterThanFunction);
+    destructor Destroy; override;
+    procedure Clear; override;
 
   end;
 
+  { TThreadSafeQueue }
+  {
+   The implementation of Delete method, in this class, is blocking, meaning
+  the caller will be blocked if there is no element in the Queue.
+  }
+
+  TThreadSafeQueue = class(specialize TGenericAbstractQueue<TObject>)
+  private
+    FCount: Integer;
+    FData: TThreadList;
+    EmptyBlockEvent: PRTLEvent;
+
+    function GetCount: Integer; override;
+    function GetIsEmpty: Boolean; override;
+    function GetIsFull: Boolean; override;
+
+  protected
+    procedure DoInsert(Entry: TObject); override;
+    procedure DoDelete(var LastElement: TObject); override;
+    function DoGetTop: TObject; override;
+
+  public
+    procedure Clear; override;
+
+    constructor Create;
+    destructor Destroy; override;
+  end;
+
 implementation
+
+{ TThreadSafeQueue }
+
+function TThreadSafeQueue.GetCount: Integer;
+begin
+  Result := FCount;
+
+end;
+
+function TThreadSafeQueue.GetIsEmpty: Boolean;
+begin
+  FData.LockList;
+
+  Result := FCount = 0;
+
+  FData.UnlockList;
+
+end;
+
+function TThreadSafeQueue.GetIsFull: Boolean;
+begin
+  Result := False;
+
+end;
+
+procedure TThreadSafeQueue.DoInsert(Entry: TObject);
+var
+  l : tlist;
+
+begin
+  l := FData.LockList;
+
+  l.Add(Entry);
+  Inc(FCount);
+
+  FData.UnlockList;
+
+  RTLeventSetEvent(EmptyBlockEvent);
+end;
+
+procedure TThreadSafeQueue.DoDelete(var LastElement: TObject);
+var
+  l: TList;
+
+begin
+   LastElement := nil;
+
+   while LastElement = nil do
+   begin
+     RTLeventWaitFor(EmptyBlockEvent);
+
+     l := FData.LockList;
+
+     if 0 < l.Count then
+     begin
+       LastElement := TObject(l.Last);
+       l.Delete(l.Count - 1);
+     end;
+
+     FData.UnlockList;
+   end;
+
+end;
+
+function TThreadSafeQueue.DoGetTop: TObject;
+var
+  l: TList;
+
+begin
+   Result := nil;
+
+   RTLeventWaitFor(EmptyBlockEvent);
+
+   l := FData.LockList;
+
+   if 0 < l.Count then
+     Result := TObject(l.Last);
+
+   FData.UnlockList;
+end;
+
+procedure TThreadSafeQueue.Clear;
+var
+  Obj: TObject;
+
+begin
+
+  while not IsEmpty do
+  begin
+    Obj := nil;
+
+  end;
+end;
+
+constructor TThreadSafeQueue.Create;
+begin
+  inherited Create;
+
+  FData := TThreadList.Create;
+  EmptyBlockEvent := RTLEventCreate;
+
+end;
+
+destructor TThreadSafeQueue.Destroy;
+var
+  Last: TObject;
+
+begin
+  while not Self.IsEmpty do
+  begin
+    Self.Delete(Last);
+    Last.Free;
+
+  end;
+
+  FData.Free;
+  RTLeventdestroy(EmptyBlockEvent);
+
+  inherited Destroy;
+end;
 
 { TGenericPriorityQueue }
 
@@ -177,27 +323,26 @@ begin
 
 end;
 
-procedure TGenericPriorityQueue.DoInsert (Entry: T);
+procedure TGenericPriorityQueue.DoInsert(Entry: T);
 begin
-  MaxHeap.Insert (Entry);
+  MaxHeap.Insert(Entry);
 
 end;
 
-procedure TGenericPriorityQueue.DoDelete (var LastElement: T);
+procedure TGenericPriorityQueue.DoDelete(var LastElement: T);
 begin
   LastElement:= MaxHeap.Min;
   MaxHeap.DeleteMin;
 
 end;
 
-constructor TGenericPriorityQueue.Create (
-      IsGreaterThanFunction: TIsGreaterThanFunction;
-          InitCapacity: Integer= 1);
+constructor TGenericPriorityQueue.Create(
+      IsGreaterThanFunction: TIsGreaterThanFunction);
 begin
   inherited Create;
 
   IsGreaterThan:= IsGreaterThanFunction;
-  MaxHeap:= TMaxHeapT.Create (IsGreaterThanFunction, InitCapacity);
+  MaxHeap:= TMaxHeapT.Create(IsGreaterThanFunction);
 
 end;
 
@@ -254,16 +399,16 @@ begin
   if IsFull then
     raise EQueueIsFull.Create;
 
-  DoInsert (Entry);
+  DoInsert(Entry);
 
 end;
 
-procedure TGenericAbstractQueue.Delete (var LastElement: T);
+procedure TGenericAbstractQueue.Delete(var LastElement: T);
 begin
   if IsEmpty then
     raise EQueueIsEmpty.Create;
 
-  DoDelete (LastElement);
+  DoDelete(LastElement);
 
 end;
 
@@ -281,6 +426,12 @@ begin
 
 end;
 
+constructor TGenericAbstractQueue.Create;
+begin
+  inherited Create;
+
+end;
+
 destructor TGenericAbstractQueue.Destroy;
 begin
   inherited Destroy;
@@ -291,7 +442,7 @@ end;
 
 constructor EQueueIsFull.Create;
 begin
-  inherited Create ('Queue is full!');
+  inherited Create('Queue is full!');
   
 end;
 
@@ -299,7 +450,7 @@ end;
 
 constructor EQueueIsEmpty.Create;
 begin
-  inherited Create ('Queue is empty!');
+  inherited Create('Queue is empty!');
 
 end;
 
@@ -319,7 +470,7 @@ end;
 
 function TGenericCircularQueue.GetIsFull: Boolean;
 begin
-  Result:= (SoQ= ((EoQ+ 1) mod Count));
+  Result:=(SoQ=((EoQ+ 1) mod Count));
 
 end;
 
@@ -335,22 +486,22 @@ end;
 procedure TGenericCircularQueue.DoInsert(Entry: T);
 begin
   FData [EoQ]:= Entry;
-  EoQ:= (EoQ+ 1) mod Count;
+  EoQ:=(EoQ+ 1) mod Count;
 
 end;
 
-procedure TGenericCircularQueue.DoDelete (var LastElement: T);
+procedure TGenericCircularQueue.DoDelete(var LastElement: T);
 begin
   LastElement:= FData [SoQ];
-  SoQ:= (SoQ+ 1) mod Count;
+  SoQ:=(SoQ+ 1) mod Count;
 
 end;
 
-constructor TGenericCircularQueue.Create (Size: Integer);
+constructor TGenericCircularQueue.Create(Size: Integer);
 begin                             
-  inherited Create ();
+  inherited Create();
 
-  SetLength (FData, Size);
+  SetLength(FData, Size);
   FCount:= Size;
   SoQ:= 0; EoQ:= 0;
 
@@ -364,7 +515,7 @@ begin
   for i:= 0 to Count- 1 do
     FData [i].Free;
 
-  SetLength (FData, 0);
+  SetLength(FData, 0);
 
   inherited;
 
@@ -372,23 +523,23 @@ end;
 
 procedure TGenericCircularQueue.Clear;
 begin
-  SetLength (FData, 0);
+  SetLength(FData, 0);
   FCount:= 0;
 
 end;
 
 { TGenericQueue }
 
-procedure TGenericQueue.DoInsert (Entry: T);
+procedure TGenericQueue.DoInsert(Entry: T);
 begin
-  FData.Add (Entry);
+  FData.Add(Entry);
 
 end;
 
-procedure TGenericQueue.DoDelete (var LastElement: T);
+procedure TGenericQueue.DoDelete(var LastElement: T);
 begin
-  LastElement:= T (FData [0]);
-  FData.Delete (0);
+  LastElement:= T(FData [0]);
+  FData.Delete(0);
 
 end;
 
@@ -404,7 +555,7 @@ var
 
 begin
   for i:= 0 to Count- 1 do
-    T (FData.Items [i]).Free;
+    T(FData.Items [i]).Free;
 
 
   inherited Destroy;
@@ -437,7 +588,7 @@ end;
 
 function TGenericQueue.DoGetTop: T;
 begin
-  Result:= T (FData [0]);
+  Result:= T(FData [0]);
 
 end;
 

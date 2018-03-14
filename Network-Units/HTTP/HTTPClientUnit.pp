@@ -18,8 +18,8 @@ type
     function Get(const url: AnsiString; Params: TStringList): AnsiString;
 
     class function GetClient: THTTPClient;
-  private
     class procedure InitClient;
+  private
 
   end;
 
@@ -45,20 +45,21 @@ end;
 class function THTTPClient.GetClient: THTTPClient;
 begin
   Result := Client;
+
 end;
 
 class procedure THTTPClient.InitClient;
 begin
   Client := THTTPClient.Create(nil);
-  Client.AllowRedirect:= True;
+  Client.AllowRedirect := True;
+  Client.MaxRedirects := 10;
+  Client.AddHeader('User-Agent', 'KhabarchinBit (compatible; Mozilla/5.0; fpweb)');
   Client.IOTimeout := 20000;
 end;
 
 initialization
-  THTTPClient.InitClient;
 
 finalization
-  THTTPClient.Client.Free;
 
 end.
 
