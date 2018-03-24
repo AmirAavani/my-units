@@ -38,7 +38,7 @@ type
     function ReadLnWideString: WideString;
     function ReadWideString: WideString;
 
-    procedure WriteLine (const S: AnsiString);
+    procedure WriteLine (const S: AnsiString = '');
     procedure WriteChar (Ch: Char);
     procedure WriteStr (const S: AnsiString);
 

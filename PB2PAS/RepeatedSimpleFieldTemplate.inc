@@ -35,6 +35,27 @@ const
    '  Result := F[[CanName]];'+ sLineBreak + sLineBreak +
    'end;' + sLineBreak + sLineBreak;
 
+ ImplementRepeatedBooleanTemplate : AnsiString =
+   '// Methods for repeated [[Field.Type]] [[Field.Name]] = [[Field.Number]];' + sLineBreak +
+  '// Getter Functions' + sLineBreak + sLineBreak +
+   'function [[ClassName]].Get[[CanName]](Index: Integer): [[FieldType]];' + sLineBreak +
+   'begin' + sLineBreak +
+   '  Result := F[[CanName]][Index];' + sLineBreak + sLineBreak +
+   'end;' + sLineBreak + sLineBreak +
+   'function [[ClassName]].GetAll[[CanName]]: specialize TSimpleTypeList<[[FieldType]]>;' + sLineBreak +
+   'begin' + sLineBreak +
+   '  if Self = nil then' + sLineBreak +
+   '    Exit(nil);' + sLineBreak +
+   '  Result := F[[CanName]];'+ sLineBreak + sLineBreak +
+   'end;' + sLineBreak + sLineBreak +
+   'function [[ClassName]].GetOrCreateAll[[CanName]]: specialize TSimpleTypeList<[[FieldType]]>;' + sLineBreak +
+   '' + sLineBreak +
+   'begin' + sLineBreak +
+   '  if F[[CanName]] = nil then' + sLineBreak +
+   '    F[[CanName]] := TBooleanList.Create(''%[[FormatString]]'');' + sLineBreak +
+   '  Result := F[[CanName]];'+ sLineBreak + sLineBreak +
+   'end;' + sLineBreak + sLineBreak;
+
  ImplementRepeatedSimpleFieldToStringTemplate : AnsiString =
    '  if F[[CanName]] <> nil then' + sLineBreak +
    '  begin' + sLineBreak +

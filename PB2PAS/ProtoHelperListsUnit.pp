@@ -40,10 +40,34 @@ type
     function ToString: AnsiString; override;
     function LoadFromStream(Stream: TStream): Boolean;
     procedure SaveToStream(Stream: TStream);
+  end;
 
+  { TBooleanList }
+
+  TBooleanList = class(specialize TSimpleTypeList<Boolean>)
+  public
+    function ToString: AnsiString; override;
   end;
 
 implementation
+
+{ TBooleanList }
+
+function TBooleanList.ToString: AnsiString;
+var
+  Data: Boolean;
+
+begin
+  Result := '[';
+  for data in Self do
+  begin
+    if Length(Result) <> 1 then
+      Result += ', ';
+    Result += BoolToStr(data)
+  end;
+  Result += ']';
+
+end;
 
 { TSimpleTypeList }
 
@@ -79,6 +103,7 @@ begin
     Result += Format(FormatString, [data]);
   end;
   Result += ']';
+
 end;
 
 function TSimpleTypeList.LoadFromStream(Stream: TStream): Boolean;
