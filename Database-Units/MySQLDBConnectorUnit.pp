@@ -253,4 +253,3 @@ finalization
   ReleaseMySQL;
 
 end.
-
