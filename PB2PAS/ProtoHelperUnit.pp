@@ -110,6 +110,7 @@ type
     constructor Create;
     destructor Destroy; override;
 
+    function LoadFromString(Str: AnsiString): Boolean; virtual;
     function LoadFromStream(Stream: TStream): Boolean; virtual;
     procedure SaveToStream(Stream: TStream);  virtual;
 
@@ -615,6 +616,12 @@ end;
 destructor TBaseMessage.Destroy;
 begin
   inherited Destroy;
+end;
+
+function TBaseMessage.LoadFromString(Str: AnsiString): Boolean;
+begin
+  Result := self.LoadFromStream(TStringStream.Create(Str));
+
 end;
 
 function TBaseMessage.LoadFromStream(Stream: TStream): Boolean;
