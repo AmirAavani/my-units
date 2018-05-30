@@ -15,7 +15,6 @@ type
     function ReadRepeatedLength(Stream: TProtoStreamReader): UInt32;
 
   protected
-    // Simple Type.
     procedure SaveSingle(Stream: TProtoStreamWriter;
         const Data: Single; const TagID: Integer);
     procedure SaveDouble(Stream: TProtoStreamWriter;
@@ -42,11 +41,6 @@ type
     function LoadAnsiString(Stream: TProtoStreamReader): AnsiString;
     function LoadBoolean(Stream: TProtoStreamReader): Boolean;
 
-    // Repeated Simple Type
-    {generic procedure SaveRepeated<aType>(Stream: TProtoStreamWriter;
-        const Data: specialize TSimpleTypeList<aType>;
-        const TagID: Integer);
-     }
     procedure SaveRepeatedSingle(Stream: TProtoStreamWriter;
     const Data: specialize TSimpleTypeList<Single>;
     const TagID: Integer);
@@ -73,7 +67,6 @@ type
         const Data: specialize TSimpleTypeList<Boolean>;
         const TagID: Integer);
 
-    // Repeated Simple Type
     function LoadRepeatedSingle(Stream: TProtoStreamReader;
         Data: specialize TSimpleTypeList<Single>): Boolean;
     function LoadRepeatedDouble(Stream: TProtoStreamReader;
@@ -91,14 +84,12 @@ type
     function LoadRepeatedBoolean(Stream: TProtoStreamReader;
         Data: specialize TSimpleTypeList<Boolean>): Boolean;
 
-    // Save Message
     procedure SaveMessage(Stream: TProtoStreamWriter;
         const Data: TBaseMessage;
         const TagID: Integer);
     function LoadMessage(Stream: TProtoStreamReader;
         const Data: TBaseMessage): Boolean;
 
-    // Save Repeated Message
     procedure SaveRepeatedMessage(Stream: TProtoStreamWriter;
         const Data: specialize TObjectList<TBaseMessage>;
         const TagID: Integer);
@@ -118,11 +109,6 @@ type
 
 
 implementation
-
-procedure SaveRepeatedSimpleType;
-begin
-
-end;
 
 { TBaseMessage }
 
@@ -649,4 +635,3 @@ begin
 end;
 
 end.
-
