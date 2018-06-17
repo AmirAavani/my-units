@@ -8,6 +8,6 @@ const
  ImplementNonRepeatedSimpleFieldToStringTemplate : AnsiString =
  '  if F[[CanName]] <> [[Field.DefaultValue]] then' + sLineBreak +
  '  begin' + sLineBreak +
- '    Result += Format(''[[Field.Name]]: %[[FormatString]] '', [F[[CanName]]]);' + sLineBreak +
+ '    Result += Indent + Format(''[[Field.Name]]: %[[FormatString]] '', [F[[CanName]]]);' + sLineBreak +
  '    Result += sLineBreak;' + sLineBreak +
  '  end;' + sLineBreak;

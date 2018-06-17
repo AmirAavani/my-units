@@ -1,6 +1,6 @@
 program PB2PAS;
 uses
-  ParameterManagerUnit, PBParserUnit;
+  ParameterManagerUnit, PBParserUnit, WideStringUnit;
 
 
 begin

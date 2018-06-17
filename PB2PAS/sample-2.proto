@@ -1,0 +1,14 @@
+syntax = "proto3";
+
+package freshness.twitter_index;
+
+enum CompressionMode {
+  None = 1;
+  GZip = 2;
+  BZip = 3;
+}
+
+message GetCmdArguments {
+  string FileName = 1;
+  CompressionMode CompressionMode = 2;
+}

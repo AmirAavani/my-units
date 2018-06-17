@@ -81,7 +81,6 @@ type
     property Size: Int64 read GetSize;
     property Root: TLinkListNode read FRoot;
 
-    // Takes the ownership of AnStream Object.
     constructor Create(AnStream: TStream);
     destructor Destroy; override;
 
@@ -145,7 +144,6 @@ type
     property Size: Int64 read GetSize;
     property Position: Int64 read GetPosition;
 
-    // Takes the ownership of AnStream Object.
     constructor Create(AnStream: TStream);
     destructor Destroy; override;
 
@@ -269,8 +267,6 @@ end;
 
 destructor TProtoStreamReader.Destroy;
 begin
-  FStream.Free;
-
   inherited Destroy;
 end;
 
@@ -502,7 +498,6 @@ destructor TProtoStreamWriter.Destroy;
 begin
   Self.WriteToStream;
   Root.Free;
-  FStream.Free;
 
   inherited;
 

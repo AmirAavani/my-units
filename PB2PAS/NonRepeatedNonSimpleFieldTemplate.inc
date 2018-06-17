@@ -8,8 +8,8 @@ const
  ImplementNonRepeatedNonSimpleFieldToStringTemplate : AnsiString =
   '  if F[[CanName]] <> nil then' + sLineBreak +
   '  begin' + sLineBreak +
-  '    Result += ''[[Field.Name]] = '';' + sLineBreak +
-  '    Result += F[[CanName]].ToString;' + sLineBreak +
+  '    Result += Indent + ''[[Field.Name]]: '' + sLineBreak;' + sLineBreak +
+  '    Result += F[[CanName]].ToString(Indent +''  '');' + sLineBreak +
   '    Result += sLineBreak;' + sLineBreak +
   '  end;' + sLineBreak;
 

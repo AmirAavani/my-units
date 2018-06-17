@@ -8,6 +8,7 @@ uses
   Classes, SysUtils, fgl, StreamUnit;
 
 type
+  TProto = class;
   TTokenKind = (ttkStart, ttkDot, ttkOpenBrace, ttkCloseBrace, ttkOpenPar,
     ttkClosePar, ttkSemiColon, ttkEqualSign,
     ttkColon, ttkComma, ttkDoubleQuote, ttkSingleQuote,
@@ -98,8 +99,10 @@ type
     FName: AnsiString;
 
     procedure GenerateCode(Stream: TMyTextStream);
+    function GetEnumerationName(Index: Integer): AnsiString;
   public
     property Name: AnsiString read FName;
+    property EnumerationName[Index: Integer]: AnsiString read GetEnumerationName;
 
     constructor Create(Tokenizer: TTokenizer);
   end;
@@ -168,6 +171,7 @@ type
     FFieldType: TType;
     FName: AnsiString;
     FOptions: specialize TObjectList<TOption>;
+    ParentProto: TProto;
 
     function ApplyPattern(MessageClassName: AnsiString; const Template: AnsiString): AnsiString;
     procedure GenerateDeclaration(MessageClassName: AnsiString; Output: TMyTextStream);
@@ -185,12 +189,11 @@ type
     property Options: specialize TObjectList<TOption> read FOptions;
     property DefaultValue: AnsiString read GetDefaultValue;
 
-    constructor Create(TokenString: AnsiString; Tokenizer: TTokenizer);
+    constructor Create(TokenString: AnsiString; Tokenizer: TTokenizer; PProto: TProto);
     destructor Destroy; override;
 
     function ToString: AnsiString; override;
   end;
-
 
   { TMessage }
 
@@ -203,6 +206,7 @@ type
     FMaps: specialize TObjectList<TMap>;
     FEnums: specialize TObjectList<TEnum>;
     FName: AnsiString;
+    ParentProto: TProto;
 
     MessageClassName: AnsiString;
 
@@ -219,7 +223,7 @@ type
     property Enums: specialize TObjectList<TEnum> read FEnums;
     property OneOfs: specialize TObjectList<TOneOf> read FOneOfs;
 
-    constructor Create(Tokenizer: TTokenizer);
+    constructor Create(Tokenizer: TTokenizer; PProto: TProto);
     destructor Destroy; override;
 
     function ToString: AnsiString; override;
@@ -240,6 +244,7 @@ type
     procedure GenerateCode(
         OutputUnitName: AnsiString; OutputStream: TStream); virtual; abstract;
 
+    function IsSimpleType(AField: TMessageField): Boolean;
   public
     constructor Create;
     destructor Destroy; override;
@@ -370,10 +375,10 @@ begin
 
 end;
 
-function IsSimpleType(TypeName: AnsiString): Boolean;
+function IsBasicType(aField: TMessageField): Boolean;
 begin
   Result := True;
-  case TypeName of
+  case aField.FFieldType of
     'double': Exit;
     'float': Exit;
     'int16': Exit;
@@ -526,7 +531,7 @@ begin
     else if Token.TokenString = 'option' then
       Self.Options.Add(TOption.Create(Tokenizer))
     else if Token.TokenString = 'message' then
-      Self.Messages.Add(TMessage.Create(Tokenizer))
+      Self.Messages.Add(TMessage.Create(Tokenizer, Self))
     else if Token.TokenString = 'enum' then
       Self.Enums.Add(TEnum.Create(Tokenizer))
     else
@@ -557,7 +562,10 @@ begin
   Output.WriteLine;
 
   for Enum in Enums do
+  begin
+    WriteLn('Enum.Name:', Enum.Name);
     Enum.GenerateCode(Output);
+  end;
   Output.WriteLine;
 
   for Message in Messages do
@@ -789,9 +797,19 @@ begin
   begin
     EnumField := Self[i];
     Stream.WriteStr(Format('%s', [ifthen(i = 0, '(', ', ')]));
-    Stream.WriteStr(Format('%s_%s = %d', [FName, EnumField.Name, EnumField.Value]));
+    Stream.WriteStr(Format('%s = %d', [Self.EnumerationName[i], EnumField.Value]));
   end;
   Stream.WriteLine(');');
+end;
+
+function TEnum.GetEnumerationName(Index: Integer): AnsiString;
+var
+  EnumField: TEnumField;
+
+begin
+  EnumField := Self[Index];
+  Result := Format('%s_%s', [FName, EnumField.Name]);
+
 end;
 
 constructor TEnum.Create(Tokenizer: TTokenizer);
@@ -864,6 +882,7 @@ begin
   Output.WriteLine('  protected ');
   Output.WriteLine('    procedure SaveToStream(Stream: TProtoStreamWriter); override;');
   Output.WriteLine('    function LoadFromStream(Stream: TProtoStreamReader; Len: Integer): Boolean; override;');
+  Output.WriteLine('    function ToString(const Indent: AnsiString): AnsiString;');
   Output.WriteLine;
   Output.WriteLine('  public ');
   Output.WriteLine('    constructor Create;');
@@ -885,6 +904,9 @@ begin
   Output.WriteLine('  end;');
 
 end;
+
+type
+  TAllSimpleTypes = specialize TFPGMap<String, Boolean>;
 
 procedure TMessage.GenerateImplementation(Output: TMyTextStream);
 
@@ -942,7 +964,7 @@ procedure TMessage.GenerateImplementation(Output: TMyTextStream);
     for Field in FFields do
     begin
       CanName := Canonicalize(Field.Name);
-      if not IsSimpleType(Field.FieldType) or Field.IsRepeated then
+      if not ParentProto.IsSimpleType(Field) or Field.IsRepeated then
         Output.WriteLine(Format('  F%s.Free;', [CanName]));
     end;
     Output.WriteLine;
@@ -953,13 +975,18 @@ procedure TMessage.GenerateImplementation(Output: TMyTextStream);
   end;
 
   procedure GenerateToString;
-
   var
     Field: TMessageField;
     CanName: AnsiString;
 
   begin
     Output.WriteLine(Format('function %s.ToString: AnsiString;', [MessageClassName]));
+    Output.WriteLine('begin');
+    Output.WriteLine('  Exit(Self.ToString(''''))');
+    Output.WriteLine('end;');
+    Output.WriteLine;
+
+    Output.WriteLine(Format('function %s.ToString(const Indent: AnsiString): AnsiString;', [MessageClassName]));
     if HasRepeatedHasNonSimple then
     begin
       Output.WriteLine('var');
@@ -1001,12 +1028,12 @@ procedure TMessage.GenerateImplementation(Output: TMyTextStream);
       CanName := Canonicalize(Field.Name);
       FieldType :=  GetTypeName(Field.FieldType);
 
-      if IsSimpleType(Field.FieldType) and not Field.IsRepeated then
+      if ParentProto.IsSimpleType(Field) and not Field.IsRepeated then
       begin
         Output.WriteLine(Format('  Save%s(Stream, F%s, %d);',
           [FieldType, CanName, Field.FieldNumber]));
       end
-      else if IsSimpleType(Field.FieldType) and Field.IsRepeated then
+      else if ParentProto.IsSimpleType(Field) and Field.IsRepeated then
       begin
         CanName := Canonicalize(Field.Name);
         FieldType :=  GetTypeName(Field.FieldType);
@@ -1020,12 +1047,12 @@ procedure TMessage.GenerateImplementation(Output: TMyTextStream);
                [GetTypeName(Field.FieldType)]));
         end;
       end
-      else if not IsSimpleType(Field.FieldType) and not Field.IsRepeated then
+      else if not ParentProto.IsSimpleType(Field) and not Field.IsRepeated then
       begin
         Output.WriteLine(Format('  SaveMessage(Stream, F%s, %d);',
           [CanName, Field.FieldNumber]));
       end
-      else if not IsSimpleType(Field.FieldType) and Field.IsRepeated then
+      else if not ParentProto.IsSimpleType(Field) and Field.IsRepeated then
       begin
         Output.WriteLine(Format('  if F%s <> nil then', [CanName]));
         Output.WriteLine(Format('    for BaseMessage in F%s do', [CanName]));
@@ -1059,6 +1086,8 @@ procedure TMessage.GenerateImplementation(Output: TMyTextStream);
     end;
 
     Output.WriteLine('begin');
+    Output.WriteLine('  Result := True;');
+    Output.WriteLine('');
     Output.WriteLine('  StartPos := Stream.Position;');
     Output.WriteLine('  while Stream.Position < StartPos + Len do');
     Output.WriteLine('  begin');
@@ -1073,12 +1102,12 @@ procedure TMessage.GenerateImplementation(Output: TMyTextStream);
       FieldType :=  GetTypeName(Field.FieldType);
 
 
-      if IsSimpleType(Field.FieldType) and not Field.IsRepeated then
+      if ParentProto.IsSimpleType(Field) and not Field.IsRepeated then
       begin
         Output.WriteLine(Format('    %d: F%s := Load%s(Stream);' + sLineBreak,
           [Field.FieldNumber, CanName, FieldType]));
       end
-      else if IsSimpleType(Field.FieldType) and Field.IsRepeated then
+      else if ParentProto.IsSimpleType(Field) and Field.IsRepeated then
       begin
         CanName := Canonicalize(Field.Name);
         FieldType :=  GetTypeName(Field.FieldType);
@@ -1099,7 +1128,7 @@ procedure TMessage.GenerateImplementation(Output: TMyTextStream);
                [GetTypeName(Field.FieldType)]));
         end;
       end
-      else if not IsSimpleType(Field.FieldType) and not Field.IsRepeated then
+      else if not ParentProto.IsSimpleType(Field) and not Field.IsRepeated then
       begin
         Output.WriteLine(Format('    %d:', [Field.FieldNumber]));
         Output.WriteLine       ('    begin');
@@ -1110,7 +1139,7 @@ procedure TMessage.GenerateImplementation(Output: TMyTextStream);
                                 '        Exit(False);', [CanName]));
         Output.WriteLine       ('    end;' + sLineBreak);
       end
-      else if not IsSimpleType(Field.FieldType) and Field.IsRepeated then
+      else if not ParentProto.IsSimpleType(Field) and Field.IsRepeated then
       begin
         Output.WriteLine(Format('    %d:', [Field.FieldNumber]));
         Output.WriteLine       ('    begin');
@@ -1163,17 +1192,19 @@ begin
   Result := False;
 
   for Field in Fields do
-    if Field.IsRepeated and not IsSimpleType(Field.FieldType) then
+    if Field.IsRepeated and not ParentProto.IsSimpleType(Field) then
       Exit(True);
 
 end;
 
-constructor TMessage.Create(Tokenizer: TTokenizer);
+constructor TMessage.Create(Tokenizer: TTokenizer; PProto: TProto);
 var
   Token: TToken;
 
 begin
   inherited Create;
+
+  ParentProto := PProto;
 
   FFields := specialize TObjectList<TMessageField>.Create;
   FMessages := specialize TObjectList<TMessage>.Create;
@@ -1193,7 +1224,7 @@ begin
     if Token.TokenString = 'enum' then
       FEnums.Add(TEnum.Create(Tokenizer))
     else if Token.TokenString = 'message' then
-      FMessages.Add(TMessage.Create(Tokenizer))
+      FMessages.Add(TMessage.Create(Tokenizer, PProto))
     else if Token.TokenString = 'option' then
       FOptions.Add(TOption.Create(Tokenizer))
     else if Token.TokenString = 'oneof' then
@@ -1204,7 +1235,7 @@ begin
       raise Exception.Create('NIY reserved')
     else if Token.Kind = ttkSemiColon then
     else
-      FFields.Add(TMessageField.Create(Token.TokenString, Tokenizer));
+      FFields.Add(TMessageField.Create(Token.TokenString, Tokenizer, ParentProto));
     Token := Tokenizer.GetNextToken;
   end;
   Expect(Token, ttkCloseBrace);
@@ -1255,11 +1286,11 @@ end;
 procedure TMessageField.GenerateDeclaration(MessageClassName: AnsiString;
   Output: TMyTextStream);
 begin
-  if not IsRepeated and IsSimpleType(FieldType) then
+  if not IsRepeated and ParentProto.IsSimpleType(Self) then
     Output.WriteLine(ApplyPattern(MessageClassName, DeclareNonRepeatedSimpleFieldTemplate))
-  else if not IsRepeated and not IsSimpleType(FieldType) then
+  else if not IsRepeated and not ParentProto.IsSimpleType(Self) then
     Output.WriteLine(ApplyPattern(MessageClassName, DeclareNonRepeatedNonSimpleFieldTemplate))
-  else if IsRepeated and not IsSimpleType(FieldType) then
+  else if IsRepeated and not ParentProto.IsSimpleType(Self) then
     Output.WriteLine(ApplyPattern(MessageClassName, DeclareRepeatedNonSimpleFieldTemplate))
   else
     Output.WriteLine(ApplyPattern(MessageClassName, DeclareRepeatedSimpleFieldTemplate));
@@ -1269,7 +1300,7 @@ procedure TMessageField.GenerateImplementation(MessageClassName: AnsiString;
   Output: TMyTextStream);
 begin
   if not IsRepeated then
-  else if not IsSimpleType(FieldType) then
+  else if not ParentProto.IsSimpleType(Self) then
     Output.WriteLine(ApplyPattern(MessageClassName, ImplementRepeatedNonSimpleFieldTemplate))
   else if GetTypeName(FieldType) = 'Boolean' then
     Output.WriteLine(ApplyPattern(MessageClassName, ImplementRepeatedBooleanTemplate))
@@ -1278,24 +1309,34 @@ begin
 end;
 
 function TMessageField.GetDefaultValue: AnsiString;
+var
+  Enum: TEnum;
+
 begin
-  if IsRepeated or not IsSimpleType(FieldType) then
+  if IsRepeated or not ParentProto.IsSimpleType(Self) then
     Exit('');
 
-  case GetTypeName(FieldType) of
-    'Double',
-    'Single': Exit('0.0');
-    'Int16',
-    'Int32',
-    'Int64',
-    'UInt16',
-    'UInt32',
-    'UInt64': Exit('0');
-    'Boolean': Exit('False');
-    'AnsiString': Exit('''''')
-    else
+  if IsBasicType(Self) then
+    case GetTypeName(FieldType) of
+      'Double',
+      'Single': Exit('0.0');
+      'Int16',
+      'Int32',
+      'Int64',
+      'UInt16',
+      'UInt32',
+      'UInt64': Exit('0');
+      'Boolean': Exit('False');
+      'AnsiString': Exit('''''')
+      else
        raise Exception.Create(Format('Type %s is not supported yet',
          [GetTypeName(FieldType)]));
+    end
+  else
+  begin
+    for Enum in ParentProto.Enums do
+      if Enum.Name = Self.Name then
+        Exit(Enum.EnumerationName[0]);
   end;
 end;
 
@@ -1306,7 +1347,7 @@ var
 begin
   CanName := Canonicalize(Self.Name);
 
-  if IsSimpleType(FieldType) and not IsRepeated then
+  if ParentProto.IsSimpleType(Self) and not IsRepeated then
   begin
     if GetTypeName(FieldType) = 'Boolean' then
     begin
@@ -1314,7 +1355,7 @@ begin
                        '  if F%s then',
                        [CanName]));
       Output.WriteLine(Format(
-                       '    Result += Format(''F%s: %%s'', [IfThen(F%s, ''True'', ''False'')]) + sLineBreak;',
+                       '    Result += Indent + Format(''F%s: %%s'', [IfThen(F%s, ''True'', ''False'')]) + sLineBreak;',
                        [CanName, CanName]));
       Output.WriteLine;
     end
@@ -1323,29 +1364,29 @@ begin
         ApplyPattern('', ImplementNonRepeatedSimpleFieldToStringTemplate))
     else
     begin
-      Output.WriteLine(Format('  Result += Format(''%s: %%%s '', [F%s]) + sLineBreak;',
+      Output.WriteLine(Format('  Result += Indent + Format(''%s: %%%s '', [F%s]) + sLineBreak;',
         [Self.Name, FormatString(FieldType), CanName]));
       Output.WriteLine;
     end;
 
   end
-  else  if not IsSimpleType(FieldType) and not IsRepeated then
+  else if not ParentProto.IsSimpleType(Self) and not IsRepeated then
     Output.WriteLine(
       ApplyPattern('', ImplementNonRepeatedNonSimpleFieldToStringTemplate))
-  else if IsSimpleType(FieldType) and IsRepeated then
+  else if ParentProto.IsSimpleType(Self) and IsRepeated then
     Output.WriteLine(
       ApplyPattern('', ImplementRepeatedSimpleFieldToStringTemplate))
-  else if IsSimpleType(FieldType) and IsRepeated then
+  else if ParentProto.IsSimpleType(Self) and IsRepeated then
     Output.WriteLine(
       ApplyPattern('', ImplementRepeatedNonSimpleFieldToStringTemplate))
-  else if not IsSimpleType(FieldType) and IsRepeated then
+  else if not ParentProto.IsSimpleType(Self) and IsRepeated then
   begin
     Output.WriteLine(Format('    if F%s <> nil then', [CanName]));
     Output.WriteLine(       '    begin');
     Output.WriteLine(Format('      Result += ''%s  = '';', [Self.Name]));
     Output.WriteLine(Format('      for BaseMessage in F%s do',
                    [CanName]));
-    Output.WriteLine(       '        Result += Format(''[%s]'', [BaseMessage.ToString]);');
+    Output.WriteLine(       '        Result += Format(''[%s%s]'', [Indent, BaseMessage.ToString]);');
     Output.WriteLine(       '      Result += sLineBreak;');
     Output.WriteLine(       '    end;');
   end
@@ -1355,25 +1396,26 @@ end;
 
 function TMessageField.GetType: AnsiString;
 begin
-  if IsSimpleType(FieldType) and not IsRepeated then
+  if ParentProto.IsSimpleType(Self) and not IsRepeated then
     Result := GetTypeName(FieldType)
-  else if not IsSimpleType(FieldType) and not IsRepeated then
+  else if not ParentProto.IsSimpleType(Self) and not IsRepeated then
       Result := Format('%s', [GetTypeName(FieldType)])
-  else if IsSimpleType(FieldType) and IsRepeated then
+  else if ParentProto.IsSimpleType(Self) and IsRepeated then
     Result := Format('specialize TSimpleTypeList<%s>', [GetTypeName(FieldType)])
   else
     Result := Format('specialize TObjectList<%s>', [GetTypeName(FieldType)]);
 
 end;
 
-constructor TMessageField.Create(TokenString: AnsiString; Tokenizer: TTokenizer
-  );
+constructor TMessageField.Create(TokenString: AnsiString;
+  Tokenizer: TTokenizer; PProto: TProto);
 var
   Token: TToken;
   //  field = [ "repeated" ] type fieldName "=" fieldNumber [ "[" fieldOptions "]" ] ";"
 begin
   inherited Create;
 
+  ParentProto := PProto;
   FOptions := specialize TObjectList<TOption>.Create;
   FIsRepeated := TokenString = 'repeated';
   if TokenString = 'repeated' then
@@ -1718,6 +1760,21 @@ begin
     raise Exception.Create('This library just works for Protobuf Version 3');
 
   Tokenizer.Free;
+end;
+
+function TProto.IsSimpleType(AField: TMessageField): Boolean;
+var
+  Enum: TEnum;
+begin
+  Result := True;
+  if IsBasicType(AField) then
+    Exit;
+  for Enum in Self.Enums do
+  begin
+    if Enum.Name = AField.Name then
+      Exit;
+  end;
+  Result := False;
 end;
 
 function TProto.ToString: AnsiString;

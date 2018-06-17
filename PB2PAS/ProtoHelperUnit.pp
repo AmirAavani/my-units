@@ -94,16 +94,14 @@ type
         const Data: specialize TObjectList<TBaseMessage>;
         const TagID: Integer);
 
-    procedure SaveToStream(Stream: TProtoStreamWriter);  virtual; abstract;
-    function LoadFromStream(Stream: TProtoStreamReader; Len: Integer): Boolean;  virtual; abstract;
-
   public
     constructor Create;
     destructor Destroy; override;
 
     function LoadFromString(Str: AnsiString): Boolean; virtual;
-    function LoadFromStream(Stream: TStream): Boolean; virtual;
-    procedure SaveToStream(Stream: TStream);  virtual;
+    procedure SaveToString(var Str: AnsiString);  virtual;
+    procedure SaveToStream(Stream: TProtoStreamWriter);  virtual; abstract;
+    function LoadFromStream(Stream: TProtoStreamReader; Len: Integer): Boolean;  virtual; abstract;
 
   end;
 
@@ -605,33 +603,34 @@ begin
 end;
 
 function TBaseMessage.LoadFromString(Str: AnsiString): Boolean;
+var
+  StrStream: TStringStream;
+
 begin
-  Result := self.LoadFromStream(TStringStream.Create(Str));
+  StrStream := TStringStream.Create(Str);
+  Result := self.LoadFromStream(TProtoStreamReader.Create(StrStream
+    ), Length(Str));
+  StrStream.Free;
 
 end;
 
-function TBaseMessage.LoadFromStream(Stream: TStream): Boolean;
+procedure TBaseMessage.SaveToString(var Str: AnsiString);
 var
-  ProtoStream: TProtoStreamReader;
+  StrStream: TStringStream;
+  ProtoWriter: TProtoStreamWriter;
 
 begin
-  ProtoStream := TProtoStreamReader.Create(Stream);
+  StrStream := TStringStream.Create;;
+  ProtoWriter := TProtoStreamWriter.Create(StrStream);
 
-  Self.LoadFromStream(ProtoStream, Stream.Size);
+  self.SaveToStream(ProtoWriter);
 
-  ProtoStream.Free;
-end;
+  ProtoWriter.Free;
 
-procedure TBaseMessage.SaveToStream(Stream: TStream);
-var
-  ProtoStream: TProtoStreamWriter;
+  StrStream.Position := 0;
+  Str := StrStream.ReadString(StrStream.Size);
+  StrStream.Free;
 
-begin
-  ProtoStream := TProtoStreamWriter.Create(Stream);
-
-  Self.SaveToStream(ProtoStream);
-
-  ProtoStream.Free;
 end;
 
 end.
