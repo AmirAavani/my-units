@@ -563,7 +563,6 @@ begin
 
   for Enum in Enums do
   begin
-    WriteLn('Enum.Name:', Enum.Name);
     Enum.GenerateCode(Output);
   end;
   Output.WriteLine;
