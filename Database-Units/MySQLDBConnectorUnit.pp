@@ -233,8 +233,8 @@ var
 begin
   if mysql_query(MySQLConnection, PAnsiChar(Query)) <> 0 then
   begin
-    WriteLn(Format('Mysql_query: %s', [Query]));
-    WriteLn(mysql_errno(MySQLConnection), ': ', mysql_error(MySQLConnection));
+    WriteLn(StdErr, Format('Mysql_query: %s', [Query]));
+    WriteLn(StdErr, mysql_errno(MySQLConnection), ': ', mysql_error(MySQLConnection));
     Flush(Output);
     raise EMySqlError.Create('Query failed');
   end;

@@ -1009,6 +1009,7 @@ procedure TMessage.GenerateImplementation(Output: TMyTextStream);
     Field: TMessageField;
     CanName: AnsiString;
     FieldType: AnsiString;
+    Enum: TEnum;
 
   begin
     Output.WriteLine(Format('procedure %s.SaveToStream(Stream: TProtoStreamWriter);', [MessageClassName]));
@@ -1029,8 +1030,19 @@ procedure TMessage.GenerateImplementation(Output: TMyTextStream);
 
       if ParentProto.IsSimpleType(Field) and not Field.IsRepeated then
       begin
-        Output.WriteLine(Format('  Save%s(Stream, F%s, %d);',
-          [FieldType, CanName, Field.FieldNumber]));
+        if IsBasicType(Field) then
+          Output.WriteLine(Format('  Save%s(Stream, F%s, %d);',
+            [FieldType, CanName, Field.FieldNumber]))
+        else
+        begin
+          for Enum in ParentProto.Enums do
+            if Enum.Name = Field.Name then
+            begin
+              Output.WriteLine(Format('  SaveInt32(Stream, Ord(F%s), %d);',
+                [CanName, Field.FieldNumber]))
+            end;
+
+        end;
       end
       else if ParentProto.IsSimpleType(Field) and Field.IsRepeated then
       begin
@@ -1103,8 +1115,12 @@ procedure TMessage.GenerateImplementation(Output: TMyTextStream);
 
       if ParentProto.IsSimpleType(Field) and not Field.IsRepeated then
       begin
-        Output.WriteLine(Format('    %d: F%s := Load%s(Stream);' + sLineBreak,
-          [Field.FieldNumber, CanName, FieldType]));
+        if IsBasicType(Field) then
+          Output.WriteLine(Format('    %d: F%s := Load%s(Stream);' + sLineBreak,
+            [Field.FieldNumber, CanName, FieldType]))
+        else
+          Output.WriteLine(Format('    %d: F%s := %s(LoadInt32(Stream));' + sLineBreak,
+          [Field.FieldNumber, CanName, FieldType]))
       end
       else if ParentProto.IsSimpleType(Field) and Field.IsRepeated then
       begin
@@ -1342,13 +1358,25 @@ end;
 procedure TMessageField.GenerateToString(Output: TMyTextStream);
 var
   CanName: AnsiString;
+  Enum: TEnum;
 
 begin
   CanName := Canonicalize(Self.Name);
 
   if ParentProto.IsSimpleType(Self) and not IsRepeated then
   begin
-    if GetTypeName(FieldType) = 'Boolean' then
+    if not IsBasicType(Self) then
+    begin
+      for Enum in ParentProto.Enums do
+        if Enum.Name = Self.Name then
+        begin
+          Output.WriteLine(Format(
+                         '    Result += Indent + IntToStr(Ord(F%s)) + sLineBreak;',
+                         [CanName]));
+          Break;
+        end;
+    end
+    else if GetTypeName(FieldType) = 'Boolean' then
     begin
       Output.WriteLine(Format(
                        '  if F%s then',
