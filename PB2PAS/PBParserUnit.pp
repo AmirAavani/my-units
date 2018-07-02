@@ -350,7 +350,7 @@ begin
   LastCharWasUnderline:= True;
   Result := '';
   for c in AName do
-    if c = '_' then
+    if c in ['_', '-'] then
       LastCharWasUnderline:= True
     else
     begin
@@ -366,7 +366,6 @@ function GetUnitName(const Filename: AnsiString): AnsiString;
 var
   PureFilename: Ansistring;
   c: Char;
-  LastCharWasUnderline: Boolean;
 
 begin
   PureFilename := Copy(ExtractFileName(Filename), 1,
