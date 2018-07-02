@@ -1089,7 +1089,9 @@ procedure TMessage.GenerateImplementation(Output: TMyTextStream);
     Output.WriteLine(Format('function %s.LoadFromStream(Stream: TProtoStreamReader; Len: Integer): Boolean;', [MessageClassName]));
     if Fields.Count = 0 then
     begin
+      Output.WriteLine('begin');
       Output.WriteLine('  Result := True;');
+      Output.WriteLine('end;');
       Exit;
 
     end;
