@@ -1806,7 +1806,7 @@ begin
     Exit;
   for Enum in Self.Enums do
   begin
-    if Enum.Name = AField.Name then
+    if Enum.Name = AField.FieldType then
       Exit;
   end;
   Result := False;
