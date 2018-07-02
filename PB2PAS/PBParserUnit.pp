@@ -1087,6 +1087,13 @@ procedure TMessage.GenerateImplementation(Output: TMyTextStream);
 
   begin
     Output.WriteLine(Format('function %s.LoadFromStream(Stream: TProtoStreamReader; Len: Integer): Boolean;', [MessageClassName]));
+    if Fields.Count = 0 then
+    begin
+      Output.WriteLine('  Result := True;');
+      Exit;
+
+    end;
+
     Output.WriteLine('var');
     Output.WriteLine('  StartPos, FieldNumber, WireType: Integer;'+ sLineBreak);
     if HasRepeatedHasNonSimple then
