@@ -1358,7 +1358,7 @@ begin
   else
   begin
     for Enum in ParentProto.Enums do
-      if Enum.Name = Self.Name then
+      if Enum.Name = Self.FieldType then
         Exit(Enum.EnumerationName[0]);
   end;
 end;
