@@ -44,7 +44,7 @@ type
     FTableInfo: TTableInfo;
     class var FdbConnection: TDatabaseConnection;
 
-    class procedure GetAllEntities(EntityClass: TDBEntityClass; out List: TDBEntitiesList);
+    class procedure GetAllEntities(EntityClass: TDBEntityClass; List: TDBEntitiesList);
     class function AddNewEntity(
       data: array of WideString;
       EntityClass: TDBEntityClass): Boolean;
@@ -64,7 +64,7 @@ implementation
 { TDBEntityTblAccessory }
 
 class procedure TDBEntityAccessor.GetAllEntities(EntityClass: TDBEntityClass;
-  out List: TDBEntitiesList);
+  List: TDBEntitiesList);
 var
   Query: AnsiString;
   Response: TQueryResponse;

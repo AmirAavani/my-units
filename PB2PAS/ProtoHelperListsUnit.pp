@@ -38,6 +38,7 @@ type
     destructor Destroy; override;
 
     function ToString: AnsiString; override;
+    function ToString(const Indent: AnsiString): AnsiString;
     function LoadFromStream(Stream: TStream): Boolean;
     procedure SaveToStream(Stream: TStream);
   end;
@@ -91,11 +92,16 @@ begin
 end;
 
 function TSimpleTypeList.ToString: AnsiString;
+begin
+  Result:= Self.ToString('');
+end;
+
+function TSimpleTypeList.ToString(const Indent: AnsiString): AnsiString;
 var
   Data: TSimpleObject;
 
 begin
-  Result := '[';
+  Result := Indent + '[';
   for data in Self do
   begin
     if Length(Result) <> 1 then
