@@ -151,6 +151,8 @@ begin
   Text := Lines.Text;
   TextLen := Length(Lines.Text);
 
+  Lines.Free;
+
 end;
 
 constructor TTemplateEngine.CreateFromText(const InputText: AnsiString);
