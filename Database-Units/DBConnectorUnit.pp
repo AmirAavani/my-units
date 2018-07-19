@@ -35,7 +35,10 @@ type
 
   EConnectionFailed= class (Exception);
 
+  function StringToBlob(const Str: AnsiString): AnsiString;
+  function BlobToString(const BlobStr: AnsiString): AnsiString;
   function EscapeForQuery(const Query: WideString): WideString;
+  function UnEscapeQuery(const EscapedQuery: WideString): WideString;
 
 implementation
 
@@ -57,6 +60,48 @@ type
 
   end;
 
+function String2Hex(const Str: AnsiString): AnsiString;
+var
+  i: Integer;
+  c: Char;
+  ic: Integer;
+
+begin
+  Result := '';
+
+  for i := 1 to Length(Str) do
+  begin
+    c := Str[i];
+    Result += IntToHex(Ord(c), 2);
+  end;
+end;
+
+function StringToBlob(const Str: AnsiString): AnsiString;
+begin
+  Result := String2Hex(Str);
+
+end;
+
+function BlobToString(const BlobStr: AnsiString): AnsiString;
+var
+  i: Integer;
+  S: AnsiString;
+
+begin
+  Result := '';
+  S := BlobStr[1];
+  S += BlobStr[2];
+  for i := 3 to Length(BlobStr) do
+  begin
+    if i and 1 = 1 then
+      S := '';
+    S := S
+
+
+  end;
+
+end;
+
 function EscapeForQuery(const Query: WideString): WideString;
 begin
   {
@@ -72,10 +117,16 @@ begin
 \%     A “%” character. See note following the table.
 \_     A “_” character. See note following the table.
 }
-  Result := WideString(StringReplace(StringReplace(StringReplace(StringReplace(
+  Result := WideString(StringReplace(StringReplace(
      AnsiString(Query), '''', '\''', [rfReplaceAll]),
-     '"', '\"', [rfReplaceAll]), '(', '\(', [rfReplaceAll]), ')', '\)', [rfReplaceAll]));
-//  Result := WideString(StringReplace(Result, #13, '', [rfReplaceAll]);
+     '"', '\"', [rfReplaceAll]));
+end;
+
+function UnEscapeQuery(const EscapedQuery: WideString): WideString;
+begin
+  Result := WideString(StringReplace(StringReplace(
+     AnsiString(EscapedQuery), '\'+'''', '''', [rfReplaceAll]),
+        '\"', '"', [rfReplaceAll]));
 end;
 
 constructor ENoActiveDB.Create;

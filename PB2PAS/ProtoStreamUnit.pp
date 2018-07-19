@@ -444,7 +444,8 @@ begin
   end;
 
   Delta := ByteArraySize - NextIndex;
-  Move(p^, FData[NextIndex], Delta);
+  if Delta <> 0 then
+    Move(p^, FData[NextIndex], Delta);
   NextIndex := ByteArraySize;
   FNext := TLinkListNode.Create;
 
@@ -520,7 +521,7 @@ end;
 
 function TProtoStreamWriter.AddIntervalNode: TLinkListNode;
 begin
-  Assert(FCurrentNode.Next <> nil, 'FCurrentNode <> nil');
+  Assert(FCurrentNode.Next = nil, 'FCurrentNode <> nil');
   Result := TLinkListNode.Create;
   FCurrentNode.FNext := Result;
   Result.FNext := TLinkListNode.Create;

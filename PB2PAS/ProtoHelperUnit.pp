@@ -333,9 +333,14 @@ var
   Len: Integer;
 
 begin
-  Len := Stream.ReadUInt32;
+  if Stream.Size = Stream.Position then
+    Exit(True);
 
-  Result := Data.LoadFromStream(Stream, Len);
+  Len := Stream.ReadUInt32;
+  Result := True;
+
+  if Len <> 0 then
+    Result := Data.LoadFromStream(Stream, Len);
 
 end;
 
@@ -608,7 +613,7 @@ var
 
 begin
   StrStream := TStringStream.Create(Str);
-  Result := self.LoadFromStream(TProtoStreamReader.Create(StrStream
+  Result := Self.LoadFromStream(TProtoStreamReader.Create(StrStream
     ), Length(Str));
   StrStream.Free;
 
