@@ -1009,6 +1009,7 @@ procedure TMessage.GenerateImplementation(Output: TMyTextStream);
     CanName: AnsiString;
     FieldType: AnsiString;
     Enum: TEnum;
+    Handled: Boolean;
 
   begin
     Output.WriteLine(Format('procedure %s.SaveToStream(Stream: TProtoStreamWriter);', [MessageClassName]));
@@ -1026,27 +1027,36 @@ procedure TMessage.GenerateImplementation(Output: TMyTextStream);
     begin
       CanName := Canonicalize(Field.Name);
       FieldType :=  GetTypeName(Field.FieldType);
+      Handled := False;
 
       if ParentProto.IsSimpleType(Field) and not Field.IsRepeated then
       begin
         if IsBasicType(Field) then
+        begin
           Output.WriteLine(Format('  Save%s(Stream, F%s, %d);',
-            [FieldType, CanName, Field.FieldNumber]))
+            [FieldType, CanName, Field.FieldNumber]));
+          Handled := True;
+        end
         else
         begin
           for Enum in ParentProto.Enums do
             if Enum.Name = Field.FieldType then
             begin
               Output.WriteLine(Format('  SaveInt32(Stream, Ord(F%s), %d);',
-                [CanName, Field.FieldNumber]))
+                [CanName, Field.FieldNumber]));
+              Handled := True;
+              Break;
             end;
-
         end;
+        if not Handled then
+          raise Exception.Create(Format('Type %s is not supported yet',
+               [GetTypeName(Field.FieldType)]));
       end
       else if ParentProto.IsSimpleType(Field) and Field.IsRepeated then
       begin
         CanName := Canonicalize(Field.Name);
         FieldType :=  GetTypeName(Field.FieldType);
+        Handled := True;
 
         case GetTypeName(Field.FieldType) of
         'AnsiString', 'Single', 'Double', 'Int32', 'Int64', 'UInt32', 'UInt64', 'Boolean':
@@ -1059,11 +1069,13 @@ procedure TMessage.GenerateImplementation(Output: TMyTextStream);
       end
       else if not ParentProto.IsSimpleType(Field) and not Field.IsRepeated then
       begin
+        Handled := True;
         Output.WriteLine(Format('  SaveMessage(Stream, F%s, %d);',
           [CanName, Field.FieldNumber]));
       end
       else if not ParentProto.IsSimpleType(Field) and Field.IsRepeated then
       begin
+        Handled := True;
         Output.WriteLine(Format('  if F%s <> nil then', [CanName]));
         Output.WriteLine(Format('    for BaseMessage in F%s do', [CanName]));
         Output.WriteLine(Format('      SaveMessage(Stream, BaseMessage, %d);',
@@ -1072,6 +1084,9 @@ procedure TMessage.GenerateImplementation(Output: TMyTextStream);
       end;
 
       Output.WriteLine;
+      if not Handled then
+        raise Exception.Create(Format('Type %s is not supported yet',
+           [GetTypeName(Field.FieldType)]));
     end;
 
     Output.WriteLine('end;');
@@ -1084,6 +1099,7 @@ procedure TMessage.GenerateImplementation(Output: TMyTextStream);
     Field: TMessageField;
     CanName: AnsiString;
     FieldType: AnsiString;
+    Enum: TEnum;
 
   begin
     Output.WriteLine(Format('function %s.LoadFromStream(Stream: TProtoStreamReader; Len: Integer): Boolean;', [MessageClassName]));
@@ -1127,8 +1143,15 @@ procedure TMessage.GenerateImplementation(Output: TMyTextStream);
           Output.WriteLine(Format('    %d: F%s := Load%s(Stream);' + sLineBreak,
             [Field.FieldNumber, CanName, FieldType]))
         else
-          Output.WriteLine(Format('    %d: F%s := %s(LoadInt32(Stream));' + sLineBreak,
-          [Field.FieldNumber, CanName, FieldType]))
+        begin
+          for Enum in ParentProto.Enums do
+            if Enum.Name = Field.FieldType then
+            begin
+              Output.WriteLine(Format('    %d: F%s := %s(LoadInt32(Stream));' + sLineBreak,
+              [Field.FieldNumber, CanName, FieldType]));
+              Break;
+            end;
+        end;
       end
       else if ParentProto.IsSimpleType(Field) and Field.IsRepeated then
       begin
@@ -1376,10 +1399,10 @@ begin
     if not IsBasicType(Self) then
     begin
       for Enum in ParentProto.Enums do
-        if Enum.Name = Self.Name then
+        if Enum.Name = Self.FieldType then
         begin
           Output.WriteLine(Format(
-                         '    Result += Indent + IntToStr(Ord(F%s)) + sLineBreak;',
+                         '  Result += Indent + IntToStr(Ord(F%s)) + sLineBreak;',
                          [CanName]));
           Break;
         end;
