@@ -1,0 +1,318 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CONFIG>
+  <ProjectSession>
+    <Version Value="11"/>
+    <BuildModes Active="Default"/>
+    <Units Count="18">
+      <Unit0>
+        <Filename Value="PB2PASTest.lpr"/>
+        <IsPartOfProject Value="True"/>
+        <TopLine Value="106"/>
+        <CursorPos X="17" Y="147"/>
+        <UsageCount Value="239"/>
+        <Loaded Value="True"/>
+      </Unit0>
+      <Unit1>
+        <Filename Value="SampleUnit.pp"/>
+        <IsPartOfProject Value="True"/>
+        <IsVisibleTab Value="True"/>
+        <EditorIndex Value="2"/>
+        <TopLine Value="514"/>
+        <CursorPos X="17" Y="536"/>
+        <UsageCount Value="239"/>
+        <Loaded Value="True"/>
+      </Unit1>
+      <Unit2>
+        <Filename Value="ProtoHelperUnit.pp"/>
+        <IsPartOfProject Value="True"/>
+        <EditorIndex Value="4"/>
+        <TopLine Value="69"/>
+        <CursorPos X="14" Y="89"/>
+        <UsageCount Value="239"/>
+        <Bookmarks Count="2">
+          <Item0 X="3" Y="348" ID="1"/>
+          <Item1 X="3" Y="169" ID="2"/>
+        </Bookmarks>
+        <Loaded Value="True"/>
+      </Unit2>
+      <Unit3>
+        <Filename Value="RepeatedNonSimpleFieldTemplate.inc"/>
+        <IsPartOfProject Value="True"/>
+        <EditorIndex Value="-1"/>
+        <CursorPos X="34" Y="3"/>
+        <UsageCount Value="239"/>
+      </Unit3>
+      <Unit4>
+        <Filename Value="NonRepeatedNonSimpleFieldTemplate.inc"/>
+        <IsPartOfProject Value="True"/>
+        <EditorIndex Value="-1"/>
+        <UsageCount Value="239"/>
+      </Unit4>
+      <Unit5>
+        <Filename Value="../../../../fpc/rtl/objpas/fgl.pp"/>
+        <EditorIndex Value="8"/>
+        <TopLine Value="857"/>
+        <CursorPos Y="874"/>
+        <UsageCount Value="115"/>
+        <Loaded Value="True"/>
+      </Unit5>
+      <Unit6>
+        <Filename Value="Sample.proto"/>
+        <EditorIndex Value="1"/>
+        <CursorPos X="30" Y="24"/>
+        <UsageCount Value="119"/>
+        <Loaded Value="True"/>
+        <DefaultSyntaxHighlighter Value="None"/>
+      </Unit6>
+      <Unit7>
+        <Filename Value="../../../../../.cache/.fr-Gr9Gzq/pbOutput.pas"/>
+        <EditorIndex Value="10"/>
+        <TopLine Value="6"/>
+        <CursorPos X="59" Y="31"/>
+        <UsageCount Value="100"/>
+        <Loaded Value="True"/>
+      </Unit7>
+      <Unit8>
+        <Filename Value="../../../../../.cache/.fr-A0rb4f/pbPublic.pas"/>
+        <EditorIndex Value="14"/>
+        <CursorPos X="49" Y="12"/>
+        <UsageCount Value="100"/>
+        <Loaded Value="True"/>
+      </Unit8>
+      <Unit9>
+        <Filename Value="../../../../../.cache/.fr-X22ruR/StrBuffer.pas"/>
+        <EditorIndex Value="9"/>
+        <TopLine Value="38"/>
+        <CursorPos X="92" Y="42"/>
+        <UsageCount Value="100"/>
+        <Loaded Value="True"/>
+      </Unit9>
+      <Unit10>
+        <Filename Value="../../../../../.cache/.fr-iMscZ2/pbInput.pas"/>
+        <EditorIndex Value="13"/>
+        <TopLine Value="53"/>
+        <CursorPos X="14" Y="68"/>
+        <UsageCount Value="100"/>
+        <Loaded Value="True"/>
+      </Unit10>
+      <Unit11>
+        <Filename Value="../../../../../.cache/.fr-iROYSM/example1/Example1.pas"/>
+        <EditorIndex Value="12"/>
+        <TopLine Value="155"/>
+        <CursorPos X="22" Y="178"/>
+        <UsageCount Value="100"/>
+        <Loaded Value="True"/>
+      </Unit11>
+      <Unit12>
+        <Filename Value="../../../../../.cache/.fr-BOabhY/pbPublic.pas"/>
+        <EditorIndex Value="11"/>
+        <CursorPos X="60" Y="11"/>
+        <UsageCount Value="100"/>
+        <Loaded Value="True"/>
+      </Unit12>
+      <Unit13>
+        <Filename Value="ProtoHelperListsUnit.pp"/>
+        <EditorIndex Value="7"/>
+        <TopLine Value="34"/>
+        <CursorPos X="43" Y="54"/>
+        <UsageCount Value="100"/>
+        <Loaded Value="True"/>
+      </Unit13>
+      <Unit14>
+        <Filename Value="ProtoStreamUnit.pp"/>
+        <EditorIndex Value="5"/>
+        <TopLine Value="47"/>
+        <CursorPos X="3" Y="69"/>
+        <UsageCount Value="121"/>
+        <Loaded Value="True"/>
+      </Unit14>
+      <Unit15>
+        <Filename Value="../../../../../Laserlike/Code/beam/experimental/amir/freshness/playground/cmd/run_query_against_tweets/proto.go"/>
+        <EditorIndex Value="-1"/>
+        <TopLine Value="17"/>
+        <CursorPos X="74" Y="42"/>
+        <UsageCount Value="17"/>
+        <DefaultSyntaxHighlighter Value="None"/>
+      </Unit15>
+      <Unit16>
+        <Filename Value="../../../../fpc/rtl/objpas/objpas.pp"/>
+        <EditorIndex Value="6"/>
+        <TopLine Value="2"/>
+        <CursorPos X="8" Y="33"/>
+        <UsageCount Value="106"/>
+        <Loaded Value="True"/>
+      </Unit16>
+      <Unit17>
+        <Filename Value="../../../../../Laserlike/Code/beam/serving/resultpb/Sample.pb.go"/>
+        <EditorIndex Value="3"/>
+        <TopLine Value="560"/>
+        <CursorPos X="49" Y="583"/>
+        <UsageCount Value="106"/>
+        <Loaded Value="True"/>
+        <DefaultSyntaxHighlighter Value="None"/>
+      </Unit17>
+    </Units>
+    <JumpHistory Count="30" HistoryIndex="29">
+      <Position1>
+        <Filename Value="ProtoHelperUnit.pp"/>
+        <Caret Line="87" Column="14" TopLine="67"/>
+      </Position1>
+      <Position2>
+        <Filename Value="PB2PASTest.lpr"/>
+        <Caret Line="107" TopLine="103"/>
+      </Position2>
+      <Position3>
+        <Filename Value="PB2PASTest.lpr"/>
+        <Caret Line="135" Column="36" TopLine="107"/>
+      </Position3>
+      <Position4>
+        <Filename Value="SampleUnit.pp"/>
+        <Caret Line="799" Column="9" TopLine="784"/>
+      </Position4>
+      <Position5>
+        <Filename Value="SampleUnit.pp"/>
+        <Caret Line="892" Column="25" TopLine="870"/>
+      </Position5>
+      <Position6>
+        <Filename Value="SampleUnit.pp"/>
+        <Caret Line="824" Column="23" TopLine="803"/>
+      </Position6>
+      <Position7>
+        <Filename Value="PB2PASTest.lpr"/>
+        <Caret Line="137" Column="3" TopLine="107"/>
+      </Position7>
+      <Position8>
+        <Filename Value="ProtoHelperListsUnit.pp"/>
+        <Caret Line="79" TopLine="42"/>
+      </Position8>
+      <Position9>
+        <Filename Value="PB2PASTest.lpr"/>
+        <Caret Line="137" TopLine="107"/>
+      </Position9>
+      <Position10>
+        <Filename Value="SampleUnit.pp"/>
+        <Caret Line="661" TopLine="638"/>
+      </Position10>
+      <Position11>
+        <Filename Value="ProtoHelperListsUnit.pp"/>
+        <Caret Line="79" Column="25" TopLine="42"/>
+      </Position11>
+      <Position12>
+        <Filename Value="ProtoHelperListsUnit.pp"/>
+        <Caret Line="69" Column="25" TopLine="42"/>
+      </Position12>
+      <Position13>
+        <Filename Value="ProtoHelperListsUnit.pp"/>
+        <Caret Line="45" Column="57" TopLine="23"/>
+      </Position13>
+      <Position14>
+        <Filename Value="ProtoHelperListsUnit.pp"/>
+        <Caret Line="49" TopLine="27"/>
+      </Position14>
+      <Position15>
+        <Filename Value="ProtoHelperListsUnit.pp"/>
+        <Caret Line="40" Column="6" TopLine="27"/>
+      </Position15>
+      <Position16>
+        <Filename Value="ProtoHelperListsUnit.pp"/>
+        <Caret Line="96" TopLine="82"/>
+      </Position16>
+      <Position17>
+        <Filename Value="ProtoHelperListsUnit.pp"/>
+        <Caret Line="21" Column="14" TopLine="20"/>
+      </Position17>
+      <Position18>
+        <Filename Value="ProtoHelperListsUnit.pp"/>
+        <Caret Line="134" TopLine="106"/>
+      </Position18>
+      <Position19>
+        <Filename Value="ProtoHelperListsUnit.pp"/>
+        <Caret Line="49" Column="14" TopLine="11"/>
+      </Position19>
+      <Position20>
+        <Filename Value="ProtoHelperListsUnit.pp"/>
+        <Caret Line="66" Column="29" TopLine="56"/>
+      </Position20>
+      <Position21>
+        <Filename Value="SampleUnit.pp"/>
+        <Caret Line="661" TopLine="638"/>
+      </Position21>
+      <Position22>
+        <Filename Value="SampleUnit.pp"/>
+        <Caret Line="185" Column="35" TopLine="163"/>
+      </Position22>
+      <Position23>
+        <Filename Value="SampleUnit.pp"/>
+        <Caret Line="194" Column="52" TopLine="172"/>
+      </Position23>
+      <Position24>
+        <Filename Value="SampleUnit.pp"/>
+        <Caret Line="524" Column="18" TopLine="502"/>
+      </Position24>
+      <Position25>
+        <Filename Value="SampleUnit.pp"/>
+        <Caret Line="253" Column="18" TopLine="231"/>
+      </Position25>
+      <Position26>
+        <Filename Value="SampleUnit.pp"/>
+        <Caret Line="524" Column="18" TopLine="502"/>
+      </Position26>
+      <Position27>
+        <Filename Value="ProtoHelperUnit.pp"/>
+        <Caret Line="293" Column="33" TopLine="270"/>
+      </Position27>
+      <Position28>
+        <Filename Value="ProtoHelperListsUnit.pp"/>
+        <Caret Line="111" Column="55" TopLine="81"/>
+      </Position28>
+      <Position29>
+        <Filename Value="ProtoHelperListsUnit.pp"/>
+        <Caret Line="48" Column="13" TopLine="25"/>
+      </Position29>
+      <Position30>
+        <Filename Value="ProtoHelperListsUnit.pp"/>
+        <Caret Line="56" Column="15" TopLine="34"/>
+      </Position30>
+    </JumpHistory>
+    <RunParams>
+      <FormatVersion Value="2"/>
+      <Modes Count="0" ActiveMode=""/>
+    </RunParams>
+  </ProjectSession>
+  <Debugging>
+    <BreakPoints Count="3">
+      <Item1>
+        <Kind Value="bpkSource"/>
+        <WatchScope Value="wpsLocal"/>
+        <WatchKind Value="wpkWrite"/>
+        <Source Value="ProtoHelperUnit.pp"/>
+        <Line Value="693"/>
+      </Item1>
+      <Item2>
+        <Kind Value="bpkSource"/>
+        <WatchScope Value="wpsLocal"/>
+        <WatchKind Value="wpkWrite"/>
+        <Source Value="ProtoHelperUnit.pp"/>
+        <Line Value="698"/>
+      </Item2>
+      <Item3>
+        <Kind Value="bpkSource"/>
+        <WatchScope Value="wpsLocal"/>
+        <WatchKind Value="wpkWrite"/>
+        <Source Value="ProtoStreamUnit.pp"/>
+        <Line Value="330"/>
+      </Item3>
+    </BreakPoints>
+    <Watches Count="3">
+      <Item1>
+        <Expression Value="Self.ID"/>
+      </Item1>
+      <Item2>
+        <Expression Value="Self.Root"/>
+      </Item2>
+      <Item3>
+        <Expression Value="Self.Root.Next"/>
+      </Item3>
+    </Watches>
+  </Debugging>
+</CONFIG>
