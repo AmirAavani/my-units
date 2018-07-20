@@ -1035,7 +1035,7 @@ procedure TMessage.GenerateImplementation(Output: TMyTextStream);
         else
         begin
           for Enum in ParentProto.Enums do
-            if Enum.Name = Field.Name then
+            if Enum.Name = Field.FieldType then
             begin
               Output.WriteLine(Format('  SaveInt32(Stream, Ord(F%s), %d);',
                 [CanName, Field.FieldNumber]))
