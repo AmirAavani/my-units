@@ -175,6 +175,30 @@ type
     destructor Destroy; override;
   end;
 
+  { TThreadSafeQueue }
+
+  TThreadSafeQueue = class(specialize TGenericAbstractQueue<TObject>)
+  private
+    FData: TThreadList;
+    FCount: Integer;
+
+  private
+    function GetCount: Integer; override;
+    function GetIsEmpty: Boolean; override;
+    function GetIsFull: Boolean; override;
+
+  protected
+    procedure DoInsert (Entry: T); override;
+    procedure DoDelete (var LastElement: T); override;
+    function DoGetTop: T; override;
+
+  public
+    constructor Create;
+    destructor Destroy;
+    procedure Clear;
+
+  end;
+
 implementation
 
 { TThreadSafeQueue }
@@ -295,6 +319,92 @@ begin
   RTLeventdestroy(EmptyBlockEvent);
 
   inherited Destroy;
+=======
+end;
+
+procedure TThreadSafeQueue.DoInsert(Entry: T);
+var
+  l : tlist;
+begin
+
+   l:=myqueue.LockList;
+   l.add(tm);
+   myqueue.UnlockList;
+end;
+
+procedure TThreadSafeQueue.DoDelete(var LastElement: T);
+begin
+  inherited DoDelete(LastElement);
+end;
+
+function TThreadSafeQueue.DoGetTop: T;
+begin
+  Result:=inherited DoGetTop;
+end;
+
+constructor TThreadSafeQueue.Create;
+begin
+  inherited Create;
+
+  FCount := 0;
+end;
+
+destructor TThreadSafeQueue.Destroy;
+begin
+
+end;
+
+procedure TThreadSafeQueue.Clear;
+begin
+
+end;
+
+{ TGenericThreadSafeQueue }
+
+function TGenericThreadSafeQueue.GetCount: Integer;
+begin
+  Result:= FCount;
+end;
+
+function TGenericThreadSafeQueue.GetIsEmpty: Boolean;
+begin
+  Result:= FCount = 0;
+end;
+
+function TGenericThreadSafeQueue.GetIsFull: Boolean;
+begin
+  Result:= False;
+end;
+
+procedure TGenericThreadSafeQueue.DoInsert(Entry: T);
+begin
+  inherited DoInsert(Entry);
+end;
+
+procedure TGenericThreadSafeQueue.DoDelete(var LastElement: T);
+begin
+  inherited DoDelete(LastElement);
+end;
+
+function TGenericThreadSafeQueue.DoGetTop: T;
+begin
+  Result:=inherited DoGetTop;
+end;
+
+constructor TGenericThreadSafeQueue.Create;
+begin
+
+end;
+
+destructor TGenericThreadSafeQueue.Destroy;
+begin
+
+end;
+
+procedure TGenericThreadSafeQueue.Clear;
+begin
+
+>>>>>>>  ..
 end;
 
 { TGenericPriorityQueue }
