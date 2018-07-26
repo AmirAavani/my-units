@@ -8,21 +8,23 @@ uses
   Classes, SysUtils, DBConnectorUnit, mysql57dyn, QueryResponeUnit;
 
 type
+  TMySQLDatabaseConnection = class;
 
   { TMySqlQueryResponse }
 
-  TMySqlQueryResponse =class(TQueryResponse)
+  TMySqlQueryResponse = class(TQueryResponse)
   private
     FRes: PMYSQL_RES;
     FCurrentRowRaw : MYSQL_ROW;
     FCurrentRow: TStringList;
+    FMySqlConnection: TMySQLDatabaseConnection;
 
   protected
     function GetHasNext: Boolean; override;
     function GetNumColumns: Integer; override;
     function GetNumRows: Integer; override;
 
-    constructor Create(Res: PMYSQL_RES);
+    constructor Create(Res: PMYSQL_RES; Connection: TMySQLDatabaseConnection);
 
   public
     destructor Destroy; override;
@@ -38,6 +40,7 @@ type
   TMySQLDatabaseConnection= class (TDatabaseConnection)
   private
     MySQLConnection: PMYSQL;
+    RTLEvent: PRTLEvent;
 
   protected
 
@@ -100,13 +103,15 @@ begin
 
 end;
 
-constructor TMySqlQueryResponse.Create(Res: PMYSQL_RES);
+constructor TMySqlQueryResponse.Create(Res: PMYSQL_RES;
+  Connection: TMySQLDatabaseConnection);
 begin
   inherited Create;
 
   FRes := Res;
   FCurrentRowRaw := mysql_fetch_row(FRes);
   FCurrentRow := TStringList.Create;
+  FMySqlConnection := Connection;
 
 end;
 
@@ -114,6 +119,7 @@ destructor TMySqlQueryResponse.Destroy;
 begin
   mysql_free_result(FRes);
   FCurrentRow.Free;
+  RTLeventSetEvent(FMySqlConnection.RTLEvent);
 
   inherited Destroy;
 end;
@@ -185,44 +191,62 @@ constructor TMySQLDatabaseConnection.Create (
 begin
   inherited;
 
+  RTLEvent := RTLEventCreate;
+  RTLeventSetEvent(RTLEvent);
 end;
 
 destructor TMySQLDatabaseConnection.Destroy;
 begin
+  RTLeventdestroy(RTLEvent);
+
   inherited Destroy;
 
 end;
 
 function TMySQLDatabaseConnection.Refresh: Boolean;
 begin
+  RTLeventWaitFor(RTLEvent);
+
   mysql_refresh(MySQLConnection, 0);
 
+  RTLeventSetEvent(RTLEvent);
 end;
 
 procedure TMySQLDatabaseConnection.Disconnect;
 begin
+  RTLeventWaitFor(RTLEvent);
+
   if MySQLConnection <> nil then
     mysql_close(MySQLConnection);
 
   MySQLConnection := nil;
+  RTLeventSetEvent(RTLEvent);
 end;
 
 procedure TMySQLDatabaseConnection.SetActiveDatabase (DBName: AnsiString);
 begin
+  RTLeventWaitFor(RTLEvent);
+
   if mysql_select_db(MySQLConnection, PAnsiChar(DBName)) <> 0 then
     raise EMySqlError.Create('Failed to connect to Database with name: "'
                               + DBName + '"');
+
+  RTLeventSetEvent(RTLEvent);
 end;
 
 procedure TMySQLDatabaseConnection.Connect;
 begin
+  RTLeventWaitFor(RTLEvent);
+
   MySQLConnection := mysql_init(MySQLConnection);
   if mysql_real_connect(MySQLConnection, PAnsiChar(FHost), PAnsiChar(FUserName),
     PAnsiChar(FPassword), nil, 0, nil, CLIENT_MULTI_RESULTS) = nil then
     begin
-     raise EMySqlError.Create('Couldn''t connect to MySQL.');
-     Exit;
+      RTLeventSetEvent(RTLEvent);
+      raise EMySqlError.Create('Couldn''t connect to MySQL.');
+      Exit;
     end;
+  RTLeventSetEvent(RTLEvent);
 end;
 
 function TMySQLDatabaseConnection.RunQuery(const Query: AnsiString
@@ -231,19 +255,26 @@ var
   Res: PMYSQL_RES;
 
 begin
+  RTLeventWaitFor(RTLEvent);
+
   if mysql_query(MySQLConnection, PAnsiChar(Query)) <> 0 then
   begin
     WriteLn(StdErr, Format('Mysql_query: %s', [Query]));
     WriteLn(StdErr, mysql_errno(MySQLConnection), ': ', mysql_error(MySQLConnection));
     Flush(Output);
+
+    RTLeventSetEvent(RTLEvent);
     raise EMySqlError.Create('Query failed');
   end;
 
   Res := mysql_store_result(MySQLConnection);
-  if Res = Nil then
+  if Res = nil then
+  begin
+    RTLeventSetEvent(RTLEvent);
     Exit(nil);
+  end;
 
-  Result := TMySqlQueryResponse.Create(Res);
+  Result := TMySqlQueryResponse.Create(Res, Self);
 end;
 
 initialization

@@ -39,12 +39,13 @@ begin
 
   GZFileStream := TGZFileStream.create(TmpFileName, gzopenread);
   SetLength(Result, 10 * Length(Data));
-  GZFileStream.read(Result[1], Length(Result));
+
+  Size := GZFileStream.read(Result[1], Length(Result));
   GZFileStream.Free;
 
   DeleteFile(TmpFileName);
 
-
+  SetLength(Result, Size);
 end;
 
 { THTTPClient }
