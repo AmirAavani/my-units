@@ -26,6 +26,7 @@ type
     procedure SetPosition (Pos: Integer);
 
   public
+    property TargetStream: TStream read FTargerStream;
     property Size: Integer read GetSize;
     property Position: Integer read GetPosition write SetPosition;
     property EoStream: Boolean read GetEoStream;
@@ -94,6 +95,8 @@ type
     FTargerStream: TStream;
 
   public
+    property TargetStream: TStream read FTargerStream;
+
     function ReadCh: Char;
     function ReadInt: Integer;
     function ReadByte: Byte;
