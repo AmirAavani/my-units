@@ -1,0 +1,14 @@
+syntax = "proto3";
+
+message NameValue {
+  string name = 1;
+  string value = 2;
+}
+
+message SessionInfo {
+  string session_ID = 1;
+  int32 creation_timestamp = 2;
+  int32 last_activity_timestamp = 3;
+
+  repeated NameValue name_values = 4;
+}
