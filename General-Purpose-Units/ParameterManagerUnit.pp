@@ -18,12 +18,26 @@ type
 
   TRunTimeParameterManager = class(TParameterList)
   private
+    function GetBoolValue(Name: AnsiString): Boolean;
+    function GetBoolValueOrDefault(Name: AnsiString; DefaultValue: Boolean
+      ): Boolean;
+    function GetFloatValue(Name: AnsiString): Extended;
+    function GetIntegerValue(Name: AnsiString): Int64;
+    function GetStringValue(Name: AnsiString): AnsiString;
+    function GetUIntegerValue(Name: AnsiString): UInt64;
     function GetVerbosity: Integer;
 
   public
     property Verbosity: Integer read GetVerbosity;
+    property StringValue[Name: AnsiString]: AnsiString read GetStringValue;
+    property IntegerValue[Name: AnsiString]: Int64 read GetIntegerValue;
+    property UIntegerValue[Name: AnsiString]: UInt64 read GetUIntegerValue;
+    property BoolValue[Name: AnsiString]: Boolean read GetBoolValue;
+    property BoolValueOrDefault[Name: AnsiString; DefaultValue: Boolean]: Boolean read GetBoolValueOrDefault;
+    property FloatValue[Name: AnsiString]: Extended read GetFloatValue;
 
     function GetValueByName(Name: AnsiString): AnsiString; override;
+    function GetValueByNameOrDefault(Name: AnsiString; DefaultValue: AnsiString): AnsiString;
     procedure AddArgument(Name, Value: AnsiString);
     constructor Create;
     destructor Destroy; override;
@@ -33,35 +47,72 @@ type
 
 procedure Initialize;
 procedure Finalize;
-function GetRunTimeParameterManager: TRunTimeParameterManager; inline;
+function GetRunTimeParameterManager: TRunTimeParameterManager;
+function RunTimeParameterManager: TRunTimeParameterManager;
 
 implementation
 uses
   ExceptionUnit;
 
 var
-  RunTimeParameterManager: TRunTimeParameterManager;
+  _RunTimeParameterManager: TRunTimeParameterManager;
 
 procedure Initialize;
 begin
-  if RunTimeParameterManager= nil then
-    RunTimeParameterManager := TRunTimeParameterManager.Create;
+  if _RunTimeParameterManager = nil then
+    _RunTimeParameterManager := TRunTimeParameterManager.Create;
 
 end;
 
 procedure Finalize;
 begin
-  RunTimeParameterManager.Free;
+  _RunTimeParameterManager.Free;
 
 end;
 
-function GetRunTimeParameterManager: TRunTimeParameterManager; inline;
+function GetRunTimeParameterManager: TRunTimeParameterManager;
 begin
-  Result := RunTimeParameterManager;
+  Result := _RunTimeParameterManager;
 
+end;
+
+function RunTimeParameterManager: TRunTimeParameterManager;
+begin
+  Result := GetRunTimeParameterManager;
 end;
 
 { TRunTimeParameterManager }
+
+function TRunTimeParameterManager.GetBoolValue(Name: AnsiString): Boolean;
+begin
+  Result := StrToBoolDef(GetValueByName(Name), False);
+end;
+
+function TRunTimeParameterManager.GetBoolValueOrDefault(Name: AnsiString;
+  DefaultValue: Boolean): Boolean;
+begin
+  Result := StrToBoolDef(GetValueByName(Name), DefaultValue);
+end;
+
+function TRunTimeParameterManager.GetFloatValue(Name: AnsiString): Extended;
+begin
+  Result := StrToFloatDef(GetValueByName(Name), 0.0);
+end;
+
+function TRunTimeParameterManager.GetIntegerValue(Name: AnsiString): Int64;
+begin
+  Result := StrToInt64Def(GetValueByName(Name), 0);
+end;
+
+function TRunTimeParameterManager.GetStringValue(Name: AnsiString): AnsiString;
+begin
+  Result := GetValueByNameOrDefault(Name, '');
+end;
+
+function TRunTimeParameterManager.GetUIntegerValue(Name: AnsiString): UInt64;
+begin
+  Result := StrToDWordDef(GetValueByName(Name), 0);
+end;
 
 function TRunTimeParameterManager.GetVerbosity: Integer;
 begin
@@ -185,13 +236,23 @@ begin
   except
     on e: ENameNotFound do
       Result := '';
-
   end;
+end;
 
+function TRunTimeParameterManager.GetValueByNameOrDefault(Name: AnsiString;
+  DefaultValue: AnsiString): AnsiString;
+begin
+  try
+    Result := inherited GetValueByName(UpperCase(Name))
+
+  except
+    on e: ENameNotFound do
+      Result := DefaultValue;
+  end;
 end;
 
 initialization
-  RunTimeParameterManager := nil;
+  _RunTimeParameterManager := nil;
   Initialize;
 
 finalization

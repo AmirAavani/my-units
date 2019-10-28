@@ -5,7 +5,7 @@ unit QueueUnit;
 interface
 
 uses
-  Classes, SysUtils, HeapUnit, cthreads;
+  Classes, SysUtils, HeapUnit, cthreads, fgl, SyncUnit;
   
 type
 
@@ -44,9 +44,9 @@ type
 
   protected
     {The actual code for Insert goes here}
-    procedure DoInsert(Entry: T); virtual; {abstract;}
+    procedure DoInsert(Entry: T); virtual; abstract;
     {The actual code for Delete goes here}
-    procedure DoDelete(var LastElement: T); virtual; {abstract;}
+    procedure DoDelete(var LastElement: T); virtual; abstract;
     {The actual code for GetTop goes here}
     function DoGetTop: T; virtual; {abstract;}
 
@@ -153,20 +153,23 @@ type
   the caller will be blocked if there is no element in the Queue.
   }
 
-  TThreadSafeQueue = class(specialize TGenericAbstractQueue<TObject>)
+  generic TThreadSafeQueue<T> = class(specialize TGenericAbstractQueue<T>)
+  private type
+    TDataList = specialize TFPGList<T>;
   private
     FCount: Integer;
-    FData: TThreadList;
-    EmptyBlockEvent: PRTLEvent;
+    FData: TDataList;
+    NonEmptyBlockEvent: PRTLEvent;
+    Mutex: TMutex;
 
     function GetCount: Integer; override;
     function GetIsEmpty: Boolean; override;
     function GetIsFull: Boolean; override;
 
   protected
-    procedure DoInsert(Entry: TObject); override;
-    procedure DoDelete(var LastElement: TObject); override;
-    function DoGetTop: TObject; override;
+    procedure DoInsert(Entry: T); override;
+    procedure DoDelete(var LastElement: T); override;
+    function DoGetTop: T; override;
 
   public
     procedure Clear; override;
@@ -175,47 +178,24 @@ type
     destructor Destroy; override;
   end;
 
-  { TThreadSafeQueue }
-
-  TThreadSafeQueue = class(specialize TGenericAbstractQueue<TObject>)
-  private
-    FData: TThreadList;
-    FCount: Integer;
-
-  private
-    function GetCount: Integer; override;
-    function GetIsEmpty: Boolean; override;
-    function GetIsFull: Boolean; override;
-
-  protected
-    procedure DoInsert (Entry: T); override;
-    procedure DoDelete (var LastElement: T); override;
-    function DoGetTop: T; override;
-
-  public
-    constructor Create;
-    destructor Destroy;
-    procedure Clear;
-
-  end;
-
 implementation
+
+uses
+  ALoggerUnit;
 
 { TThreadSafeQueue }
 
 function TThreadSafeQueue.GetCount: Integer;
 begin
+  Mutex.Lock;
   Result := FCount;
+  Mutex.Unlock;
 
 end;
 
 function TThreadSafeQueue.GetIsEmpty: Boolean;
 begin
-  FData.LockList;
-
   Result := FCount = 0;
-
-  FData.UnlockList;
 
 end;
 
@@ -225,186 +205,80 @@ begin
 
 end;
 
-procedure TThreadSafeQueue.DoInsert(Entry: TObject);
-var
-  l : tlist;
-
+procedure TThreadSafeQueue.DoInsert(Entry: T);
 begin
-  l := FData.LockList;
+  WriteLn('Who am I?');
+  WriteLn('M.Lock!');
+  Mutex.Lock;
+  WriteLn('M.Lock passed!');
 
-  l.Add(Entry);
-  Inc(FCount);
+  FData.Add(Entry);
 
-  FData.UnlockList;
+  RTLeventSetEvent(NonEmptyBlockEvent);
+  Mutex.Unlock;
 
-  RTLeventSetEvent(EmptyBlockEvent);
 end;
 
-procedure TThreadSafeQueue.DoDelete(var LastElement: TObject);
-var
-  l: TList;
-
+procedure TThreadSafeQueue.DoDelete(var LastElement: T);
 begin
    LastElement := nil;
-
+   WriteLn('Who am I?');
    while LastElement = nil do
    begin
-     RTLeventWaitFor(EmptyBlockEvent);
+     WriteLn('Waiting for Signal!');
+     RTLeventWaitFor(NonEmptyBlockEvent);
+     WriteLn('Signal Recieved!');
 
-     l := FData.LockList;
+     WriteLn('M.Lock!');
+     Mutex.Lock;
+     WriteLn('M.Lock passed!');
+     WriteLn('FData.Count = ' + IntToStr(FData.Count));
 
-     if 0 < l.Count then
+     if 0 < FData.Count then
      begin
-       LastElement := TObject(l.Last);
-       l.Delete(l.Count - 1);
+       LastElement := FData.Last;
+       FData.Delete(FData.Count - 1);
+       Mutex.Unlock;
+
+       Break;
      end;
 
-     FData.UnlockList;
+     WriteLn('M.UnLock');
+     Mutex.Unlock;
    end;
 
 end;
 
 function TThreadSafeQueue.DoGetTop: TObject;
-var
-  l: TList;
-
 begin
    Result := nil;
+  raise Exception.Create('Not Implemented Yet');
 
-   RTLeventWaitFor(EmptyBlockEvent);
-
-   l := FData.LockList;
-
-   if 0 < l.Count then
-     Result := TObject(l.Last);
-
-   FData.UnlockList;
 end;
 
 procedure TThreadSafeQueue.Clear;
-var
-  Obj: TObject;
-
 begin
+  raise Exception.Create('Not Implemented yet!');
 
-  while not IsEmpty do
-  begin
-    Obj := nil;
-
-  end;
 end;
 
 constructor TThreadSafeQueue.Create;
 begin
   inherited Create;
 
-  FData := TThreadList.Create;
-  EmptyBlockEvent := RTLEventCreate;
+  FData := TDataList.Create;
+  NonEmptyBlockEvent := RTLEventCreate;
 
 end;
 
 destructor TThreadSafeQueue.Destroy;
-var
-  Last: TObject;
-
 begin
-  while not Self.IsEmpty do
-  begin
-    Self.Delete(Last);
-    Last.Free;
-
-  end;
+  Mutex.Free;
 
   FData.Free;
-  RTLeventdestroy(EmptyBlockEvent);
+  RTLeventdestroy(NonEmptyBlockEvent);
 
   inherited Destroy;
-=======
-end;
-
-procedure TThreadSafeQueue.DoInsert(Entry: T);
-var
-  l : tlist;
-begin
-
-   l:=myqueue.LockList;
-   l.add(tm);
-   myqueue.UnlockList;
-end;
-
-procedure TThreadSafeQueue.DoDelete(var LastElement: T);
-begin
-  inherited DoDelete(LastElement);
-end;
-
-function TThreadSafeQueue.DoGetTop: T;
-begin
-  Result:=inherited DoGetTop;
-end;
-
-constructor TThreadSafeQueue.Create;
-begin
-  inherited Create;
-
-  FCount := 0;
-end;
-
-destructor TThreadSafeQueue.Destroy;
-begin
-
-end;
-
-procedure TThreadSafeQueue.Clear;
-begin
-
-end;
-
-{ TGenericThreadSafeQueue }
-
-function TGenericThreadSafeQueue.GetCount: Integer;
-begin
-  Result:= FCount;
-end;
-
-function TGenericThreadSafeQueue.GetIsEmpty: Boolean;
-begin
-  Result:= FCount = 0;
-end;
-
-function TGenericThreadSafeQueue.GetIsFull: Boolean;
-begin
-  Result:= False;
-end;
-
-procedure TGenericThreadSafeQueue.DoInsert(Entry: T);
-begin
-  inherited DoInsert(Entry);
-end;
-
-procedure TGenericThreadSafeQueue.DoDelete(var LastElement: T);
-begin
-  inherited DoDelete(LastElement);
-end;
-
-function TGenericThreadSafeQueue.DoGetTop: T;
-begin
-  Result:=inherited DoGetTop;
-end;
-
-constructor TGenericThreadSafeQueue.Create;
-begin
-
-end;
-
-destructor TGenericThreadSafeQueue.Destroy;
-begin
-
-end;
-
-procedure TGenericThreadSafeQueue.Clear;
-begin
-
->>>>>>>  ..
 end;
 
 { TGenericPriorityQueue }
@@ -441,7 +315,10 @@ end;
 
 procedure TGenericPriorityQueue.DoDelete(var LastElement: T);
 begin
-  LastElement:= MaxHeap.Min;
+   if IsEmpty then
+     raise EQueueIsEmpty.Create;
+
+  LastElement := MaxHeap.Min;
   MaxHeap.DeleteMin;
 
 end;
@@ -488,16 +365,6 @@ begin
 
 end;
 
-procedure TGenericAbstractQueue.DoInsert(Entry: T);
-begin
-
-end;
-
-procedure TGenericAbstractQueue.DoDelete(var LastElement: T);
-begin
-
-end;
-
 function TGenericAbstractQueue.DoGetTop: T;
 begin
   Result:= nil;
@@ -506,8 +373,8 @@ end;
 
 procedure TGenericAbstractQueue.Insert(Entry: T);
 begin
-  if IsFull then
-    raise EQueueIsFull.Create;
+   if IsFull then
+     raise EQueueIsFull.Create;
 
   DoInsert(Entry);
 
@@ -515,9 +382,6 @@ end;
 
 procedure TGenericAbstractQueue.Delete(var LastElement: T);
 begin
-  if IsEmpty then
-    raise EQueueIsEmpty.Create;
-
   DoDelete(LastElement);
 
 end;
@@ -595,6 +459,10 @@ end;
 
 procedure TGenericCircularQueue.DoInsert(Entry: T);
 begin
+  if IsFull then
+    raise EQueueIsFull.Create;
+
+
   FData [EoQ]:= Entry;
   EoQ:=(EoQ+ 1) mod Count;
 
@@ -602,6 +470,9 @@ end;
 
 procedure TGenericCircularQueue.DoDelete(var LastElement: T);
 begin
+  if IsEmpty then
+    raise EQueueIsEmpty.Create;
+
   LastElement:= FData [SoQ];
   SoQ:=(SoQ+ 1) mod Count;
 
@@ -642,12 +513,19 @@ end;
 
 procedure TGenericQueue.DoInsert(Entry: T);
 begin
+  if IsFull then
+    raise EQueueIsFull.Create;
+
+
   FData.Add(Entry);
 
 end;
 
 procedure TGenericQueue.DoDelete(var LastElement: T);
 begin
+  if IsEmpty then
+    raise EQueueIsEmpty.Create;
+
   LastElement:= T(FData [0]);
   FData.Delete(0);
 

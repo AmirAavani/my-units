@@ -48,10 +48,13 @@ type
 
   var private
     function GetSize: Integer;
+    function GetValueByNameOrDefault(Name: AnsiString; DefaultValue: TValue
+      ): TValue;
     
   public
     property Size: Integer read GetSize;
     property ValueByName[Name: AnsiString]: TValue read GetValueByName;
+    property ValueByNameOrDefault[Name: AnsiString; DefaultValue: TValue]: TValue read GetValueByNameOrDefault;
     property ValueByIndex[Index: Integer]: TValue read GetValueByIndex;
 
     procedure AddNameValue(NewName: AnsiString; NewValue: TValue); virtual;
@@ -121,6 +124,21 @@ end;
 function TGenericNameValueCollection.GetSize: Integer;
 begin
   Result := Count;
+
+end;
+
+function TGenericNameValueCollection.GetValueByNameOrDefault(Name: AnsiString;
+  DefaultValue: TValue): TValue;
+var
+  Index: Integer;
+
+begin
+  Index := Self.IndexOf(UpperCase(Name));
+
+  if 0 <= Index then
+    Exit(ValueByIndex[Index])
+  else
+    Exit(DefaultValue);
 
 end;
 

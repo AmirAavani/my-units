@@ -9,16 +9,21 @@ uses
 
 type
 
+  { TAbstractRunner }
+
+  TAbstractRunner = class(TObject)
+  private
+  public
+    procedure Execute; virtual; abstract;
+
+  end;
+
   { TThreadPool }
 
-  generic TThreadPool<T> = class(specialize TFPGList<TThread>)
-  protected
-    Queue: TThreadSafeQueue;
-
+  TThreadPool = class(TObject)
   public
     constructor Create;
     destructor Destroy; override;
-
 
   end;
 
@@ -27,9 +32,6 @@ implementation
 { TThreadPool }
 
 constructor TThreadPool.Create;
-var
-  i: Integer;
-
 begin
   inherited Create;
 
@@ -37,7 +39,7 @@ end;
 
 destructor TThreadPool.Destroy;
 begin
-  Queue.Free;
+  inherited;
 
 end;
 
