@@ -6,13 +6,13 @@ unit NumberTheoryUnit;
 interface
 
 uses
-  Classes, SysUtils, fgl, GenericCollectionUnit;
+  Classes, SysUtils, fgl;
 
 type
 
   { TIntList }
 
-  TIntList = class(specialize TGenericCollectionForBuiltInData<Int64>)
+  TIntList = class(specialize TFPGList<Int64>)
   public
     procedure Print;
     function Sum: Int64;
@@ -53,8 +53,11 @@ function ToBinary(n: Int64): AnsiString;
 }
 function IsPerfectSquare(n: Int64): Int64;
 function CNR(n, r: Integer): UInt64;
+function CNRMod(n, r: Integer; AllPrimes: TIntList; Modulo: Int64): UInt64;
+function CNRModPrime(n, r: Integer; PrimeModulo: Int64; FactModP: TIntList): UInt64;
 function GCD(a, b: UInt64): UInt64;
 function Pow(a, b: Integer): Int64;
+function PowMod(a, b: Int64; Modulo: Int64): Int64;
 
 {Factors is the factorization for n}
 function ComputePhi(n: Int64; Factors: TFactorization): Int64;
@@ -65,6 +68,7 @@ function ChineseRemainderTheorem(Modulos, Remainders: TIntList): uInt64;
 
 { Modular multiplicative inverse}
 function ModularMultiplicativeInverse(x, m: Int64): Int64;
+function ModularMultiplicativeInverse4Prime(x, p: Int64): Int64;
 
 implementation
 
@@ -319,6 +323,56 @@ begin
 
 end;
 
+function CNRMod(n, r: Integer; AllPrimes: TIntList; Modulo: Int64): UInt64;
+
+  function CountPrime(n, pIndex, p: Integer): Integer;
+  begin
+    p := AllPrimes[pIndex];
+    if n < p then
+      Exit(0);
+
+    Result := 0;
+
+    while p <= n do
+    begin
+      n := n div p;
+      Result += n;
+    end;
+  end;
+
+
+var
+  p: Int64;
+  i, j, n_r: Integer;
+
+begin
+  n_r := n - r;
+
+  Result := 1;
+  for i := 0 to AllPrimes.Count - 1 do
+  begin
+    p := AllPrimes[i];
+    if n < p then
+      Break;
+    j := CountPrime(n, i, p) - CountPrime(r, i, p) - CountPrime(n_r, i, p) ;
+    Result *= Pow(p, j);
+    Result := Result mod Modulo;
+  end;
+
+end;
+
+function CNRModPrime(n, r: Integer; PrimeModulo: Int64; FactModP: TIntList): UInt64;
+begin
+  Result := FactModP[n];
+  if Result = 0 then
+    Exit(0);
+
+  Result *= ModularMultiplicativeInverse4Prime(FactModP[r], PrimeModulo);
+  Result := Result mod PrimeModulo;
+  Result := (Result * ModularMultiplicativeInverse4Prime(FactModP[n - r], PrimeModulo))
+    mod PrimeModulo;
+end;
+
 function gcd(a, b: UInt64): UInt64;
 var
   c: uInt64;
@@ -350,6 +404,17 @@ begin
   Result := Sqr(Pow(a, b div 2));
   if Odd(b) then
     Result := Result * a;
+end;
+
+function PowMod(a, b: Int64; Modulo: Int64): Int64;
+begin
+  if b = 0 then
+    Exit(1);
+  if b = 1 then
+    Exit(a mod Modulo);
+  Result := Sqr(PowMod(a, b div 2, Modulo)) mod Modulo;
+  if Odd(b) then
+    Result := (Result * a) mod Modulo;
 end;
 
 function ComputePhi(n: Int64; Factors: TFactorization): Int64;
@@ -464,6 +529,17 @@ begin
     Result := m - ((m - Result) mod m);
 
 end;
+
+function ModularMultiplicativeInverse4Prime(x, p: Int64): Int64;
+begin
+  Result := PowMod(x, p - 2, p);
+  if (x * Result) mod p <> 1 then
+  begin
+    WriteLn('x: ', x, ' x^-1: ', Result, ' x*Result: ', (x * Result) mod p);
+    Halt(1);
+  end;
+end;
+
 
 { TIntList }
 
