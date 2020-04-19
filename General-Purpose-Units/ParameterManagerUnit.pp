@@ -7,10 +7,6 @@ interface
 uses
   Classes, SysUtils, NameValueCollectionUnit;
 
-const
-  vbNone = 0;
-  vbEveryThing = 512;
-
 type
   TParameterList = specialize TGenericNameValueCollection<AnsiString>;
 
@@ -26,6 +22,9 @@ type
     function GetStringValue(Name: AnsiString): AnsiString;
     function GetUIntegerValue(Name: AnsiString): UInt64;
     function GetVerbosity: Integer;
+    procedure AddArgument(Name, Value: AnsiString);
+    function GetValueByName(Name: AnsiString): AnsiString; override;
+    function GetValueByNameOrDefault(Name: AnsiString; DefaultValue: AnsiString): AnsiString;
 
   public
     property Verbosity: Integer read GetVerbosity;
@@ -35,10 +34,9 @@ type
     property BoolValue[Name: AnsiString]: Boolean read GetBoolValue;
     property BoolValueOrDefault[Name: AnsiString; DefaultValue: Boolean]: Boolean read GetBoolValueOrDefault;
     property FloatValue[Name: AnsiString]: Extended read GetFloatValue;
+    property ValueByName[Name: AnsiString]: AnsiString read GetValueByName;
+    property ValueByNameOrDefault[Name, DefaultValue: AnsiString]: AnsiString read GetValueByNameOrDefault;
 
-    function GetValueByName(Name: AnsiString): AnsiString; override;
-    function GetValueByNameOrDefault(Name: AnsiString; DefaultValue: AnsiString): AnsiString;
-    procedure AddArgument(Name, Value: AnsiString);
     constructor Create;
     destructor Destroy; override;
 

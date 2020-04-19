@@ -26,8 +26,6 @@ type
   {
   This class stores data with a correcponding name and allows retrieving the values
   by either their names or indices.
-
-  This class does not delete the objects inserted into it.
   }
 
   { TGenericNameValueCollection }
@@ -55,13 +53,12 @@ type
     property Size: Integer read GetSize;
     property ValueByName[Name: AnsiString]: TValue read GetValueByName;
     property ValueByNameOrDefault[Name: AnsiString; DefaultValue: TValue]: TValue read GetValueByNameOrDefault;
-    property ValueByIndex[Index: Integer]: TValue read GetValueByIndex;
 
     procedure AddNameValue(NewName: AnsiString; NewValue: TValue); virtual;
     
     destructor Destroy; override;
     {
-    Sorts the names for faster search. Note that after calling this method, there might
+    Sorts the names for faster lookup. Note that after calling this method, there might
     be some changes in the order of the objects in the collection.
     }
     procedure Finalize;
@@ -73,11 +70,6 @@ type
     }
     procedure UpdateValue(AName: AnsiString; AValue: TValue);
 
-    {
-      Removes the pair Aname and its corresponding value for collection
-    }
-    procedure EraseValue(AName: AnsiString);
-    
   end;
 
 implementation
@@ -114,8 +106,8 @@ var
 begin
   Index := Self.IndexOf(UpperCase(Name));
 
-  if 0<= Index then
-    Exit(ValueByIndex[Index])
+  if 0 <= Index then
+    Exit(GetValueByIndex(Index))
   else
     raise ENameNotFound.Create(Name);
 
@@ -136,7 +128,7 @@ begin
   Index := Self.IndexOf(UpperCase(Name));
 
   if 0 <= Index then
-    Exit(ValueByIndex[Index])
+    Exit(Self.GetValueByIndex(Index))
   else
     Exit(DefaultValue);
 
@@ -184,15 +176,6 @@ begin
       AddNameValue(AName, AValue);
 
   end;
-
-end;
-
-procedure TGenericNameValueCollection.EraseValue(AName: AnsiString);
-begin
-  ValueByName[AName];
-
-  Objects[IndexOf(AName)].Free;
-  Delete(IndexOf(AName));
 
 end;
 
