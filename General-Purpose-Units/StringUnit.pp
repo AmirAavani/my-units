@@ -9,6 +9,7 @@ uses
 
 function IsPrefix(const Prefix, Str: AnsiString): Boolean;
 function IsSuffix(const Suffix, Str: AnsiString): Boolean;
+function Split(const Str: AnsiString; Delimiter: Char): TStringList;
 
 implementation
 
@@ -51,6 +52,14 @@ begin
   end;
 
   Result := True;
+
+end;
+
+function Split(const Str: AnsiString; Delimiter: Char): TStringList;
+begin
+  Result := TStringList.Create;
+  Result.Delimiter := Delimiter;
+  Result.DelimitedText := Str;
 
 end;
 
