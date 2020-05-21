@@ -5,13 +5,16 @@ unit StringUnit;
 interface
 
 uses
-  Classes, SysUtils;
+  Classes;
 
 function IsPrefix(const Prefix, Str: AnsiString): Boolean;
 function IsSuffix(const Suffix, Str: AnsiString): Boolean;
 function Split(const Str: AnsiString; Delimiter: Char): TStringList;
+function JoinStrings(const Strings: TStringList; Separator: AnsiString): AnsiString;
 
 implementation
+uses
+  sysutils, strings;
 
 function IsPrefix(const Prefix, Str: AnsiString): Boolean;
 var
@@ -61,6 +64,24 @@ begin
   Result.Delimiter := Delimiter;
   Result.DelimitedText := Str;
 
+end;
+
+function JoinStrings(const Strings: TStringList; Separator: AnsiString
+  ): AnsiString;
+var
+  Str: AnsiString;
+  i: Integer;
+
+begin
+  Result := '';
+  for i := 0 to Strings.Count - 1 do
+  begin
+    Str := Strings[i];
+
+    if i <> 0 then
+      Result += Separator;
+    Result += Str;
+  end;
 end;
 
 end.
