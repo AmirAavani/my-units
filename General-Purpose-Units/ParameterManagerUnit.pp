@@ -5,15 +5,19 @@ unit ParameterManagerUnit;
 interface
 
 uses
-  Classes, SysUtils, NameValueCollectionUnit;
+  Classes, SysUtils, fgl;
 
 type
-  TParameterList = specialize TGenericNameValueCollection<AnsiString>;
 
   { TRunTimeParameterManager }
 
-  TRunTimeParameterManager = class(TParameterList)
+  TRunTimeParameterManager = class(TObject)
+  private type
+    TNameValueMap = specialize TFPGMap<AnsiString, AnsiString>;
+
   private
+    Values: TNameValueMap;
+
     function GetBoolValue(Name: AnsiString): Boolean;
     function GetBoolValueOrDefault(Name: AnsiString; DefaultValue: Boolean
       ): Boolean;
@@ -22,8 +26,7 @@ type
     function GetStringValue(Name: AnsiString): AnsiString;
     function GetUIntegerValue(Name: AnsiString): UInt64;
     function GetVerbosity: Integer;
-    procedure AddArgument(Name, Value: AnsiString);
-    function GetValueByName(Name: AnsiString): AnsiString; override;
+    function GetValueByName(Name: AnsiString): AnsiString;
     function GetValueByNameOrDefault(Name: AnsiString; DefaultValue: AnsiString): AnsiString;
 
   public
@@ -50,7 +53,7 @@ function RunTimeParameterManager: TRunTimeParameterManager;
 
 implementation
 uses
-  ExceptionUnit;
+  ExceptionUnit, StringUnit;
 
 var
   _RunTimeParameterManager: TRunTimeParameterManager;
@@ -121,20 +124,7 @@ begin
 
 end;
 
-procedure TRunTimeParameterManager.AddArgument(Name, Value: AnsiString);
-begin
-  AddNameValue(UpperCase(Name), Value);
-  Finalize;
-
-end;
-
 constructor TRunTimeParameterManager.Create;
-  procedure PrintHelp;
-  begin
-    WriteLn('Invalid Usage!');
-    WriteLn(ExtractFileName(ParamStr(0))+ ' {Name Value}^* ');
-
-  end;
 const
 {$i ValidArguments.inc }
 
@@ -147,15 +137,18 @@ const
 
       if UpperCase(Name) = UpperCase(ValidArguments[i]) then
       begin
+        if ValidArgumentsValues[i] = '' then
+          Exit;
+        // For backward compatibility.
         if Pos('NONE', UpperCase(ValidArgumentsValues[i])) <> 0 then
           Exit;
 
-        if Pos(UpperCase(Value), UpperCase(ValidArgumentsValues[i])) <> 0 then
+        if Pos(':' + UpperCase(Value) + ':',
+          ':' + UpperCase(ValidArgumentsValues[i]) + ':') <> 0 then
            Exit;
 
-        WriteLn('Invalid Argument Value:', Name, ' ', Value, '.');
-        WriteLn('Valid Arguments for ', Name, ' are');
-        Write(ValidArgumentsValues[i]);
+        WriteLn(Format('Value "%s" is not a valid value for %s.', [Name, Value]));
+        WriteLn(Format('Valid Arguments for %s are (%s)', [Name, ValidArgumentsValues[i]]));
         Halt(1);
 
       end;
@@ -173,6 +166,7 @@ const
     Halt(1);
   end;
 
+
 var
   i: Integer;
   Name, V: AnsiString;
@@ -180,38 +174,36 @@ var
 begin
   inherited;
 
-  if Odd(Paramcount) then
-  begin
-    PrintHelp;
-     raise Exception.Create('Invalid set of parameters');
-  end;
+  Values := TNameValueMap.Create;
+  Values.Sorted := True;
 
   i := 1;
-
   while i <= Paramcount do
   begin
     Name := ParamStr(i);
-    if Paramcount< i+ 1 then
-      Break;
-    V := ParamStr(i+ 1);
-    CheckParameter(Name, V);
-    AddArgument(Name, V);
+    Inc(i);
 
-    Inc(i, 2);
+    if not IsPrefix('--', Name) then
+      Continue;
+    if i = ParamCount then
+      Continue;
+
+    V := ParamStr(i);
+    Values[UpperCase(Name)] := V;
+
+    Inc(i);
 
   end;
 
   for i := Low(ValidArguments) to High(ValidArguments) do
-    if GetValueByName(ValidArguments[i]) = '' then
+    if Values.IndexOf(ValidArguments[i]) < 0 then
     begin
-      AddArgument(ValidArguments[i],
+      Values[ValidArguments[i]] :=
         Copy(ValidArgumentsValues[i],
              1,
              Pos(':', ValidArgumentsValues[i] + ':') - 1
-            )
-        );
+            );
     end;
-  Finalize;
 
 end;
 
@@ -228,25 +220,16 @@ end;
 
 function TRunTimeParameterManager.GetValueByName(Name: AnsiString): AnsiString;
 begin
-  try
-    Result := inherited GetValueByName(UpperCase(Name))
+  Result := Values[Name]
 
-  except
-    on e: ENameNotFound do
-      Result := '';
-  end;
 end;
 
 function TRunTimeParameterManager.GetValueByNameOrDefault(Name: AnsiString;
   DefaultValue: AnsiString): AnsiString;
 begin
-  try
-    Result := inherited GetValueByName(UpperCase(Name))
-
-  except
-    on e: ENameNotFound do
-      Result := DefaultValue;
-  end;
+  if Values.IndexOf(Name) < 0 then
+    Exit(DefaultValue);
+  Result := Values[Name];
 end;
 
 initialization
