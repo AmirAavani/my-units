@@ -53,7 +53,7 @@ function RunTimeParameterManager: TRunTimeParameterManager;
 
 implementation
 uses
-  ExceptionUnit, StringUnit;
+  StringUnit;
 
 var
   _RunTimeParameterManager: TRunTimeParameterManager;
