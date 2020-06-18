@@ -5,35 +5,39 @@ unit PageHandlerUnit;
 interface
 
 uses
-  Classes, SysUtils, HttpServerThreadUnit;
+  HttpServerThreadUnit, Classes, SysUtils;
 
 type
 
-  { TBasePageHandler }
+  { THTMLBasePageHandler }
 
-  TBasePageHandler = class(TObject)
-
-  private
-    FName: AnsiString;
-    FServingPath: AnsiString;
+  THTMLBasePageHandler = class(TBasePageHandler)
   public
-    property Name: AnsiString read FName;
-    property ServingPath: AnsiString read FServingPath;
     constructor Create(aName: AnsiString; aServingPath: AnsiString);
 
+    function Execute(Sender: THTTPServerThread; TheRequest: THTTPServerRequest;
+      TheResponse : THTTPServerResponse): Boolean; override;
   end;
 
 implementation
+uses
+  httpprotocol;
 
-{ TBasePageHandler }
+{ THTMLBasePageHandler }
 
-constructor TBasePageHandler.Create(aName: AnsiString; aServingPath: AnsiString
-  );
+constructor THTMLBasePageHandler.Create(aName: AnsiString;
+  aServingPath: AnsiString);
 begin
-  inherited Create;
+  inherited Create(aName, aServingPath);
 
-  FName := aName;
-  FServingPath := aServingPath;
+end;
+
+function THTMLBasePageHandler.Execute(Sender: THTTPServerThread;
+  TheRequest: THTTPServerRequest; TheResponse: THTTPServerResponse): Boolean;
+begin
+  TheResponse.OriginalResponse.SetHeader(hhContentType, 'text/html; charset=utf-8');
+
+  Result := True;
 end;
 
 end.

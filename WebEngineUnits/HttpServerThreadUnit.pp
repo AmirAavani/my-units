@@ -137,18 +137,23 @@ type
 
   end;
 
+  TBasePageHandler = class;
+
   { THTTPServerThread }
 
   THTTPServerThread = class(TThread)
+  private type
+    TPageHandlers = specialize TFPGList<TBasePageHandler>;
+
   private
-    FContentType: AnsiString;
-    FContentEncoding: AnsiString;
+    FPageNotFoundHandler: TBasePageHandler;
+    PageHandlers: TPageHandlers;
 
   protected
     Server: TFPHTTPServer;
     procedure DefaultRequestHandler(Sender: TObject;
       ARequest: THTTPServerRequest;
-      AResponse : THTTPServerResponse); virtual; abstract;
+      AResponse : THTTPServerResponse); virtual;
 
     procedure HandleRequest(Sender: TObject;
       var ARequest: TFPHTTPConnectionRequest;
@@ -156,16 +161,55 @@ type
 
 
   public
-    constructor Create(APort: Word; ContentType: AnsiString = 'text/html';
-       ContentEncoding: AnsiString = 'utf-8');
+    constructor Create(APort: Word; PageNotFoundHandler: TBasePageHandler);
     destructor Destroy; override;
 
+    procedure RegisterPageHandler(const PageHandler: TBasePageHandler);
     procedure Start;
   end;
 
+
+  { TBasePageHandler }
+
+  TBasePageHandler = class(TObject)
+  private
+    FName: AnsiString;
+    FServingPath: AnsiString;
+
+  public
+    property Name: AnsiString read FName;
+    property ServingPath: AnsiString read FServingPath;
+
+    constructor Create(aName: AnsiString; aServingPath: AnsiString);
+
+    function WouldHandleRequest(ARequest: THTTPServerRequest): Boolean; virtual;
+    function Execute(Sender: THTTPServerThread; TheRequest: THTTPServerRequest;
+      TheResponse : THTTPServerResponse): Boolean; virtual; abstract;
+  end;
+
+
 implementation
 uses
-  httpprotocol;
+  DefaultPageHandlerUnit, httpprotocol;
+
+{ TBasePageHandler }
+
+constructor TBasePageHandler.Create(aName: AnsiString; aServingPath: AnsiString
+  );
+begin
+  inherited Create;
+
+  FName := aName;
+  FServingPath := aServingPath;
+
+end;
+
+function TBasePageHandler.WouldHandleRequest(ARequest: THTTPServerRequest
+  ): Boolean;
+begin
+  Result := False;
+
+end;
 
 { TNode }
 
@@ -478,18 +522,30 @@ begin
   inherited Destroy;
 end;
 
+procedure THTTPServerThread.DefaultRequestHandler(Sender: TObject;
+  ARequest: THTTPServerRequest; AResponse: THTTPServerResponse);
+var
+  PageHandler: TBasePageHandler;
+
+begin
+  for PageHandler in PageHandlers do
+    if PageHandler.WouldHandleRequest(ARequest) then
+      if PageHandler.Execute(Self, ARequest, AResponse) then
+        Exit;
+
+  FPageNotFoundHandler.Execute(Self, ARequest, AResponse);
+end;
+
 procedure THTTPServerThread.HandleRequest(Sender: TObject;
   var ARequest: TFPHTTPConnectionRequest;
   var AResponse: TFPHTTPConnectionResponse);
 var
   Request: THTTPServerRequest;
   Response: THTTPServerResponse;
-  S: AnsiString;
 
 begin
   Request := THTTPServerRequest.Create(ARequest);
   Response := THTTPServerResponse.Create(AResponse);
-  Response.OriginalResponse.SetHeader(hhContentType, FContentType + '; charset=' + FContentEncoding);
 
   Self.DefaultRequestHandler(Sender, Request, Response);
 
@@ -498,13 +554,10 @@ begin
 
 end;
 
-constructor THTTPServerThread.Create(APort: Word; ContentType: AnsiString;
-  ContentEncoding: AnsiString);
+constructor THTTPServerThread.Create(APort: Word;
+  PageNotFoundHandler: TBasePageHandler);
 begin
   inherited Create(True);
-
-  FContentType := ContentType;
-  FContentEncoding := ContentEncoding;
 
   Server := TFPHttpServer.Create(nil);
   Server.Port := APort;
@@ -512,12 +565,26 @@ begin
   Server.Threaded := True;
   Self.FreeOnTerminate := False;
 
+  FPageNotFoundHandler := PageNotFoundHandler;
+  PageHandlers := TPageHandlers.Create;
 end;
 
 destructor THTTPServerThread.Destroy;
+var
+  PageHandler: TBasePageHandler;
+
 begin
+  for PageHandler in PageHandlers do
+    PageHandler.Free;
+
   Server.Free;
 
+end;
+
+procedure THTTPServerThread.RegisterPageHandler(
+  const PageHandler: TBasePageHandler);
+begin
+  PageHandlers.Add(PageHandler);
 end;
 
 procedure THTTPServerThread.Start;
