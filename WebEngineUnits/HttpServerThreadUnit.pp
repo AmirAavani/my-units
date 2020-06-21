@@ -141,7 +141,7 @@ type
 
   { THTTPServerThread }
 
-  THTTPServerThread = class(TThread)
+  THTTPServerThread = class(TObject)
   private type
     TPageHandlers = specialize TFPGList<TBasePageHandler>;
 
@@ -411,6 +411,7 @@ constructor THTTPServerRequest.Create(const ARequest: TFPHTTPConnectionRequest);
     i: Integer;
 
   begin
+
     StrList := TStringList.Create;
     StrList.Delimiter := '&';
     StrList.DelimitedText := ARequest.Content;
@@ -557,13 +558,12 @@ end;
 constructor THTTPServerThread.Create(APort: Word;
   PageNotFoundHandler: TBasePageHandler);
 begin
-  inherited Create(True);
+  inherited Create;
 
   Server := TFPHttpServer.Create(nil);
   Server.Port := APort;
   Server.OnRequest := @Self.HandleRequest;
   Server.Threaded := True;
-  Self.FreeOnTerminate := False;
 
   FPageNotFoundHandler := PageNotFoundHandler;
   PageHandlers := TPageHandlers.Create;

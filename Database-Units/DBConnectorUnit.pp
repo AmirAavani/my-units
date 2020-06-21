@@ -10,7 +10,7 @@ uses
 type
   { TDatabaseConnection }
 
-  TDatabaseConnection= class (TObject)
+  TDatabaseConnection = class (TObject)
   protected
     FUserName, FPassword, FHost: AnsiString;
     FActiveDB: AnsiString;
@@ -23,7 +23,7 @@ type
   public
     property ActiveDB: AnsiString read GetActiveDB write SetActiveDatabase;
 
-    constructor Create (const Username, Password, Host: AnsiString);
+    constructor Create(const Username, Password, Host: AnsiString);
     destructor Destroy; override;
 
     function Refresh: Boolean; virtual; abstract;
@@ -33,7 +33,7 @@ type
     function RunQuery(const Query: AnsiString): TQueryResponse; virtual; abstract;
   end;
 
-  EConnectionFailed= class (Exception);
+  EConnectionFailed = class(Exception);
 
   function StringToBlob(const Str: AnsiString): AnsiString;
   function BlobToString(const BlobStr: AnsiString): AnsiString;
@@ -46,7 +46,7 @@ type
 
   { ENotConnected }
 
-  ENotConnected= class (Exception)
+  ENotConnected = class(Exception)
   public
     constructor Create;
 
@@ -54,7 +54,7 @@ type
 
   { ENoActiveDB }
 
-  ENoActiveDB= class (Exception)
+  ENoActiveDB = class(Exception)
   public
     constructor Create;
 
@@ -105,15 +105,15 @@ end;
 function EscapeForQuery(const Query: WideString): WideString;
 begin
   {
- \0     An ASCII NUL (0x00) character.
-\'     A single quote (“'”) character.
-\"     A double quote (“"”) character.
+ \0     An ASCII NUL(0x00) character.
+\'     A single quote(“'”) character.
+\"     A double quote(“"”) character.
 \b     A backspace character.
-\n     A newline (linefeed) character.
+\n     A newline(linefeed) character.
 \r     A carriage return character.
 \t     A tab character.
-\Z     ASCII 26 (Control-Z). See note following the table.
-\\     A backslash (“\”) character.
+\Z     ASCII 26(Control-Z). See note following the table.
+\\     A backslash(“\”) character.
 \%     A “%” character. See note following the table.
 \_     A “_” character. See note following the table.
 }
@@ -131,26 +131,26 @@ end;
 
 constructor ENoActiveDB.Create;
 begin
-  inherited Create ('There is no Active Database!');
+  inherited Create('There is no Active Database!');
 
 end;
 
 constructor ENotConnected.Create;
 begin
-  inherited Create ('Not Connected!');
+  inherited Create('Not Connected!');
 
 end;
 
 
 { TDatabaseConnection }
 
-constructor TDatabaseConnection.Create (const Username, Password, Host: AnsiString);
+constructor TDatabaseConnection.Create(const Username, Password, Host: AnsiString);
 begin
   inherited Create;
 
-  Self.FUserName:= Username;
-  Self.FPassword:= Password;
-  Self.FHost:= Host;
+  Self.FUserName := Username;
+  Self.FPassword := Password;
+  Self.FHost := Host;
 end;
 
 destructor TDatabaseConnection.Destroy;

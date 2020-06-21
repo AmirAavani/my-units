@@ -185,7 +185,7 @@ begin
 
     if not IsPrefix('--', Name) then
       Continue;
-    if i = ParamCount then
+    if ParamCount < i then
       Continue;
 
     V := ParamStr(i);
@@ -196,9 +196,9 @@ begin
   end;
 
   for i := Low(ValidArguments) to High(ValidArguments) do
-    if Values.IndexOf(ValidArguments[i]) < 0 then
+    if Values.IndexOf(UpperCase(ValidArguments[i])) < 0 then
     begin
-      Values[ValidArguments[i]] :=
+      Values[UpperCase(ValidArguments[i])] :=
         Copy(ValidArgumentsValues[i],
              1,
              Pos(':', ValidArgumentsValues[i] + ':') - 1
@@ -220,16 +220,16 @@ end;
 
 function TRunTimeParameterManager.GetValueByName(Name: AnsiString): AnsiString;
 begin
-  Result := Values[Name]
+  Result := Values[UpperCase(Name)]
 
 end;
 
 function TRunTimeParameterManager.GetValueByNameOrDefault(Name: AnsiString;
   DefaultValue: AnsiString): AnsiString;
 begin
-  if Values.IndexOf(Name) < 0 then
+  if Values.IndexOf(UpperCase(Name)) < 0 then
     Exit(DefaultValue);
-  Result := Values[Name];
+  Result := Values[UpperCase(Name)];
 end;
 
 initialization

@@ -111,9 +111,26 @@ type
 
   end;
 
+  function ReadFile(aFilename: AnsiString): AnsiString;
+
 implementation
 uses
   WideStringUnit;
+
+function ReadFile(aFilename: AnsiString): AnsiString;
+var
+  Stream: TFileStream;
+
+begin
+  Stream := TFileStream.Create(aFilename, fmOpenRead);
+  Stream.Position := 0;
+
+  SetLength(Result, Stream.Size) ;
+
+  Stream.Read(Result[1], Stream.Size);
+
+  Stream.Free;
+end;
 
 { TMyStream }
 

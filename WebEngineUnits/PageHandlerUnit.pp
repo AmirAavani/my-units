@@ -19,9 +19,48 @@ type
       TheResponse : THTTPServerResponse): Boolean; override;
   end;
 
+  { TStaticFileHandler }
+
+  TStaticFileHandler = class(THTMLBasePageHandler)
+  private
+    Content: AnsiString;
+
+  public
+    constructor Create(aName, aServingPath, FilePath: AnsiString);
+
+    function WouldHandleRequest(ARequest: THTTPServerRequest): Boolean; override;
+    function Execute(Sender: THTTPServerThread; TheRequest: THTTPServerRequest;
+      TheResponse: THTTPServerResponse): Boolean; override;
+  end;
+
 implementation
 uses
-  httpprotocol;
+  StreamUnit, httpprotocol;
+
+{ TStaticFileHandler }
+
+constructor TStaticFileHandler.Create(aName, aServingPath, FilePath: AnsiString
+  );
+begin
+  inherited Create(aName, aServingPath);
+
+  Content := ReadFile(FilePath);
+end;
+
+function TStaticFileHandler.WouldHandleRequest(ARequest: THTTPServerRequest
+  ): Boolean;
+begin
+  Result := ARequest.PathInfo = ServingPath;
+end;
+
+function TStaticFileHandler.Execute(Sender: THTTPServerThread;
+  TheRequest: THTTPServerRequest; TheResponse: THTTPServerResponse): Boolean;
+begin
+  Result := inherited Execute(Sender, TheRequest, TheResponse);
+
+  TheResponse.WriteLn(Content);
+
+end;
 
 { THTMLBasePageHandler }
 
