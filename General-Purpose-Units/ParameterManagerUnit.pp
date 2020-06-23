@@ -220,7 +220,8 @@ end;
 
 function TRunTimeParameterManager.GetValueByName(Name: AnsiString): AnsiString;
 begin
-  Result := Values[UpperCase(Name)]
+  Values.TryGetData(UpperCase(Name), Result);
+
 
 end;
 
