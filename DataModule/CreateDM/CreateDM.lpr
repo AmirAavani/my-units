@@ -173,6 +173,13 @@ begin
     Exit;
   end;
 
+  OutputStream.WriteLine('// This file is generated automatically using the following command:');
+  OutputStream.WriteStr('//');
+  for i := 0 to ParamCount - 1 do
+    OutputStream.WriteStr(Format('%s ', [ParamStr(i)]));
+  OutputStream.WriteLine('');
+  OutputStream.WriteLine('');
+
   Template := TTemplateEngine.CreateFromText(UnitHeader);
   Mapper.AddNameValue('UnitName', UnitName);
   OutputStream.WriteStr(Template.Map(Mapper));
@@ -281,6 +288,7 @@ var
   DBConnection: TMySQLDatabaseConnection;
   Tables: TStringList;
   TableName: AnsiString;
+  i: Integer;
 
 begin
   DBConnection := TMySQLDatabaseConnection.Create(
