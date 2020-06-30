@@ -18,13 +18,16 @@ type
     function GetNumRows: Integer; virtual; abstract;
 
     function GetRow: TStringList; virtual; abstract;
+    function GetColumns: TStringList; virtual; abstract;
   public
     property NumRows: Integer read GetNumRows;
     property NumColumns: Integer read GetNumColumns;
     property HasNext: Boolean read GetHasNext;
     property Row: TStringList read GetRow;
+    property Columns: TStringList read GetColumns;
 
     procedure GetRow(Response: TStringList); virtual; abstract;
+    procedure GetColumns(Response: TStringList); virtual; abstract;
     procedure Next; virtual; abstract;
 
   end;

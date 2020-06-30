@@ -17,6 +17,7 @@ type
     FRes: PMYSQL_RES;
     FCurrentRowRaw : MYSQL_ROW;
     FCurrentRow: TStringList;
+    FColumns: TStringList;
     FMySqlConnection: TMySQLDatabaseConnection;
 
   protected
@@ -24,13 +25,16 @@ type
     function GetNumColumns: Integer; override;
     function GetNumRows: Integer; override;
 
-    constructor Create(Res: PMYSQL_RES; Connection: TMySQLDatabaseConnection);
 
   public
+    constructor Create(Res: PMYSQL_RES; Connection: TMySQLDatabaseConnection);
     destructor Destroy; override;
 
     function GetRow: TStringList; override;
     procedure GetRow(Response: TStringList); override;
+    function GetColumns: TStringList; override;
+    procedure GetColumns(Response: TStringList); override;
+
     procedure Next; override;
 
   end;
@@ -111,6 +115,8 @@ begin
   FRes := Res;
   FCurrentRowRaw := mysql_fetch_row(FRes);
   FCurrentRow := TStringList.Create;
+  FColumns := TStringList.Create;
+  GetColumns(FColumns);
   FMySqlConnection := Connection;
 
 end;
@@ -119,6 +125,7 @@ destructor TMySqlQueryResponse.Destroy;
 begin
   mysql_free_result(FRes);
   FCurrentRow.Free;
+  FColumns.Free;
   RTLeventSetEvent(FMySqlConnection.RTLEvent);
 
   inherited Destroy;
@@ -148,6 +155,34 @@ begin
     Response.Add(FCurrentRowRaw[i]);
   end;
 
+end;
+
+function TMySqlQueryResponse.GetColumns: TStringList;
+begin
+  if FColumns.Count <> 0 then
+    Exit(FColumns);
+
+  Self.GetColumns(FColumns);
+
+  Result := FColumns;
+
+end;
+
+procedure TMySqlQueryResponse.GetColumns(Response: TStringList);
+var
+  i: Integer;
+  Field: PMYSQL_FIELD;
+
+begin
+  Response.Clear;
+
+  for i := 0 to NumColumns - 1 do
+  begin
+    Field := mysql_fetch_field_direct(FRes, i);
+    Response.Add(Field^.name);
+  end;
+
+  WriteLn(Response.Text);
 end;
 
 procedure TMySqlQueryResponse.Next;
