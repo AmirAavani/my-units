@@ -7,7 +7,8 @@ uses
   cthreads,
   {$ENDIF}
   sysutils, Classes, ParameterManagerUnit, MySQLDBConnectorUnit, StringUnit,
-  QueryResponeUnit, UtilsUnit, StreamUnit, TemplateEngineUnit;
+  QueryResponeUnit, UtilsUnit, BaseDataModuleUnit, StreamUnit,
+  TemplateEngineUnit;
 
 const
   UnitHeader: AnsiString =
@@ -140,7 +141,30 @@ begin
 
   OutputStream.WriteLine('end;');
 
+end;
 
+procedure ImplementGetColumnByValue(aClassName: String; aTheTableName: String;
+  aColumnNames: TStringList; aColumnTypes: TStringList;
+  aOutputStream: TMyTextStream);
+var
+  i: Integer;
+
+begin
+  aOutputStream.WriteLine(Format('class function %s.GetColumnNameByIndex(Index: Integer): AnsiString;',
+    [aClassName]));
+
+  aOutputStream.WriteLine('begin');
+  aOutputStream.WriteLine;
+
+  for i := 0 to aColumnNames.Count - 1 do
+  begin
+    if i <> 0 then
+      aOutputStream.WriteStr('  else');
+
+    aOutputStream.WriteLine(Format('  if Index = %d then Exit(' + Chr(39) + '%s' + Chr(39) + ')', [i, aColumnNames[i]]));
+  end;
+
+  aOutputStream.WriteLine('end;');
 end;
 
 procedure GenerateCode(DBConnection: TMySQLDatabaseConnection;
@@ -246,6 +270,7 @@ begin
   end;
 
   OutputStream.WriteLine('');
+  OutputStream.WriteLine('    class function GetColumnNameByIndex(Index: Integer): AnsiString; override;');
   OutputStream.WriteLine('    procedure SetValueByColumnName(ColumnName: AnsiString; StrValue: AnsiString);');
   OutputStream.WriteStr('    constructor Create(');
   for i := 0 to NumElements - 1 do
@@ -276,6 +301,8 @@ begin
   ImplementCreate(ClassName, TheTableName, ColumnNames, ColumnTypes, OutputStream);
   OutputStream.WriteLine('');
   ImplementSetValueByColumnName(ClassName, TheTableName, ColumnNames, ColumnTypes, OutputStream);
+  OutputStream.WriteLine('');
+  ImplementGetColumnByValue(ClassName, TheTableName, ColumnNames, ColumnTypes, OutputStream);
   OutputStream.WriteLine('');
 
   OutputStream.WriteLine(sLineBreak + sLineBreak);

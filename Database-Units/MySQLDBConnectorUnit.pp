@@ -182,7 +182,6 @@ begin
     Response.Add(Field^.name);
   end;
 
-  WriteLn(Response.Text);
 end;
 
 procedure TMySqlQueryResponse.Next;

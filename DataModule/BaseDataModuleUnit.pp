@@ -5,65 +5,58 @@ unit BaseDataModuleUnit;
 interface
 
 uses
-  Classes, SysUtils;
+  DBConnectorUnit, QueryResponeUnit, Classes, SysUtils, fgl;
 
 type
-  TImportFunction = procedure (Source: AnsiString; Target: Pointer);
 
-  TColumnInfo = record
-    ColumnName: AnsiString;
-    Target: Pointer;
-    ImportFunction: TImportFunction;
+  { EInvalidColumnName }
+
+  EInvalidColumnName = class(Exception)
+  public
+    constructor Create(ColumnName: AnsiString);
   end;
 
-  TColumnInfoArray = array of TColumnInfo;
   { TBaseDataModule }
 
   TBaseDataModule = class(TObject)
   protected
+
+    function FillFromResponse(Row, Column: TStringList): Boolean; virtual;
+    procedure SetValueByColumnName(ColumnName: AnsiString; StrValue: AnsiString); virtual; abstract;
 
   public
     class function TableName: AnsiString; virtual; abstract;
     class function NumFields: Integer; virtual; abstract;
     class function GetColumnNameByIndex(Index: Integer): AnsiString; virtual; abstract;
 
-    constructor Create(Columns: TColumnInfoArray);
     constructor Create;
-
   end;
 
   { TBaseDataModuleManager }
 
-  TBaseDataModuleManager = class(TObject)
+   generic TBaseDataModuleManager<T> =  class(specialize TFPGList<T>)
    private
 
    protected
+     FDB: TDatabaseConnection;
      CS: TRTLCriticalSection;
 
      procedure Lock; virtual;
      procedure Unlock; virtual;
    public
     // TBaseDataModule will not free DBConnection object.
-    constructor Create;
+    constructor Create(aBD: TDatabaseConnection);
     destructor Destroy; override;
+
+    // Returns the number of elements added or raise EInvalidColumnName Expection.
+    function AddFromResponse(aResponse: TQueryResponse): Integer;
   end;
 
-
-function CreateColumnInfo (const ColumnName: AnsiString; Target: Pointer; ImportFunction: TImportFunction): TColumnInfo;
 
 procedure ToInt(Source: AnsiString; Target: Pointer);
 procedure ToString(Source: AnsiString; Target: Pointer);
 
 implementation
-
-function CreateColumnInfo(const ColumnName: AnsiString; Target: Pointer;
-  ImportFunction: TImportFunction): TColumnInfo;
-begin
-  Result.ColumnName := ColumnName;
-  Result.Target := Target;
-  Result.ImportFunction := ImportFunction;
-
-end;
 
 procedure ToInt(Source: AnsiString; Target: Pointer);
 begin
@@ -74,6 +67,14 @@ end;
 procedure ToString(Source: AnsiString; Target: Pointer);
 begin
   PString(Target)^ := Source;
+
+end;
+
+{ EInvalidColumnName }
+
+constructor EInvalidColumnName.Create(ColumnName: AnsiString);
+begin
+  inherited Create(Format('Column "%s" has not found', [ColumnName]));
 
 end;
 
@@ -89,7 +90,7 @@ begin
   LeaveCriticalsection(CS);
 end;
 
-constructor TBaseDataModuleManager.Create;
+constructor TBaseDataModuleManager.Create(aBD: TDatabaseConnection);
 begin
   inherited Create;
 
@@ -98,17 +99,48 @@ begin
 end;
 
 destructor TBaseDataModuleManager.Destroy;
+var
+  Obj: T;
 begin
+  EnterCriticalsection(CS);
+
+  for Obj in Self do
+    Obj.Free;
+
+  LeaveCriticalsection(CS);
+
   DoneCriticalsection(CS);
 
   inherited Destroy;
 end;
 
+function TBaseDataModuleManager.AddFromResponse(aResponse: TQueryResponse
+  ): Integer;
+var
+  Obj: T;
+  i: Integer;
+
+begin
+  for i := 1 to aResponse.NumRows do
+  begin
+    Obj := T.Create;
+    Obj.FillFromResponse(aResponse.Row, aResponse.Columns);
+    Self.Add(Obj);
+
+  end;
+end;
+
 { TBaseDataModule }
 
-constructor TBaseDataModule.Create(Columns: TColumnInfoArray);
+function TBaseDataModule.FillFromResponse(Row, Column: TStringList): Boolean;
+var
+  i: Integer;
+
 begin
-  inherited Create;
+  Result := True;
+
+  for i := 0 to Row.Count - 1 do
+    Self.SetValueByColumnName(Column[i], Row[i]);
 
 end;
 
