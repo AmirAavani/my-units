@@ -34,7 +34,10 @@ type
 
   { TBaseDataModuleManager }
 
-   generic TBaseDataModuleManager<T> =  class(specialize TFPGList<T>)
+   generic TBaseDataModuleManager<TData> =  class(TObject)
+   public type
+     TDataList = specialize TFPGList<TData>;
+
    private
 
    protected
@@ -49,7 +52,8 @@ type
     destructor Destroy; override;
 
     // Returns the number of elements added or raise EInvalidColumnName Expection.
-    function AddFromResponse(aResponse: TQueryResponse): Integer;
+    function ExtractFromResponse(aResponse: TQueryResponse): TDataList;
+
   end;
 
 
@@ -94,38 +98,33 @@ constructor TBaseDataModuleManager.Create(aBD: TDatabaseConnection);
 begin
   inherited Create;
 
+  FDB := aBD;
+
   InitCriticalSection(CS);
 
 end;
 
 destructor TBaseDataModuleManager.Destroy;
-var
-  Obj: T;
 begin
-  EnterCriticalsection(CS);
-
-  for Obj in Self do
-    Obj.Free;
-
-  LeaveCriticalsection(CS);
-
   DoneCriticalsection(CS);
 
   inherited Destroy;
 end;
 
-function TBaseDataModuleManager.AddFromResponse(aResponse: TQueryResponse
-  ): Integer;
+function TBaseDataModuleManager.ExtractFromResponse(aResponse: TQueryResponse
+  ): TDataList;
 var
-  Obj: T;
+  Obj: TData;
   i: Integer;
 
 begin
+  Result := TDataList.Create;
+
   for i := 1 to aResponse.NumRows do
   begin
-    Obj := T.Create;
+    Obj := TData.Create;
     Obj.FillFromResponse(aResponse.Row, aResponse.Columns);
-    Self.Add(Obj);
+    Result.Add(Obj);
 
   end;
 end;
