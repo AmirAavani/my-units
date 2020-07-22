@@ -5,7 +5,7 @@ unit MySQLDBConnectorUnit;
 interface
 
 uses
-  Classes, SysUtils, DBConnectorUnit, mysql57dyn, QueryResponeUnit;
+  Classes, SysUtils, DBConnectorUnit, mysql50, QueryResponeUnit;
 
 type
   TMySQLDatabaseConnection = class;
@@ -44,6 +44,7 @@ type
   TMySQLDatabaseConnection= class (TDatabaseConnection)
   private
     MySQLConnection: PMYSQL;
+    QMysql: st_mysql;
     RTLEvent: PRTLEvent;
 
   protected
@@ -227,11 +228,24 @@ begin
 
   RTLEvent := RTLEventCreate;
   RTLeventSetEvent(RTLEvent);
+
+  mysql_init(PMySQL(@QMysql));
+  MySQLConnection := mysql_real_connect(PMysql(@QMysql), PChar(Host), PChar(Username),
+    PChar(Password), nil, 3306, nil, 0);
+
+  if MySQLConnection = Nil then
+  begin
+    Writeln(stderr, 'Couldn''t connect to MySQL.');
+    Writeln(stderr, mysql_error(@QMysql));
+    halt(1);
+  end;
+
 end;
 
 destructor TMySQLDatabaseConnection.Destroy;
 begin
   RTLeventdestroy(RTLEvent);
+  mysql_close(MySQLConnection);
 
   inherited Destroy;
 
@@ -261,7 +275,7 @@ procedure TMySQLDatabaseConnection.SetActiveDatabase (DBName: AnsiString);
 begin
   RTLeventWaitFor(RTLEvent);
 
-  if mysql_select_db(MySQLConnection, PAnsiChar(DBName)) <> 0 then
+  if mysql_select_db(MySQLConnection, PChar(DBName)) <> 0 then
     raise EMySqlError.Create('Failed to connect to Database with name: "'
                               + DBName + '"');
 
@@ -312,9 +326,7 @@ begin
 end;
 
 initialization
-  InitialiseMySQL;
 
 finalization
-  ReleaseMySQL;
 
 end.

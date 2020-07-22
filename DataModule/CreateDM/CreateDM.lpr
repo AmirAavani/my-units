@@ -145,26 +145,78 @@ end;
 
 procedure ImplementGetColumnByValue(aClassName: String; aTheTableName: String;
   aColumnNames: TStringList; aColumnTypes: TStringList;
-  aOutputStream: TMyTextStream);
+  OutputStream: TMyTextStream);
 var
   i: Integer;
 
 begin
-  aOutputStream.WriteLine(Format('class function %s.GetColumnNameByIndex(Index: Integer): AnsiString;',
+  OutputStream.WriteLine(Format('class function %s.GetColumnNameByIndex(Index: Integer): AnsiString;',
     [aClassName]));
 
-  aOutputStream.WriteLine('begin');
-  aOutputStream.WriteLine;
+  OutputStream.WriteLine('begin');
 
   for i := 0 to aColumnNames.Count - 1 do
   begin
     if i <> 0 then
-      aOutputStream.WriteStr('  else');
+      OutputStream.WriteStr('  else');
 
-    aOutputStream.WriteLine(Format('  if Index = %d then Exit(' + Chr(39) + '%s' + Chr(39) + ')', [i, aColumnNames[i]]));
+    OutputStream.WriteLine(Format('  if Index = %d then Exit(' + Chr(39) + '%s' + Chr(39) + ')', [i, aColumnNames[i]]));
   end;
 
-  aOutputStream.WriteLine('end;');
+  OutputStream.WriteLine;
+  OutputStream.WriteLine('end;');
+end;
+
+procedure ImplementToString(ClassName: String; TheTableName: String;
+  ColumnNames: TStringList; ColumnTypes: TStringList;
+  OutputStream: TMyTextStream);
+var
+  i: Integer;
+  ColName, ColType: AnsiString;
+  FieldName, FieldType: AnsiString;
+  VAlueStr: AnsiString;
+
+begin
+  OutputStream.WriteLine(Format('function %s.ToString: AnsiString;',
+    [ClassName]));
+
+  OutputStream.WriteLine('begin');
+  OutputStream.WriteLine('Result := ' + chr(39) + Chr(39) + ';');
+
+  for i := 0 to ColumnNames.Count - 1 do
+  begin
+    ColName := ColumnNames[i];
+    ColType := ColumnTypes[i];
+
+    FieldName := TransformName(ColName);
+    FieldType := TranslateType(ColType);
+
+    OutputStream.WriteStr(Format('  Result += ' + Chr(39) + '(%s: ' + Chr(39), [ColName]));
+    if FieldType = 'AnsiString' then
+      OutputStream.WriteStr(Format('    F%s', [FieldName]))
+    else if FieldType = 'Integer' then
+      OutputStream.WriteStr(Format('    IntToStr(F%s)', [FieldName]))
+    else if FieldType = 'Int64' then
+      OutputStream.WriteStr(Format('    Int64ToStr(F%s)', [FieldName]))
+    else if FieldType = 'Double' then
+      OutputStream.WriteStr(Format('    FloatToStr(F%s)', [FieldName]))
+    else if FieldType = 'Extended' then
+      OutputStream.WriteStr(Format('    FloatToStr(F%s)', [FieldName]))
+    else if FieldType = 'Boolean' then
+      OutputStream.WriteStr(Format('    BoolToStr(F%s)', [FieldName]))
+    else if FieldType = 'TDate' then
+      OutputStream.WriteStr(Format('    DateToStr(F%s)', [FieldName]))
+    else if FieldType = 'TTime' then
+      OutputStream.WriteStr(Format('    TimeToStr(F%s)', [FieldName]))
+    else if FieldType = 'TDateTime' then
+      OutputStream.WriteStr(Format('    DateTimeToStr(F%s)', [FieldName]));
+    OutputStream.WriteLine(' + sLineBreak;')
+
+  end;
+
+  OutputStream.WriteLine('');
+  OutputStream.WriteLine('end;');
+
 end;
 
 procedure GenerateCode(DBConnection: TMySQLDatabaseConnection;
@@ -246,7 +298,10 @@ begin
     OutputStream.WriteLine(Format('    F%s: %s;', [FieldName, FieldType]));
 
   end;
-
+  OutputStream.WriteLine('');
+  OutputStream.WriteLine('  protected');
+  OutputStream.WriteLine('    procedure SetValueByColumnName(ColumnName: AnsiString; StrValue: AnsiString); override;');
+  OutputStream.WriteLine('    class function GetColumnNameByIndex(Index: Integer): AnsiString; override;');
   OutputStream.WriteLine('');
   OutputStream.WriteLine('  public');
 
@@ -270,8 +325,7 @@ begin
   end;
 
   OutputStream.WriteLine('');
-  OutputStream.WriteLine('    class function GetColumnNameByIndex(Index: Integer): AnsiString; override;');
-  OutputStream.WriteLine('    procedure SetValueByColumnName(ColumnName: AnsiString; StrValue: AnsiString);');
+  OutputStream.WriteLine('    function ToString: AnsiString; override;');
   OutputStream.WriteStr('    constructor Create(');
   for i := 0 to NumElements - 1 do
   begin
@@ -303,6 +357,8 @@ begin
   ImplementSetValueByColumnName(ClassName, TheTableName, ColumnNames, ColumnTypes, OutputStream);
   OutputStream.WriteLine('');
   ImplementGetColumnByValue(ClassName, TheTableName, ColumnNames, ColumnTypes, OutputStream);
+  OutputStream.WriteLine('');
+  ImplementToString(ClassName, TheTableName, ColumnNames, ColumnTypes, OutputStream);
   OutputStream.WriteLine('');
 
   OutputStream.WriteLine(sLineBreak + sLineBreak);

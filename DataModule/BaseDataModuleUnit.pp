@@ -8,7 +8,6 @@ uses
   DBConnectorUnit, QueryResponeUnit, Classes, SysUtils, fgl;
 
 type
-
   { EInvalidColumnName }
 
   EInvalidColumnName = class(Exception)
@@ -28,15 +27,26 @@ type
     class function TableName: AnsiString; virtual; abstract;
     class function NumFields: Integer; virtual; abstract;
     class function GetColumnNameByIndex(Index: Integer): AnsiString; virtual; abstract;
+    class function GetDataByIndex(Index: Integer): AnsiString; virtual; abstract;
 
+    function ToString: AnsiString; override;
     constructor Create;
+  end;
+
+
+  { TBaseDataList }
+
+  generic TBaseDataList<T> = class(specialize TFPGList<T>)
+  public
+    procedure PrintAll; virtual;
+
   end;
 
   { TBaseDataModuleManager }
 
    generic TBaseDataModuleManager<TData> =  class(TObject)
    public type
-     TDataList = specialize TFPGList<TData>;
+     TDataList = specialize TBaseDataList<TData>;
 
    private
 
@@ -56,7 +66,6 @@ type
 
   end;
 
-
 procedure ToInt(Source: AnsiString; Target: Pointer);
 procedure ToString(Source: AnsiString; Target: Pointer);
 
@@ -72,6 +81,17 @@ procedure ToString(Source: AnsiString; Target: Pointer);
 begin
   PString(Target)^ := Source;
 
+end;
+
+{ TBaseDataList }
+
+procedure TBaseDataList.PrintAll;
+var
+  Obj: T;
+
+begin
+  for Obj in Self do
+    WriteLn(T.ToString);
 end;
 
 { EInvalidColumnName }
@@ -140,6 +160,18 @@ begin
 
   for i := 0 to Row.Count - 1 do
     Self.SetValueByColumnName(Column[i], Row[i]);
+
+end;
+
+function TBaseDataModule.ToString: AnsiString;
+var
+  i: Integer;
+
+begin
+  Result := '';
+
+  for i := 0 to NumFields do
+    Result += Format('%s: %s' + sLineBreak, [GetColumnNameByIndex(i), GetDataByIndex(i)]);
 
 end;
 
