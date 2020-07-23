@@ -11,6 +11,8 @@ function IsPrefix(const Prefix, Str: AnsiString): Boolean;
 function IsSuffix(const Suffix, Str: AnsiString): Boolean;
 function Split(const Str: AnsiString; Delimiter: Char): TStringList;
 function JoinStrings(const Strings: TStringList; Separator: AnsiString): AnsiString;
+function JoinStrings(const Strings: array of AnsiString; Separator: AnsiString;
+   SkipEmptyString: Boolean = True): AnsiString;
 
 implementation
 uses
@@ -79,6 +81,28 @@ begin
     Str := Strings[i];
 
     if i <> 0 then
+      Result += Separator;
+    Result += Str;
+  end;
+
+end;
+
+function JoinStrings(const Strings: array of AnsiString; Separator: AnsiString;
+  SkipEmptyString: Boolean): AnsiString;
+var
+  Str: AnsiString;
+  i: Integer;
+
+begin
+  Result := '';
+
+  for i := 0 to High(Strings) do
+  begin
+    Str := Strings[i];
+    if SkipEmptyString and (Length(Str) = 0) then
+      Continue;
+
+    if Length(Result) <> 0 then
       Result += Separator;
     Result += Str;
   end;
