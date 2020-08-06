@@ -31,6 +31,8 @@ type
     procedure Connect; virtual; abstract;
 
     function RunQuery(const Query: AnsiString): TQueryResponse; virtual; abstract;
+    function Execute(const Query: AnsiString; InputArguments: array of AnsiString;
+      OutputArguments: array of Pointer): TQueryResponse; virtual; abstract;
   end;
 
   EConnectionFailed = class(Exception);

@@ -5,39 +5,35 @@ unit ParameterManagerUnit;
 interface
 
 uses
-  Classes, SysUtils, fgl;
+  ValueUnit, Classes, SysUtils, fgl;
 
 type
 
   { TRunTimeParameterManager }
 
   TRunTimeParameterManager = class(TObject)
+  public type
+
+    { EUndefinedArgument }
+
+    EUndefinedArgument = class(Exception)
+      constructor Create(ArgName: AnsiString);
+
+    end;
   private type
-    TNameValueMap = specialize TFPGMap<AnsiString, AnsiString>;
+    TNameValueMap = specialize TFPGMap<AnsiString, TValue>;
 
   private
     Values: TNameValueMap;
 
-    function GetBoolValue(Name: AnsiString): Boolean;
-    function GetBoolValueOrDefault(Name: AnsiString; DefaultValue: Boolean
-      ): Boolean;
-    function GetFloatValue(Name: AnsiString): Extended;
-    function GetIntegerValue(Name: AnsiString): Int64;
-    function GetStringValue(Name: AnsiString): AnsiString;
-    function GetUIntegerValue(Name: AnsiString): UInt64;
+    function GetValueByNameOrDefault(Name, DefaultValue: AnsiString
+      ): AnsiString;
     function GetVerbosity: Integer;
-    function GetValueByName(Name: AnsiString): AnsiString;
-    function GetValueByNameOrDefault(Name: AnsiString; DefaultValue: AnsiString): AnsiString;
+    function GetValueByName(Name: AnsiString): TValue;
 
   public
     property Verbosity: Integer read GetVerbosity;
-    property StringValue[Name: AnsiString]: AnsiString read GetStringValue;
-    property IntegerValue[Name: AnsiString]: Int64 read GetIntegerValue;
-    property UIntegerValue[Name: AnsiString]: UInt64 read GetUIntegerValue;
-    property BoolValue[Name: AnsiString]: Boolean read GetBoolValue;
-    property BoolValueOrDefault[Name: AnsiString; DefaultValue: Boolean]: Boolean read GetBoolValueOrDefault;
-    property FloatValue[Name: AnsiString]: Extended read GetFloatValue;
-    property ValueByName[Name: AnsiString]: AnsiString read GetValueByName;
+    property ValueByName[Name: AnsiString]: TValue read GetValueByName;
     property ValueByNameOrDefault[Name, DefaultValue: AnsiString]: AnsiString read GetValueByNameOrDefault;
 
     constructor Create;
@@ -82,45 +78,25 @@ begin
   Result := GetRunTimeParameterManager;
 end;
 
+{ TRunTimeParameterManager.EUndefinedArgument }
+
+constructor TRunTimeParameterManager.EUndefinedArgument.Create(
+  ArgName: AnsiString);
+begin
+  inherited Create(Format('Undefined argument: no entry with name %s exists in ValidArguments.inc', [ArgName]));
+end;
+
 { TRunTimeParameterManager }
 
-function TRunTimeParameterManager.GetBoolValue(Name: AnsiString): Boolean;
+function TRunTimeParameterManager.GetValueByNameOrDefault(Name,
+  DefaultValue: AnsiString): AnsiString;
 begin
-  Result := StrToBoolDef(GetValueByName(Name), False);
-end;
 
-function TRunTimeParameterManager.GetBoolValueOrDefault(Name: AnsiString;
-  DefaultValue: Boolean): Boolean;
-begin
-  Result := StrToBoolDef(GetValueByName(Name), DefaultValue);
-end;
-
-function TRunTimeParameterManager.GetFloatValue(Name: AnsiString): Extended;
-begin
-  Result := StrToFloatDef(GetValueByName(Name), 0.0);
-end;
-
-function TRunTimeParameterManager.GetIntegerValue(Name: AnsiString): Int64;
-begin
-  Result := StrToInt64Def(GetValueByName(Name), 0);
-end;
-
-function TRunTimeParameterManager.GetStringValue(Name: AnsiString): AnsiString;
-begin
-  Result := GetValueByNameOrDefault(Name, '');
-end;
-
-function TRunTimeParameterManager.GetUIntegerValue(Name: AnsiString): UInt64;
-begin
-  Result := StrToDWordDef(GetValueByName(Name), 0);
 end;
 
 function TRunTimeParameterManager.GetVerbosity: Integer;
 begin
-  if GetValueByName('--Verbosity')<> '' then
-    Exit(StrToInt(GetValueByName('--Verbosity')))
-  else
-    Exit(0);
+  Result := GetValueByName('--Verbosity').AsInteger
 
 end;
 
@@ -128,21 +104,55 @@ constructor TRunTimeParameterManager.Create;
 const
 {$i ValidArguments.inc }
 
+  function GetNameFromArgInfo(ArgInfo: AnsiString): AnsiString;
+  begin
+    Result :=  Copy( ArgInfo, 1, Pos(':', ArgInfo) - 1);
+
+  end;
+
+  function GetArgumentTypeByName(ArgName: AnsiString): TValue.TInputType;
+  var
+    ArgInfo: AnsiString;
+    ArgType: AnsiString;
+
+  begin
+    ArgType := '';
+    for ArgInfo in ValidArgumentsInfo do
+      if Copy(ArgInfo, 1, Pos(':', ArgInfo) - 1) = ArgName then
+      begin
+        ArgType := Copy(ArgInfo, Pos(':', ArgInfo) + 1, Length(ArgInfo));
+        Break;
+      end;
+
+    if ArgType = '' then
+      raise EUndefinedArgument.Create(ArgName);
+
+    case ArgType of
+    'ANSISTRING':
+      Exit(itAnsiString);
+    'BOOLEAN':
+      Exit(itBoolean);
+    'EXTENDED':
+      Exit(itExtended);
+    'INTEGER':
+      Exit(itInteger);
+    'UINTEGER':
+      Exit(itUInteger);
+    end;
+  end;
+
   procedure CheckParameter(Name, Value: AnsiString);
   var
     i: Integer;
+
   begin
-    for i := Low(ValidArguments) to High(ValidArguments) do
+    for i := Low(ValidArgumentsValues) to High(ValidArgumentsValues) do
     begin
 
-      if UpperCase(Name) = UpperCase(ValidArguments[i]) then
+      if UpperCase(Name) = UpperCase(GetNameFromArgInfo(ValidArgumentsInfo[i])) then
       begin
         if ValidArgumentsValues[i] = '' then
           Exit;
-        // For backward compatibility.
-        if Pos('NONE', UpperCase(ValidArgumentsValues[i])) <> 0 then
-          Exit;
-
         if Pos(':' + UpperCase(Value) + ':',
           ':' + UpperCase(ValidArgumentsValues[i]) + ':') <> 0 then
            Exit;
@@ -150,25 +160,37 @@ const
         WriteLn(Format('Value "%s" is not a valid value for %s.', [Name, Value]));
         WriteLn(Format('Valid Arguments for %s are (%s)', [Name, ValidArgumentsValues[i]]));
         Halt(1);
-
       end;
 
     end;
 
-    for i := Low(ValidArguments) to High(ValidArguments) do
-      if UpperCase(Name) = UpperCase(ValidArguments [i]) then
+    for i := Low(ValidArgumentsValues) to High(ValidArgumentsValues) do
+      if UpperCase(Name) = UpperCase(ValidArgumentsInfo[i]) then
         Exit;
 
     WriteLn('Invalid Name :', Name, '.');
     WriteLn('Valid Parameters are: ');
-    for i := Low(ValidArguments) to High(ValidArguments)  do
-      Write(ValidArguments [i], ' , ');
+    for i := Low(ValidArgumentsInfo) to High(ValidArgumentsInfo)  do
+      Write(GetNameFromArgInfo(ValidArgumentsInfo[i]), ' , ');
     Halt(1);
+
   end;
 
+  function GetValueObjectForName(aName: AnsiString; aValue: AnsiString): TValue;
+  begin
+    case GetArgumentTypeByName(aName) of
+      itAnsiString: Exit(TValue.CreateAnsiString(aValue));
+      itBoolean: Exit(TValue.CreateBoolean(aValue));
+      itExtended: Exit(TValue.CreateExtended(aValue));
+      itInteger: Exit(TValue.CreateExtended(aValue));
+      itUInteger: Exit(TValue.CreateExtended(aValue));
+    end;
+    Result := nil;
+  end;
 
 var
   i: Integer;
+  ArgInfo: AnsiString;
   Name, V: AnsiString;
 
 begin
@@ -189,21 +211,25 @@ begin
       Continue;
 
     V := ParamStr(i);
-    Values[UpperCase(Name)] := V;
+    Values[UpperCase(Name)] := GetValueObjectForName(Name, V);
 
     Inc(i);
 
   end;
 
-  for i := Low(ValidArguments) to High(ValidArguments) do
-    if Values.IndexOf(UpperCase(ValidArguments[i])) < 0 then
+  for i := Low(ValidArgumentsInfo) to High(ValidArgumentsInfo) do
+  begin
+    ArgInfo := ValidArgumentsInfo[i];
+    if Values.IndexOf(UpperCase(GetNameFromArgInfo(ArgInfo))) < 0 then
     begin
-      Values[UpperCase(ValidArguments[i])] :=
-        Copy(ValidArgumentsValues[i],
+      Values[UpperCase(GetNameFromArgInfo(ArgInfo))] :=
+         GetValueObjectForName(GetNameFromArgInfo(ArgInfo),
+           Copy(ValidArgumentsValues[i],
              1,
              Pos(':', ValidArgumentsValues[i] + ':') - 1
-            );
+            ));
     end;
+  end;
 
 end;
 
@@ -218,19 +244,11 @@ begin
   Result := GetRunTimeParameterManager;
 end;
 
-function TRunTimeParameterManager.GetValueByName(Name: AnsiString): AnsiString;
+function TRunTimeParameterManager.GetValueByName(Name: AnsiString): TValue;
 begin
   Values.TryGetData(UpperCase(Name), Result);
 
 
-end;
-
-function TRunTimeParameterManager.GetValueByNameOrDefault(Name: AnsiString;
-  DefaultValue: AnsiString): AnsiString;
-begin
-  if Values.IndexOf(UpperCase(Name)) < 0 then
-    Exit(DefaultValue);
-  Result := Values[UpperCase(Name)];
 end;
 
 initialization

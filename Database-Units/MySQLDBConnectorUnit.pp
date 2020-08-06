@@ -63,12 +63,16 @@ type
     procedure Connect; override;
 
     function RunQuery(const Query: AnsiString): TQueryResponse; override;
+    function Execute(const ProcName: AnsiString; InputArguments: array of AnsiString;
+      OutputArguments: array of Pointer): TQueryResponse; override;
 
   end;
 
   { EMySqlError }
 
   EMySqlError = class (Exception);
+
+  function MysqlEscapeString(const Str: AnsiString): AnsiString;
 
 implementation
 
@@ -88,6 +92,17 @@ type
     constructor Create;
 
   end;
+
+function MysqlEscapeString(const Str: AnsiString): AnsiString;
+var
+  ActualLength: Integer;
+
+begin
+  SetLength(Result, 2 * Length(Str));
+
+  ActualLength := mysql_escape_string(PAnsiChar(Result), PAnsiChar(Str), Length(Str));
+  SetLength(Result, ActualLength);
+end;
 
 { TMySqlQueryResponse }
 
@@ -304,10 +319,9 @@ var
 
 begin
   RTLeventWaitFor(RTLEvent);
-
   if mysql_query(MySQLConnection, PAnsiChar(Query)) <> 0 then
   begin
-    WriteLn(StdErr, Format('Mysql_query: %s', [Query]));
+    WriteLn(StdErr, Format('Mysql_query: %s', [PAnsiChar(Query)]));
     WriteLn(StdErr, mysql_errno(MySQLConnection), ': ', mysql_error(MySQLConnection));
     Flush(Output);
 
@@ -323,6 +337,23 @@ begin
   end;
 
   Result := TMySqlQueryResponse.Create(Res, Self);
+end;
+
+function TMySQLDatabaseConnection.Execute(const ProcName: AnsiString;
+  InputArguments: array of AnsiString; OutputArguments: array of Pointer
+  ): TQueryResponse;
+var
+  Stmt: PMYSQL_STMT;
+  Query, Arg: AnsiString;
+
+begin
+  Stmt := mysql_stmt_init(MySQLConnection);
+
+  Query := Format('Call %s(', [ProcName]);
+  for Arg in InputArguments do
+    Query += Format('''%s''', [Arg]);
+  mysql_stmt_prepare(Stmt, PChar(Query), Length(Query));
+
 end;
 
 initialization
