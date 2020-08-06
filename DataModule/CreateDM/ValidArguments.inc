@@ -1,12 +1,12 @@
-ValidArguments : array of AnsiString =
+ValidArgumentsInfo : array of AnsiString =
 (
- '--Output-Dir',
- '--Tables',
- '--DBName',
- '--DBUsername',
- '--DBPassword',
- '--DBHost',
- '--Debug'
+ '--Output-Dir:AnsiString',
+ '--Tables:AnsiString',
+ '--DBName:AnsiString',
+ '--DBUsername:AnsiString',
+ '--DBPassword:AnsiString',
+ '--DBHost:AnsiString',
+ '--Debug:Boolean'
  );
 ValidArgumentsValues : array of AnsiString =
 (

@@ -8,9 +8,10 @@ uses
   {$ENDIF}
   sysutils, Classes, ParameterManagerUnit, MySQLDBConnectorUnit, StringUnit,
   QueryResponeUnit, UtilsUnit, BaseDataModuleUnit, StreamUnit,
-  TemplateEngineUnit;
+  TemplateEngineUnit, ALoggerUnit;
 
 const
+  SingleQuote : AnsiString = Chr(39);
   UnitHeader: AnsiString =
     'unit {{@UnitName}};' + sLineBreak
     + sLineBreak
@@ -19,12 +20,22 @@ const
     + 'interface' + sLineBreak
     + sLineBreak
     + 'uses' + sLineBreak
-    + '  BaseDataModuleUnit;' + sLineBreak
+    + '  BaseDataModuleUnit, fgl;' + sLineBreak
     + sLineBreak
     + 'type' + sLineBreak
     + sLineBreak;
 
-  ClassDefinition: AnsiString =
+  DataCollectionDefinition: AnsiString =
+  '  {{@ClassName}} = class;'+ sLineBreak
+  + sLineBreak
+  + '{ {{@ClassName}}List }'
+  + sLineBreak
+  + sLineBreak
+  + '  {{@ClassName}}List = specialize TFPGList<{{@ClassName}}>;'
+  + sLineBreak
+  + sLineBreak;
+
+  DataClassDefinition: AnsiString =
   '{ {{@ClassName}} }'
   + sLineBreak
   + sLineBreak
@@ -32,14 +43,18 @@ const
   + '  public' + sLineBreak
   + '    class function TableName: AnsiString; override;' + sLineBreak
   + '    class function NumFields: Integer; override;' + sLineBreak
-  + '  private' + sLineBreak;
+  + '    class function ColumnNameByIndex(Index: Integer): AnsiString; override;' + sLineBreak
+  + '    class function MySQLColumnTypeByIndex(Index: Integer): AnsiString; override;' + sLineBreak
+  + '    class function FPCColumnTypeByIndex(Index: Integer): AnsiString; override;' + sLineBreak
+  + '    class function ColumnIndexByName(const aName: AnsiString): Integer; override;' + sLineBreak
+  + sLineBreak + sLineBreak;
 
   procedure ImplementStaticFuctions(ClassName: AnsiString; TheTableName: AnsiString;
     ColumnNames, ColumnTypes: TStringList; OutputStream: TMyTextStream);
   begin
     OutputStream.WriteLine(Format('class function %s.TableName: AnsiString;', [ClassName]));
     OutputStream.WriteLine('begin');
-    OutputStream.WriteLine(Format('  Exit(' + Chr(39) + '%s' + Chr(39) + ')', [TheTableName]));
+    OutputStream.WriteLine(Format('  Exit(' + SingleQuote + '%s' + SingleQuote + ')', [TheTableName]));
     OutputStream.WriteLine('');
     OutputStream.WriteLine('end;');
     OutputStream.WriteLine('');
@@ -52,13 +67,19 @@ const
 
   end;
 
-function ImplementCreate(ClassName, TheTableName: AnsiString;
-    ColumnNames, ColumnTypes: TStringList; OutputStream: TMyTextStream): AnsiString;
+procedure ImplementCreate(ClassName, TheTableName: AnsiString;
+    ColumnNames, ColumnTypes: TStringList; OutputStream: TMyTextStream);
 var
   i: Integer;
   ColName, ColType, FieldName, FieldType: AnsiString;
 
 begin
+  OutputStream.WriteLine(Format('constructor %s.Create;', [ClassName]));
+  OutputStream.WriteLine('begin');
+  OutputStream.WriteLine(Format('  inherited Create(%d)', [ColumnNames.Count]));
+  OutputStream.WriteLine;
+  OutputStream.WriteLine('end;');
+  OutputStream.WriteLine;
 
   OutputStream.WriteStr(Format('constructor %s.Create(', [ClassName]));
   for i := 0 to ColumnNames.Count - 1 do
@@ -73,8 +94,10 @@ begin
     OutputStream.WriteStr(Format('_%s: %s', [FieldName, FieldType]));
   end;
   OutputStream.WriteLine(');');
+
   OutputStream.WriteLine('begin');
-  OutputStream.WriteLine('  inherited Create;' + sLineBreak);
+  OutputStream.WriteLine(Format('  inherited Create(%d);', [ColumnNames.Count]));
+  OutputStream.WriteLine;
   for i := 0 to ColumnNames.Count - 1 do
   begin
     ColName := ColumnNames[i];
@@ -83,88 +106,129 @@ begin
     FieldName := TransformName(ColName);
     FieldType := TranslateType(ColType);
 
-    OutputStream.WriteLine(Format('  F%s := _%s;', [FieldName, FieldName]));
+    case FieldType of
+    'AnsiString':
+      OutputStream.WriteLine(Format('  FValues[%d] := TDMValue.CreateAnsiString(_%s);', [i, FieldName]));
+    'Integer':
+      OutputStream.WriteLine(Format('  FValues[%d] := TDMValue.CreateInteger(_%s);', [i, FieldName]));
+    'Int64':
+      OutputStream.WriteLine(Format('  FValues[%d] := TDMValue.CreateInteger(_%s);', [i, FieldName]));
+    'Extended':
+      OutputStream.WriteLine(Format('  FValues[%d] := TDMValue.CreateExtended(_%s);', [i, FieldName]));
+    'TDate':
+      OutputStream.WriteLine(Format('  FValues[%d] := TDMValue.CreateTDate(_%s);', [i, FieldName]));
+    'TTime':
+      OutputStream.WriteLine(Format('  FValues[%d] := TDMValue.CreateTTime(_%s);', [i, FieldName]));
+    else
+      raise Exception.Create(Format('Invalid Type %s', [FieldType]));
+    end;
+
   end;
+
+  OutputStream.WriteLine;
   OutputStream.WriteLine(sLineBreak + 'end;');
 
 end;
 
-function ImplementSetValueByColumnName(ClassName, TheTableName: AnsiString;
-    ColumnNames, ColumnTypes: TStringList; OutputStream: TMyTextStream): AnsiString;
-var
-  i: Integer;
-  ColName, ColType, FieldName, FieldType: AnsiString;
-
-begin
-  OutputStream.WriteLine(Format('procedure %s.SetValueByColumnName(ColumnName: AnsiString; StrValue: AnsiString);',
-    [ClassName]));
-  OutputStream.WriteLine('begin');
-
-  for i := 0 to ColumnNames.Count - 1 do
-  begin
-    ColName := ColumnNames[i];
-    ColType := ColumnTypes[i];
-
-    FieldName := TransformName(ColName);
-    FieldType := TranslateType(ColType);
-
-    if i <> 0 then
-      OutputStream.WriteStr('  else ')
-    else
-      OutputStream.WriteStr('  ');
-    OutputStream.WriteLine(Format('if ColumnName = ' + Chr(39) + '%s' + Chr(39) + ' then', [ColName]));
-    if FieldType = 'AnsiString' then
-      OutputStream.WriteStr(Format('    F%s := StrValue', [FieldName]))
-    else if FieldType = 'Integer' then
-      OutputStream.WriteStr(Format('    F%s := StrToInt(StrValue)', [FieldName]))
-    else if FieldType = 'Int64' then
-      OutputStream.WriteStr(Format('    F%s := StrToInt64(StrValue)', [FieldName]))
-    else if FieldType = 'Double' then
-      OutputStream.WriteStr(Format('    F%s := StrToFloat(StrValue)', [FieldName]))
-    else if FieldType = 'Extended' then
-      OutputStream.WriteStr(Format('    F%s := StrToFloat(StrValue)', [FieldName]))
-    else if FieldType = 'Boolean' then
-      OutputStream.WriteStr(Format('    F%s := StrToBool(StrValue)', [FieldName]))
-    else if FieldType = 'TDate' then
-      OutputStream.WriteStr(Format('    F%s := StrToDate(StrValue)', [FieldName]))
-    else if FieldType = 'TTime' then
-      OutputStream.WriteStr(Format('    F%s := StrToTime(StrValue)', [FieldName]))
-    else if FieldType = 'TDateTime' then
-      OutputStream.WriteStr(Format('    F%s := StrToDateTime(StrValue)', [FieldName]));
-
-    if i <> ColumnNames.Count - 1 then
-      OutputStream.WriteLine('')
-    else
-      OutputStream.WriteLine(';')
-
-  end;
-
-  OutputStream.WriteLine('end;');
-
-end;
-
-procedure ImplementGetColumnByValue(aClassName: String; aTheTableName: String;
+procedure ImplementColumnNameByIndex(aClassName: String; aTheTableName: String;
   aColumnNames: TStringList; aColumnTypes: TStringList;
   OutputStream: TMyTextStream);
 var
   i: Integer;
 
 begin
-  OutputStream.WriteLine(Format('class function %s.GetColumnNameByIndex(Index: Integer): AnsiString;',
+  OutputStream.WriteLine(Format('class function %s.ColumnNameByIndex(Index: Integer): AnsiString;',
     [aClassName]));
 
   OutputStream.WriteLine('begin');
+  OutputStream.WriteLine(Format('  Result := ' + Chr(39) + Chr(39) + ';', []));
+  OutputStream.WriteLine(Format('  case Index of', []));
 
   for i := 0 to aColumnNames.Count - 1 do
-  begin
-    if i <> 0 then
-      OutputStream.WriteStr('  else');
-
-    OutputStream.WriteLine(Format('  if Index = %d then Exit(' + Chr(39) + '%s' + Chr(39) + ')', [i, aColumnNames[i]]));
-  end;
+    OutputStream.WriteLine(Format('    %d: Exit(' + Chr(39) + '%s' + Chr(39) + ');', [i, aColumnNames[i]]));
+  OutputStream.WriteLine('  end;');
+  OutputStream.WriteLine;
+  OutputStream.WriteLine(Format('  raise EInvalidColumnIndex.Create(Index, %d);', [aColumnNames.Count]));
 
   OutputStream.WriteLine;
   OutputStream.WriteLine('end;');
+
+end;
+
+procedure ImplementMySQLColumnTypeByIndex(aClassName: String; aTheTableName: String;
+  aColumnNames: TStringList; aColumnTypes: TStringList;
+  OutputStream: TMyTextStream);
+var
+  i: Integer;
+
+begin
+  OutputStream.WriteLine(Format('class function %s.MySQLColumnTypeByIndex(Index: Integer): AnsiString;',
+    [aClassName]));
+
+  OutputStream.WriteLine('begin');
+  OutputStream.WriteLine(Format('  Result := ' + Chr(39) + Chr(39) + ';', []));
+  OutputStream.WriteLine(Format('  case Index of', []));
+
+  for i := 0 to aColumnNames.Count - 1 do
+    OutputStream.WriteLine(Format('    %d: Exit(' + Chr(39) + '%s' + Chr(39) + ');', [i, aColumnTypes[i]]));
+  OutputStream.WriteLine('  end;');
+  OutputStream.WriteLine;
+  OutputStream.WriteLine(Format('  raise EInvalidColumnIndex.Create(Index, %d);', [aColumnNames.Count]));
+
+  OutputStream.WriteLine;
+  OutputStream.WriteLine('end;');
+
+end;
+
+procedure ImplementFPCColumnTypeByIndex(aClassName: String; aTheTableName: String;
+  aColumnNames: TStringList; aColumnTypes: TStringList;
+  OutputStream: TMyTextStream);
+var
+  i: Integer;
+
+begin
+  OutputStream.WriteLine(Format('class function %s.FPCColumnTypeByIndex(Index: Integer): AnsiString;',
+    [aClassName]));
+
+  OutputStream.WriteLine('begin');
+  OutputStream.WriteLine(Format('  Result := ' + Chr(39) + Chr(39) + ';', []));
+  OutputStream.WriteLine(Format('  case Index of', []));
+
+  for i := 0 to aColumnNames.Count - 1 do
+    OutputStream.WriteLine(Format('    %d: Exit(' + Chr(39) + '%s' + Chr(39) + ');', [i, TranslateType(aColumnTypes[i])]));
+  OutputStream.WriteLine('  end;');
+  OutputStream.WriteLine;
+  OutputStream.WriteLine(Format('  raise EInvalidColumnIndex.Create(Index, %d);', [aColumnNames.Count]));
+
+  OutputStream.WriteLine;
+  OutputStream.WriteLine('end;');
+
+end;
+
+procedure ImplementColumnIndexByName(aClassName: String; aTheTableName: String;
+  aColumnNames: TStringList; aColumnTypes: TStringList;
+  OutputStream: TMyTextStream);
+var
+  i: Integer;
+
+begin
+  OutputStream.WriteLine(Format('class function %s.ColumnIndexByName(const aName: AnsiString): Integer;',
+    [aClassName]));
+
+  OutputStream.WriteLine('begin');
+  OutputStream.WriteLine(Format('  Result := -1;', []));
+  OutputStream.WriteLine(Format('  case aName of', []));
+
+  for i := 0 to aColumnNames.Count - 1 do
+    OutputStream.WriteLine(Format('    ' + SingleQuote + '%s' + SingleQuote + ': Exit(%d);', [aColumnNames[i], i]));
+
+  OutputStream.WriteLine('  end;');
+  OutputStream.WriteLine;
+  OutputStream.WriteLine(Format('  raise EInvalidColumnName.Create(aName)', []));
+
+  OutputStream.WriteLine;
+  OutputStream.WriteLine('end;');
+
 end;
 
 procedure ImplementToString(ClassName: String; TheTableName: String;
@@ -174,14 +238,13 @@ var
   i: Integer;
   ColName, ColType: AnsiString;
   FieldName, FieldType: AnsiString;
-  VAlueStr: AnsiString;
 
 begin
   OutputStream.WriteLine(Format('function %s.ToString: AnsiString;',
     [ClassName]));
 
   OutputStream.WriteLine('begin');
-  OutputStream.WriteLine('Result := ' + chr(39) + Chr(39) + ';');
+  OutputStream.WriteLine('  Result := ' + chr(39) + Chr(39) + ';');
 
   for i := 0 to ColumnNames.Count - 1 do
   begin
@@ -191,31 +254,130 @@ begin
     FieldName := TransformName(ColName);
     FieldType := TranslateType(ColType);
 
-    OutputStream.WriteStr(Format('  Result += ' + Chr(39) + '(%s: ' + Chr(39), [ColName]));
+    OutputStream.WriteStr(Format('  Result += (' + Chr(39) + '%s: ' + Chr(39) + ' + ', [ColName]));
     if FieldType = 'AnsiString' then
-      OutputStream.WriteStr(Format('    F%s', [FieldName]))
+      OutputStream.WriteStr(Format('%s', [FieldName]))
     else if FieldType = 'Integer' then
-      OutputStream.WriteStr(Format('    IntToStr(F%s)', [FieldName]))
+      OutputStream.WriteStr(Format('IntToStr(%s)', [FieldName]))
     else if FieldType = 'Int64' then
-      OutputStream.WriteStr(Format('    Int64ToStr(F%s)', [FieldName]))
+      OutputStream.WriteStr(Format('IntToStr(%s)', [FieldName]))
     else if FieldType = 'Double' then
-      OutputStream.WriteStr(Format('    FloatToStr(F%s)', [FieldName]))
+      OutputStream.WriteStr(Format('FloatToStr(%s)', [FieldName]))
     else if FieldType = 'Extended' then
-      OutputStream.WriteStr(Format('    FloatToStr(F%s)', [FieldName]))
+      OutputStream.WriteStr(Format('FloatToStr(%s)', [FieldName]))
     else if FieldType = 'Boolean' then
-      OutputStream.WriteStr(Format('    BoolToStr(F%s)', [FieldName]))
+      OutputStream.WriteStr(Format('BoolToStr(%s)', [FieldName]))
     else if FieldType = 'TDate' then
-      OutputStream.WriteStr(Format('    DateToStr(F%s)', [FieldName]))
+      OutputStream.WriteStr(Format('DateToStr(%s)', [FieldName]))
     else if FieldType = 'TTime' then
-      OutputStream.WriteStr(Format('    TimeToStr(F%s)', [FieldName]))
+      OutputStream.WriteStr(Format('TimeToStr(%s)', [FieldName]))
     else if FieldType = 'TDateTime' then
-      OutputStream.WriteStr(Format('    DateTimeToStr(F%s)', [FieldName]));
-    OutputStream.WriteLine(' + sLineBreak;')
+      OutputStream.WriteStr(Format('DateTimeToStr(%s)', [FieldName]));
+    OutputStream.WriteLine(') + sLineBreak;')
 
   end;
 
   OutputStream.WriteLine('');
   OutputStream.WriteLine('end;');
+
+end;
+
+procedure ImplementGetters(ClassName: String; TheTableName: String;
+  ColumnNames: TStringList; ColumnTypes: TStringList;
+  OutputStream: TMyTextStream);
+var
+  i: Integer;
+  ColName, ColType: AnsiString;
+  FieldName, FieldType: AnsiString;
+
+begin
+  for i := 0 to ColumnNames.Count - 1 do
+  begin
+    ColName := ColumnNames[i];
+    ColType := ColumnTypes[i];
+
+    FieldName := TransformName(ColName);
+    FieldType := TranslateType(ColType);
+
+    OutputStream.WriteLine(Format('function %s.Get%s: %s;', [ClassName, FieldName, FieldType]));
+    OutputStream.WriteLine('begin');
+    OutputStream.WriteStr('  Result := ');
+    case FieldType of
+    'AnsiString':
+      OutputStream.WriteStr(Format('FValues[%d].AsAnsiString;', [i]));
+    'Integer':
+      OutputStream.WriteStr(Format('FValues[%d].AsInteger;', [i]));
+    'Int64':
+      OutputStream.WriteStr(Format('FValues[%d].AsInteger;', [i]));
+    'Double':
+      OutputStream.WriteStr(Format('FValues[%d].AsExtended;', [i]));
+    'Extended':
+      OutputStream.WriteStr(Format('FValues[%d].AsExtended;', [i]));
+    'Boolean':
+      OutputStream.WriteStr(Format('FValues[%d].AsBoolean;', [i]));
+    'TDate':
+      OutputStream.WriteStr(Format('FValues[%d].AsTDate;', [i]));
+    'TTime':
+      OutputStream.WriteStr(Format('FValues[%d].AsTTime;', [i]));
+    'TDateTime':
+      OutputStream.WriteStr(Format('FValues[%d].AsTDateTime;', [i]));
+    else
+      raise Exception.Create('Unknown Field Type '+ FieldType);
+    end;
+
+    OutputStream.WriteLine('');
+    OutputStream.WriteLine('end;');
+    OutputStream.WriteLine('');
+
+  end;
+
+end;
+
+procedure ImplementSetters(ClassName: String; TheTableName: String;
+  ColumnNames: TStringList; ColumnTypes: TStringList;
+  OutputStream: TMyTextStream);
+var
+  i: Integer;
+  ColName, ColType: AnsiString;
+  FieldName, FieldType: AnsiString;
+
+begin
+  for i := 0 to ColumnNames.Count - 1 do
+  begin
+    ColName := ColumnNames[i];
+    ColType := ColumnTypes[i];
+
+    FieldName := TransformName(ColName);
+    FieldType := TranslateType(ColType);
+
+    OutputStream.WriteLine(Format('procedure %s.Set%s(_%s: %s);', [ClassName, FieldName, FieldName, FieldType]));
+    OutputStream.WriteLine('begin');
+    OutputStream.WriteLine(Format('  FValues[%d].Free;', [i]));
+    OutputStream.WriteLine;
+    OutputStream.WriteStr(Format('  FValues[%d] := TDMValue.', [i]));
+
+    case FieldType of
+    'AnsiString':
+      OutputStream.WriteStr(Format('CreateAnsiString(_%s);', [FieldName]));
+    'Integer':
+      OutputStream.WriteStr(Format('CreateInteger(_%s);', [FieldName]));
+    'Int64':
+      OutputStream.WriteStr(Format('CreateInteger(_%s);', [FieldName]));
+    'Extended':
+      OutputStream.WriteStr(Format('CreateExtended(_%s);', [FieldName]));
+    'TDate':
+      OutputStream.WriteStr(Format('CreateTDate(_%s);', [FieldName]));
+    'TTime':
+      OutputStream.WriteStr(Format('CreateTTime(_%s);', [FieldName]));
+    else
+      raise Exception.Create(Format('Invalid Type %s', [FieldType]));
+    end;
+
+    OutputStream.WriteLine('');
+    OutputStream.WriteLine('end;');
+    OutputStream.WriteLine('');
+
+  end;
 
 end;
 
@@ -261,7 +423,13 @@ begin
   OutputStream.WriteStr(Template.Map(Mapper));
   Template.Free;
 
-  Template := TTemplateEngine.CreateFromText(ClassDefinition);
+  Template := TTemplateEngine.CreateFromText(DataCollectionDefinition);
+  ClassName := 'T' + TransformName(TheTableName);
+  Mapper.AddNameValue('ClassName', ClassName);
+  OutputStream.WriteStr(Template.Map(Mapper));
+  Template.Free;
+
+  Template := TTemplateEngine.CreateFromText(DataClassDefinition);
   ClassName := 'T' + TransformName(TheTableName);
   Mapper.AddNameValue('ClassName', ClassName);
   OutputStream.WriteStr(Template.Map(Mapper));
@@ -295,13 +463,10 @@ begin
     FieldName := TransformName(ColName);
     FieldType := TranslateType(ColType);
 
-    OutputStream.WriteLine(Format('    F%s: %s;', [FieldName, FieldType]));
+    OutputStream.WriteLine(Format('    function Get%s: %s;', [FieldName, FieldType]));
+    OutputStream.WriteLine(Format('    procedure Set%s(_%s: %s);', [FieldName, FieldName, FieldType]));
 
   end;
-  OutputStream.WriteLine('');
-  OutputStream.WriteLine('  protected');
-  OutputStream.WriteLine('    procedure SetValueByColumnName(ColumnName: AnsiString; StrValue: AnsiString); override;');
-  OutputStream.WriteLine('    class function GetColumnNameByIndex(Index: Integer): AnsiString; override;');
   OutputStream.WriteLine('');
   OutputStream.WriteLine('  public');
 
@@ -314,7 +479,7 @@ begin
     FieldType := TranslateType(ColType);
 
     OutputStream.WriteLine(Format('    // %s: %s', [ColName, ColType]));
-    OutputStream.WriteLine(Format('    property %s: %s read F%s write F%s;',
+    OutputStream.WriteLine(Format('    property %s: %s read Get%s write Set%s;',
        [FieldName, FieldType, FieldName, FieldName]));
 
     ColName := ColumnNames[i];
@@ -326,6 +491,7 @@ begin
 
   OutputStream.WriteLine('');
   OutputStream.WriteLine('    function ToString: AnsiString; override;');
+  OutputStream.WriteLine('    constructor Create;');
   OutputStream.WriteStr('    constructor Create(');
   for i := 0 to NumElements - 1 do
   begin
@@ -354,11 +520,19 @@ begin
   OutputStream.WriteLine('');
   ImplementCreate(ClassName, TheTableName, ColumnNames, ColumnTypes, OutputStream);
   OutputStream.WriteLine('');
-  ImplementSetValueByColumnName(ClassName, TheTableName, ColumnNames, ColumnTypes, OutputStream);
+  ImplementColumnNameByIndex(ClassName, TheTableName, ColumnNames, ColumnTypes, OutputStream);
   OutputStream.WriteLine('');
-  ImplementGetColumnByValue(ClassName, TheTableName, ColumnNames, ColumnTypes, OutputStream);
+  ImplementMySQLColumnTypeByIndex(ClassName, TheTableName, ColumnNames, ColumnTypes, OutputStream);
+  OutputStream.WriteLine('');
+  ImplementFPCColumnTypeByIndex(ClassName, TheTableName, ColumnNames, ColumnTypes, OutputStream);
+  OutputStream.WriteLine('');
+  ImplementColumnIndexByName(ClassName, TheTableName, ColumnNames, ColumnTypes, OutputStream);
   OutputStream.WriteLine('');
   ImplementToString(ClassName, TheTableName, ColumnNames, ColumnTypes, OutputStream);
+  OutputStream.WriteLine('');
+  ImplementGetters(ClassName, TheTableName, ColumnNames, ColumnTypes, OutputStream);
+  OutputStream.WriteLine('');
+  ImplementSetters(ClassName, TheTableName, ColumnNames, ColumnTypes, OutputStream);
   OutputStream.WriteLine('');
 
   OutputStream.WriteLine(sLineBreak + sLineBreak);
@@ -375,18 +549,18 @@ var
 
 begin
   DBConnection := TMySQLDatabaseConnection.Create(
-    GetRunTimeParameterManager.ValueByName['--DBUsername'],
-    GetRunTimeParameterManager.ValueByName['--DBPassword'],
-    GetRunTimeParameterManager.ValueByName['--DBHost']);
+    GetRunTimeParameterManager.ValueByName['--DBUsername'].AsAnsiString,
+    GetRunTimeParameterManager.ValueByName['--DBPassword'].AsAnsiString,
+    GetRunTimeParameterManager.ValueByName['--DBHost'].AsAnsiString);
   DBConnection.Connect;
-  DBConnection.ActiveDB := GetRunTimeParameterManager.ValueByName['--DBName'];
+  DBConnection.ActiveDB := GetRunTimeParameterManager.ValueByName['--DBName'].AsAnsiString;
 
-  Tables := Split(GetRunTimeParameterManager.ValueByName['--Tables'], ',');
+  Tables := Split(GetRunTimeParameterManager.ValueByName['--Tables'].AsAnsiString, ',');
 
   for TableName in Tables do
     GenerateCode(DBConnection, TableName,
-      GetRunTimeParameterManager.ValueByName['--Output-Dir']);
+      GetRunTimeParameterManager.ValueByName['--Output-Dir'].AsAnsiString);
 
-  DBConnection.Free;
+//  DBConnection.Free;
 end.
 

@@ -62,7 +62,7 @@ const
         ('INT', 'Integer'),
         ('MEDIUMINT', 'Integer'),
         ('BIGINT', 'Int64'),
-        ('FLOAT', 'Double'),
+        ('FLOAT', 'Extended'),
         ('DOUBLE', 'Extended'),
         ('DECIMAL', 'Extended'),
         ('BIT', 'Integer'),
