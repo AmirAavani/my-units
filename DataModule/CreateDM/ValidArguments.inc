@@ -16,6 +16,6 @@ ValidArgumentsValues : array of AnsiString =
  'None',
  'None',
  'None',
- 'True:False'
+ 'True'
 );
 

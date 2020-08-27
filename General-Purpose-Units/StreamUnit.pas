@@ -371,7 +371,8 @@ end;
 
 procedure TMyTextStream.WriteLine (const S: AnsiString);
 begin
-  FTargerStream.WriteBuffer(S[1], Length(S));
+  if Length(S) <> 0 then
+    FTargerStream.WriteBuffer(S[1], Length(S));
     
 (*$ifdef LINUX*)
   WriteChar(#10);

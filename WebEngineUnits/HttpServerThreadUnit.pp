@@ -135,6 +135,7 @@ type
 
     destructor Destroy; override;
 
+    function Redirect(TargetPage: AnsiString): Boolean;
   end;
 
   TBasePageHandler = class;
@@ -190,7 +191,7 @@ type
 
 implementation
 uses
-  DefaultPageHandlerUnit, httpprotocol;
+  DefaultPageHandlerUnit, WebUtilsUnit, httpprotocol;
 
 { TBasePageHandler }
 
@@ -328,6 +329,7 @@ end;
 
 procedure THTTPServerResponse.OpenTag(TagName: AnsiString);
 begin
+  Halt(1);
   //FTags.Add(TTagInfo.Create(TagName));
 
 end;
@@ -375,6 +377,11 @@ begin
   inherited Destroy;
 end;
 
+function THTTPServerResponse.Redirect(TargetPage: AnsiString): Boolean;
+begin
+
+end;
+
 { THTTPServerRequest }
 
 constructor THTTPServerRequest.Create(const ARequest: TFPHTTPConnectionRequest);
@@ -402,6 +409,10 @@ constructor THTTPServerRequest.Create(const ARequest: TFPHTTPConnectionRequest);
     end;
 
     StrList.Free;
+
+    for i := 0 to FParams.Count - 1 do
+      FParams.Data[i] := NormalizeGetString(FParams.Data[i]);
+
   end;
 
   procedure FillPostRequest;
@@ -420,10 +431,10 @@ constructor THTTPServerRequest.Create(const ARequest: TFPHTTPConnectionRequest);
     begin
       NameValue := StrList[i];
       if Pos('=', NameValue) <> 0 then
-        FParams[Copy(NameValue, 1, Pos('=', NameValue) - 1)] :=
-          Copy(NameValue, Pos('=', NameValue) + 1, Length(NameValue))
+        FParams[NormalizePostString(Copy(NameValue, 1, Pos('=', NameValue) - 1))] :=
+          NormalizePostString(Copy(NameValue, Pos('=', NameValue) + 1, Length(NameValue)))
       else
-        FParams[NameValue] := '';
+        FParams[NormalizePostString(NameValue)] := '';
     end;
 
     StrList.Free;

@@ -76,10 +76,38 @@ var
 begin
   OutputStream.WriteLine(Format('constructor %s.Create;', [ClassName]));
   OutputStream.WriteLine('begin');
-  OutputStream.WriteLine(Format('  inherited Create(%d)', [ColumnNames.Count]));
+  OutputStream.WriteLine(Format('  inherited Create(%d);', [ColumnNames.Count]));
   OutputStream.WriteLine;
-  OutputStream.WriteLine('end;');
+  for i := 0 to ColumnNames.Count - 1 do
+  begin
+    ColName := ColumnNames[i];
+    ColType := ColumnTypes[i];
+
+    FieldName := TransformName(ColName);
+    FieldType := TranslateType(ColType);
+
+    case FieldType of
+    'AnsiString':
+      OutputStream.WriteLine(Format('  FValues[%d] := TDMValue.CreateAnsiString(' +
+        SingleQuote + SingleQuote + ');', [i]));
+    'Integer':
+      OutputStream.WriteLine(Format('  FValues[%d] := TDMValue.CreateInteger(0);', [i]));
+    'Int64':
+      OutputStream.WriteLine(Format('  FValues[%d] := TDMValue.CreateInteger(0);', [i]));
+    'Extended':
+      OutputStream.WriteLine(Format('  FValues[%d] := TDMValue.CreateExtended(0.0);', [i]));
+    'TDate':
+      OutputStream.WriteLine(Format('  FValues[%d] := TDMValue.CreateTDate(Now);', [i]));
+    'TTime':
+      OutputStream.WriteLine(Format('  FValues[%d] := TDMValue.CreateTTime(Now);', [i]));
+    else
+      raise Exception.Create(Format('Invalid Type %s', [FieldType]));
+    end;
+
+  end;
+
   OutputStream.WriteLine;
+  OutputStream.WriteLine(sLineBreak + 'end;');
 
   OutputStream.WriteStr(Format('constructor %s.Create(', [ClassName]));
   for i := 0 to ColumnNames.Count - 1 do
@@ -413,7 +441,7 @@ begin
 
   OutputStream.WriteLine('// This file is generated automatically using the following command:');
   OutputStream.WriteStr('//');
-  for i := 0 to ParamCount - 1 do
+  for i := 0 to ParamCount  do
     OutputStream.WriteStr(Format('%s ', [ParamStr(i)]));
   OutputStream.WriteLine('');
   OutputStream.WriteLine('');

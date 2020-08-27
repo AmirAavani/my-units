@@ -381,6 +381,9 @@ begin
 end;
 
 constructor TBaseDataModule.Create(_NumFields: Integer);
+var
+  i: Integer;
+
 begin
   inherited Create;
 

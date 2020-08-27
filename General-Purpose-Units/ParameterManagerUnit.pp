@@ -106,28 +106,13 @@ const
 
   function GetNameFromArgInfo(ArgInfo: AnsiString): AnsiString;
   begin
-    Result :=  Copy( ArgInfo, 1, Pos(':', ArgInfo) - 1);
+    Result :=  Copy(ArgInfo, 1, Pos(':', ArgInfo) - 1);
 
   end;
 
-  function GetArgumentTypeByName(ArgName: AnsiString): TValue.TInputType;
-  var
-    ArgInfo: AnsiString;
-    ArgType: AnsiString;
-
+  function GetArgumentType(const TypeString: AnsiString): TValue.TInputType;
   begin
-    ArgType := '';
-    for ArgInfo in ValidArgumentsInfo do
-      if Copy(ArgInfo, 1, Pos(':', ArgInfo) - 1) = ArgName then
-      begin
-        ArgType := Copy(ArgInfo, Pos(':', ArgInfo) + 1, Length(ArgInfo));
-        Break;
-      end;
-
-    if ArgType = '' then
-      raise EUndefinedArgument.Create(ArgName);
-
-    case ArgType of
+    case UpperCase(TypeString) of
     'ANSISTRING':
       Exit(itAnsiString);
     'BOOLEAN':
@@ -139,6 +124,28 @@ const
     'UINTEGER':
       Exit(itUInteger);
     end;
+
+    Result := itAnsiString;
+  end;
+
+  function GetArgumentTypeByName(ArgName: AnsiString): TValue.TInputType;
+  var
+    ArgInfo: AnsiString;
+    ArgType: AnsiString;
+
+  begin
+    ArgType := '';
+    for ArgInfo in ValidArgumentsInfo do
+      if GetNameFromArgInfo(ArgInfo) = ArgName then
+      begin
+        ArgType := Copy(ArgInfo, Pos(':', ArgInfo) + 1, Length(ArgInfo));
+        Break;
+      end;
+
+    if ArgType = '' then
+      raise EUndefinedArgument.Create(ArgName);
+
+    Result := GetArgumentType(ArgType);
   end;
 
   procedure CheckParameter(Name, Value: AnsiString);
@@ -176,9 +183,9 @@ const
 
   end;
 
-  function GetValueObjectForName(aName: AnsiString; aValue: AnsiString): TValue;
+  function GetValueObject(aType: TValue.TInputType; aValue: AnsiString): TValue;
   begin
-    case GetArgumentTypeByName(aName) of
+    case aType of
       itAnsiString: Exit(TValue.CreateAnsiString(aValue));
       itBoolean: Exit(TValue.CreateBoolean(aValue));
       itExtended: Exit(TValue.CreateExtended(aValue));
@@ -211,7 +218,7 @@ begin
       Continue;
 
     V := ParamStr(i);
-    Values[UpperCase(Name)] := GetValueObjectForName(Name, V);
+    Values[UpperCase(Name)] := GetValueObject(GetArgumentTypeByName(Name), V);
 
     Inc(i);
 
@@ -223,11 +230,8 @@ begin
     if Values.IndexOf(UpperCase(GetNameFromArgInfo(ArgInfo))) < 0 then
     begin
       Values[UpperCase(GetNameFromArgInfo(ArgInfo))] :=
-         GetValueObjectForName(GetNameFromArgInfo(ArgInfo),
-           Copy(ValidArgumentsValues[i],
-             1,
-             Pos(':', ValidArgumentsValues[i] + ':') - 1
-            ));
+         GetValueObject(GetArgumentTypeByName(GetNameFromArgInfo(ArgInfo)),
+           ValidArgumentsValues[i]);
     end;
   end;
 

@@ -79,6 +79,7 @@ begin
     GetParentLineInfo(Filename, LineNumber);
     System.Writeln(Format('%s-%s:%d] %s', [DateTimeToStr(Now), Filename, LineNumber, Msg]));
     Flush(Output);
+
   end;
 end;
 
@@ -92,6 +93,7 @@ begin
   System.Writeln(Format('%s-%s:%d] %s', [DateTimeToStr(Now), Filename, LineNumber, Msg]));
 
   Flush(Output);
+
 end;
 
 procedure FatalLn(Msg: AnsiString);
