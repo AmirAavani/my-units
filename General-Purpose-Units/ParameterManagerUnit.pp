@@ -189,8 +189,8 @@ const
       itAnsiString: Exit(TValue.CreateAnsiString(aValue));
       itBoolean: Exit(TValue.CreateBoolean(aValue));
       itExtended: Exit(TValue.CreateExtended(aValue));
-      itInteger: Exit(TValue.CreateExtended(aValue));
-      itUInteger: Exit(TValue.CreateExtended(aValue));
+      itInteger: Exit(TValue.CreateInteger(aValue));
+      itUInteger: Exit(TValue.CreateUInteger(aValue));
     end;
     Result := nil;
   end;

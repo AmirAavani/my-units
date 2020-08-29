@@ -292,6 +292,7 @@ begin
     Obj.FillFromResponse(aResponse.Row, aResponse.Columns);
     Result.Add(Obj);
 
+    aResponse.Next;
   end;
 end;
 
