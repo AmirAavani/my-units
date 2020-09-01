@@ -25,6 +25,7 @@ type
 
     constructor Create(const ARequest: TFPHTTPConnectionRequest);
     function GetContent: AnsiString;
+    function GetCookieByName(const aName: AnsiString): AnsiString;
     function GetFieldCount: Integer;
     function GetFieldNames(Index: Integer): AnsiString;
     function GetFieldValues(Index: Integer): AnsiString;
@@ -54,61 +55,9 @@ type
     property ParamValueByIndex[Index: Integer]: AnsiString read GetParamValueByIndex;
     property ParamValueByName[Name: AnsiString]: AnsiString read GetParamValueByName;
     property OriginalRequest: TFPHTTPConnectionRequest read FOriginalRequest;
+    property CookieByName[const aName: AnsiString]: AnsiString read GetCookieByName;
 
     destructor Destroy; override;
-
-  end;
-
-  { ENoOpenTag }
-
-  ENoOpenTag = class(Exception)
-  public
-    constructor Create;
-  end;
-
-  { TAttribute }
-
-  TAttribute = class(TObject)
-    Name: AnsiString;
-    Value: Variant;
-
-    constructor Create(aName: AnsiString; aValue: Variant);
-  end;
-
-  { TBaseNode }
-
-  TBaseNode = class(TObject)
-  private
-    FAttributes: specialize TFPGList<TAttribute>;
-    FParentNode: TBaseNode;
-
-    function GetAttributeByIndex(Index: Integer): TAttribute;
-    function GetAttributeByName(aName: AnsiString): AnsiString;
-
-  public
-    property Attributes: specialize TFPGList<TAttribute> read FAttributes;
-    property Attribute[Index: Integer]: TAttribute read GetAttributeByIndex;
-    property AttributeByName[aName: AnsiString]: AnsiString read GetAttributeByName;
-
-    constructor Create(PNode: TBaseNode);
-    destructor Destroy; override;
-
-    procedure AddAttribute(Name: AnsiString; Value: Variant);
-  end;
-
-{ TNode }
-
-  TNode = class(TBaseNode)
-  private
-    FTagName: AnsiString;
-    FChildren: specialize TFPGList<TBaseNode>;
-
-  public
-    property TagName: AnsiString read FTagName;
-
-   constructor Create(aTagName: AnsiString; PNode: TBaseNode);
-   destructor Destroy; override;
-
 
   end;
 
@@ -117,7 +66,6 @@ type
   THTTPServerResponse = class(TObject)
   private
     FOutputStream: TStringStream;
-    FRootNode: TNode;
     FOriginalResponse: TFPHTTPConnectionResponse;
 
     constructor Create(const AResponse: TFPHTTPConnectionResponse);
@@ -126,16 +74,14 @@ type
     property OriginalResponse: TFPHTTPConnectionResponse read FOriginalResponse;
     property OutputStream: TStringStream read FOutputStream;
 
-    procedure OpenTag(TagName: AnsiString); virtual;
-    procedure AddAttribute(aName: AnsiString; aValue: Variant);
-    procedure CloseTag;
-
     procedure WriteLn(Lines: array of AnsiString);
     procedure WriteLn(Line: AnsiString);
 
     destructor Destroy; override;
 
-    function Redirect(TargetPage: AnsiString): Boolean;
+    procedure Redirect(TargetPage: AnsiString);
+    procedure AddCookie(Name, Value, Path: AnsiString; Domain: AnsiString = '';
+      MaxAge: Integer = 46800);
   end;
 
   TBasePageHandler = class;
@@ -191,7 +137,7 @@ type
 
 implementation
 uses
-  DefaultPageHandlerUnit, WebUtilsUnit, httpprotocol;
+  DefaultPageHandlerUnit, WebUtilsUnit, CookieUnit, StringUnit, httpprotocol, HTTPDefs;
 
 { TBasePageHandler }
 
@@ -212,107 +158,6 @@ begin
 
 end;
 
-{ TNode }
-
-constructor TNode.Create(aTagName: AnsiString; PNode: TBaseNode);
-begin
-  inherited Create(PNode);
-
-  FTagName := aTagName;
-  FChildren := nil;
-end;
-
-destructor TNode.Destroy;
-var
-  Child: TBaseNode;
-
-begin
-  if FChildren <> nil then
-  begin
-    for Child in FChildren do
-      Child.Free;
-    FChildren.Free;
-
-  end;
-  inherited Destroy;
-end;
-
-{ TBaseNode }
-
-function TBaseNode.GetAttributeByIndex(Index: Integer): TAttribute;
-begin
-  if FAttributes = nil then
-    Exit(nil);
-  Result := FAttributes[Index];
-
-end;
-
-function TBaseNode.GetAttributeByName(aName: AnsiString): AnsiString;
-var
-  Attr: TAttribute;
-
-begin
-  if FAttributes = nil then
-    Exit('');
-  for Attr in FAttributes do
-    if Attr.Name = aName then
-      Exit(Attr.Value);
-
-  Result := '';
-
-end;
-
-constructor TBaseNode.Create(PNode: TBaseNode);
-begin
-  inherited Create;
-
-  FAttributes := nil;
-  FParentNode := PNode;
-end;
-
-destructor TBaseNode.Destroy;
-var
-  Attr: TAttribute;
-
-begin
-  for Attr in FAttributes do
-    Attr.Free;
-  FAttributes.Free;
-
-  inherited Destroy;
-end;
-
-procedure TBaseNode.AddAttribute(Name: AnsiString; Value: Variant);
-begin
-  if FAttributes = nil then
-  begin
-    FAttributes := (specialize TFPGList<TAttribute>).Create;
-    Self.AddAttribute(Name, Value);
-    Exit;
-  end;
-
-  FAttributes.Add(TAttribute.Create(Name, Value));
-
-end;
-
-{ TAttribute }
-
-constructor TAttribute.Create(aName: AnsiString; aValue: Variant);
-begin
-  inherited Create;
-
-  Name := aName;
-  Value:= aValue;
-end;
-
-
-{ ENoOpenTag }
-
-constructor ENoOpenTag.Create;
-begin
-  inherited Create('');
-
-end;
 
 { THTTPServerResponse }
 
@@ -322,35 +167,8 @@ begin
   inherited Create;
 
   FOriginalResponse := AResponse;
-  FRootNode := TNode.Create('HTML', nil);
   FOutputStream := TStringStream.Create('');
 
-end;
-
-procedure THTTPServerResponse.OpenTag(TagName: AnsiString);
-begin
-  Halt(1);
-  //FTags.Add(TTagInfo.Create(TagName));
-
-end;
-
-procedure THTTPServerResponse.AddAttribute(aName: AnsiString; aValue: Variant);
-begin
-
-end;
-
-procedure THTTPServerResponse.CloseTag;
-{var
-  Tag: TTagInfo;
- }
-begin
-{  if FTags.Count = 0 then
-    raise ENoOpenTag.Create;
-  Tag:= FTags[FTags.Count - 1];
-  FTags.Delete(FTags.Count - 1);
-
-  Self.WriteLn(Tag.ToString);
-}
 end;
 
 procedure THTTPServerResponse.WriteLn(Lines: array of AnsiString);
@@ -377,8 +195,25 @@ begin
   inherited Destroy;
 end;
 
-function THTTPServerResponse.Redirect(TargetPage: AnsiString): Boolean;
+procedure THTTPServerResponse.Redirect(TargetPage: AnsiString);
 begin
+  OriginalResponse.SendRedirect(TargetPage);
+
+end;
+
+procedure THTTPServerResponse.AddCookie(Name, Value, Path: AnsiString;
+  Domain: AnsiString; MaxAge: Integer);
+var
+  Cookie: HTTPDefs.TCookie;
+
+begin
+  Cookie := Self.OriginalResponse.Cookies.Add;
+  Cookie.Name := Name;
+  Cookie.Value := Value;
+  Cookie.Domain := Domain;
+  Cookie.Expires := TimeStampToDateTime(
+    MSecsToTimeStamp(
+      1000 * (DateTimeToTimeStamp(Now).Time + MaxAge)));
 
 end;
 
@@ -467,6 +302,33 @@ end;
 function THTTPServerRequest.GetContent: AnsiString;
 begin
   Result := OriginalRequest.Content;
+end;
+
+function THTTPServerRequest.GetCookieByName(const aName: AnsiString
+  ): AnsiString;
+var
+  Lines: TStringList;
+  Line: AnsiString;
+  p: Integer;
+
+begin
+  Lines := Split(OriginalRequest.Cookie, ';');
+  Result := '';
+
+  for Line in Lines do
+  begin
+    p := Pos('=', Line);
+    if p = 0 then
+      Continue;
+    if Copy(Line, 1, p - 1) = aName then
+    begin
+      Result := Copy(Line, p + 1, Length(Line));
+      Break;
+    end;
+
+  end;
+
+  Lines.Free;
 end;
 
 function THTTPServerRequest.GetFieldCount: Integer;

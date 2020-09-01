@@ -113,6 +113,7 @@ type
 
 procedure ToInt(Source: AnsiString; Target: Pointer);
 procedure ToString(Source: AnsiString; Target: Pointer);
+generic function GetTopAndFree<TData>(aDataList: specialize TBaseDataList<TData>): TData;
 
 implementation
 
@@ -130,6 +131,30 @@ begin
   PString(Target)^ := Source;
 
 end;
+
+generic function GetTopAndFree<TData>(aDataList: specialize TBaseDataList<TData>): TData;
+var
+  i: Integer;
+
+begin
+  if aDataList = nil then
+    Exit(nil);
+  if aDataList.Count = 0 then
+  begin
+    aDataList.Free;
+    Exit(nil);
+
+  end;
+
+  Result := aDataList[0];
+  for i := 1 to aDataList.Count - 1 do
+    aDataList[i].Free;
+  aDataList.Clear;
+  aDataList.Free;
+
+end;
+
+
 
 { TBaseDataModule.TDMValue }
 

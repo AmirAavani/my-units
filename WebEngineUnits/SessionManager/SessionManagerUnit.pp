@@ -31,6 +31,8 @@ type
 
     function GetValueByName(const SessionID: TSessionID; const aName: AnsiString): TSessionValue; virtual; abstract;
     function SetValue(const SessionID, Name: AnsiString; Value: TSessionValue): Boolean; virtual; abstract;
+
+    class function GetSessionManager: TBaseSessionManager;
   end;
 
   { TSessionManager }
@@ -41,16 +43,12 @@ type
     TMemory = specialize TFPGMap<AnsiString, TSessionData>;
   private
     Memory: TMemory;
-    SessionFilename: AnsiString;
 
   protected
-    procedure Load; override;
-    procedure Save; override;
-
     function SessionExists(const SessionID: TSessionID): Boolean; override;
     procedure AddNewSession(Session: TSessionData); override;
   public
-    constructor Create(Filename: AnsiString; SessionIDLen: Integer = 20; MaxSessionValidity: Integer = 3600);
+    constructor Create(SessionIDLen: Integer = 20; MaxSessionValidity: Integer = 3600);
     destructor Destroy; override;
 
     function GetValueByName(const SessionID: TSessionID; const aName: AnsiString): TSessionValue; override;
@@ -120,6 +118,11 @@ begin
 
 end;
 
+class function TBaseSessionManager.GetSessionManager: TBaseSessionManager;
+begin
+  Result := TSessionManager.Create;
+end;
+
 function TSessionManager.GetValueByName(const SessionID: TSessionID;
   const aName: AnsiString): TSessionValue;
 var
@@ -152,18 +155,6 @@ begin
   LeaveCriticalSection(Mutex);
 end;
 
-procedure TSessionManager.Load;
-begin
-  DebugLn('TSessionManager.Load is not implemented');
-
-end;
-
-procedure TSessionManager.Save;
-begin
-  DebugLn('TSessionManager.Save is not implemented');
-
-end;
-
 function TSessionManager.SessionExists(const SessionID: TSessionID): Boolean;
 begin
   Result := 0 <= Memory.IndexOf(SessionID)
@@ -175,7 +166,7 @@ begin
 
 end;
 
-constructor TSessionManager.Create(Filename: AnsiString; SessionIDLen: Integer;
+constructor TSessionManager.Create(SessionIDLen: Integer;
   MaxSessionValidity: Integer);
 begin
   inherited Create;
@@ -184,8 +175,6 @@ begin
   Memory := TMemory.Create;
   Memory.Sorted := True;
 
-  SessionFilename := Filename;
-  Self.Load;
 end;
 
 destructor TSessionManager.Destroy;
