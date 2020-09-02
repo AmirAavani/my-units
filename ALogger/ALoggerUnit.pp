@@ -20,7 +20,6 @@ type
   end;
 
 procedure DebugLn(Msg: AnsiString);
-procedure WriteLn(Msg: AnsiString);
 procedure FatalLn(Msg: AnsiString);
 
 implementation
@@ -81,19 +80,6 @@ begin
     Flush(Output);
 
   end;
-end;
-
-procedure WriteLn(Msg: AnsiString);
-var
-  Filename: AnsiString;
-  LineNumber: Integer;
-
-begin
-  GetParentLineInfo(Filename, LineNumber);
-  System.Writeln(Format('%s-%s:%d] %s', [DateTimeToStr(Now), Filename, LineNumber, Msg]));
-
-  Flush(Output);
-
 end;
 
 procedure FatalLn(Msg: AnsiString);
