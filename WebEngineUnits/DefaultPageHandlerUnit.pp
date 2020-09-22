@@ -21,10 +21,63 @@ type
       TheResponse : THTTPServerResponse): Boolean; override;
   end;
 
+  { TStaticFileHandler }
+
+  TStaticFileHandler = class(TBasePageHandler)
+  private
+    Content: AnsiString;
+    FMIMEType: AnsiString;
+
+  public
+    constructor Create(MIMEType, aName, aServingPath, FilePath: AnsiString);
+
+    function Execute(Sender: THTTPServerThread; TheRequest: THTTPServerRequest;
+      TheResponse: THTTPServerResponse): Boolean; override;
+  end;
+
+
+  { TStaticHTMLFileHandler }
+
+  TStaticHTMLFileHandler = class(TStaticFileHandler)
+  public
+    constructor Create(aName, aServingPath, FilePath: AnsiString);
+
+  end;
+
 implementation
 uses
-   httpprotocol;
+   StreamUnit, httpprotocol;
 
+{ TStaticFileHandler }
+
+constructor TStaticFileHandler.Create(MIMEType, aName, aServingPath,
+  FilePath: AnsiString);
+begin
+  inherited Create(aName, aServingPath);
+
+  Content := ReadFile(FilePath);
+  FMIMEType := MIMEType;
+
+end;
+
+function TStaticFileHandler.Execute(Sender: THTTPServerThread;
+  TheRequest: THTTPServerRequest; TheResponse: THTTPServerResponse): Boolean;
+begin
+  TheResponse.OriginalResponse.SetHeader(hhContentType, FMIMEType + '; charset=utf-8');
+
+  TheResponse.WriteLn(Content);
+  Result := True;
+
+end;
+
+{ TStaticHTMLFileHandler }
+
+constructor TStaticHTMLFileHandler.Create(aName, aServingPath, FilePath: AnsiString
+  );
+begin
+  inherited Create('text/html', aName, aServingPath, FilePath);
+
+end;
 
 { TPageNotFoundHandler }
 
@@ -38,6 +91,7 @@ function TPageNotFoundHandler.WouldHandleRequest(ARequest: THTTPServerRequest
   ): Boolean;
 begin
   Result := True;
+
 end;
 
 function TPageNotFoundHandler.Execute(Sender: THTTPServerThread;

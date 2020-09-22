@@ -33,13 +33,13 @@ type
     TDMValue = class(TValue)
     private
       function GetAsMySQL: AnsiString;
+
     protected
       function GetAsAnsiString: AnsiString; override;
       function GetAsBoolean: Boolean;  override;
       function GetAsExtended: Extended; override;
       function GetAsInteger: Int64; override;
       function GetAsUInteger: uInt64; override;
-
 
     public
       property AsMySQL: AnsiString read GetAsMySQL;
@@ -55,20 +55,24 @@ type
     procedure SetValueByColumnName(ColumnName: AnsiString; StrValue: AnsiString); virtual;
     procedure SetValueByColumnIndex(ColumnIndex: Integer; StrValue: AnsiString); virtual;
     function GetInsertQuery: AnsiString; virtual;
+    function GetUpdateQuery: AnsiString; virtual;
+    function GetMySQLValuesForKeys: TStringList; virtual; abstract;
 
   public
     property ValueByIndex[Index: Integer]: TDMValue read GetValueByIndex;
 
     class function TableName: AnsiString; virtual; abstract;
     class function NumFields: Integer; virtual; abstract;
-    class function ColumnNameByIndex(Index: Integer): AnsiString; virtual; abstract;
-    class function MySQLColumnTypeByIndex(Index: Integer): AnsiString; virtual; abstract;
-    class function FPCColumnTypeByIndex(Index: Integer): AnsiString; virtual; abstract;
-    class function ColumnIndexByName(const aName: AnsiString): Integer; virtual; abstract;
+    class function GetColumnNameByIndex(Index: Integer): AnsiString; virtual; abstract;
+    class function GetMySQLColumnTypeByIndex(Index: Integer): AnsiString; virtual; abstract;
+    class function GetFPCColumnTypeByIndex(Index: Integer): AnsiString; virtual; abstract;
+    class function GetColumnIndexByName(const aName: AnsiString): Integer; virtual; abstract;
+    class function GetKeyColumnNames: TStringList; virtual; abstract;
 
     function GetDataByIndex(Index: Integer): TDMValue; virtual;
 
     function Save(DB: TDatabaseConnection): Boolean; virtual;
+    function Update(DB: TDatabaseConnection): Boolean; virtual;
 
     function ToString: AnsiString; override;
     constructor Create(_NumFields: Integer);
@@ -173,7 +177,7 @@ begin
     itExtended:
       Result := FloatToStr(AsExtended);
     itAnsiString:
-      Result := Format('"%s"', [AsAnsiString])
+      Result := Format('"%s"', [EscapeForQuery(AsAnsiString)])
   end;
 
 end;
@@ -343,7 +347,7 @@ end;
 procedure TBaseDataModule.SetValueByColumnName(ColumnName: AnsiString;
   StrValue: AnsiString);
 begin
-  SetValueByColumnIndex(ColumnIndexByName(ColumnName), StrValue);
+  SetValueByColumnIndex(GetColumnIndexByName(ColumnName), StrValue);
 
 end;
 
@@ -365,13 +369,33 @@ begin
   Values  := TStringList.Create;
   for i := 0 to Self.NumFields - 1 do
   begin
-    Names.Add(ColumnNameByIndex(i));
+    Names.Add(GetColumnNameByIndex(i));
     Values.Add(ValueByIndex[i].AsMySQL);
   end;
   Result := Format('INSERT INTO %s(%s) VALUE(%s)', [Self.TableName,
     JoinStrings(Names, ','), JoinStrings(Values, ',')]);
 
   Names.Free;
+  Values.Free;
+
+end;
+
+function TBaseDataModule.GetUpdateQuery: AnsiString;
+var
+  i: Integer;
+  Values: TStringList;
+
+begin
+  Result := Format('UPDATE %s SET ', [Self.TableName]);
+  for i := 0 to Self.NumFields - 1 do
+    Result += Format('%s = %s, ', [GetColumnNameByIndex(i), ValueByIndex[i].AsMySQL]);
+  Delete(Result, Length(Result) - 1, 2);
+
+  Values := GetMySQLValuesForKeys;
+  for i := 0 to GetKeyColumnNames.Count - 1 do
+    Result += Format(' WHERE %s = %s AND', [GetKeyColumnNames[i], Values[i]]);
+  Delete(Result, Length(Result) - 3, 4);
+
   Values.Free;
 
 end;
@@ -384,13 +408,22 @@ end;
 
 function TBaseDataModule.Save(DB: TDatabaseConnection): Boolean;
 var
-  Query: AnsiString;
+  Response: TQueryResponse;
 
 begin
-  Query := GetInsertQuery;
+  Response := DB.RunQuery(GetInsertQuery);
 
-  DB.RunQuery(Query);
+  Result := Response = nil;
+end;
 
+function TBaseDataModule.Update(DB: TDatabaseConnection): Boolean;
+var
+  Response: TQueryResponse;
+
+begin
+  Response := DB.RunQuery(GetUpdateQuery);
+
+  Result := Response = nil;
 
 end;
 
@@ -402,7 +435,7 @@ begin
   Result := '';
 
   for i := 0 to NumFields - 1 do
-    Result += Format('%s: %s' + sLineBreak, [ColumnNameByIndex(i), GetDataByIndex(i)]);
+    Result += Format('%s: %s' + sLineBreak, [GetColumnNameByIndex(i), GetDataByIndex(i)]);
 
 end;
 

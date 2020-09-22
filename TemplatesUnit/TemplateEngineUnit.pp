@@ -49,7 +49,37 @@ type
 
   end;
 
+    function EscapeForJavascript(const InputString: AnsiString): AnsiString;
+    function EscapeForHTML(const InputString: AnsiString): AnsiString;
+
 implementation
+uses
+  sysutils;
+
+function EscapeForJavascript(const InputString: AnsiString): AnsiString;
+begin
+  Result := StringReplace(StringReplace(
+     AnsiString(InputString), '''', '\''', [rfReplaceAll]),
+     '"', '\"', [rfReplaceAll]);
+
+end;
+
+function EscapeForHTML(const InputString: AnsiString): AnsiString;
+const
+  Str: array [0..11] of AnsiString = ('&', ' ', '<', '>', '"', Chr(34), '¢', '£',
+  '¥', '€', '©', '®');
+  RepStr: array [0..11] of AnsiString = ('&amp;', '&nbsp;', '&lt;', '&gt;',
+  '&quot;', '&apos;', '&cent;', '&pound;', '&yen;', '&euro;', '&copy;', '@reg;');
+
+var
+  i: Integer;
+
+begin
+  Result := InputString;
+  for i := Low(Str) to High(Str) do
+    Result := StringReplace(Result, Str[i], RepStr[i], [rfReplaceAll]);
+
+end;
 
 { TName2ValueMapper }
 

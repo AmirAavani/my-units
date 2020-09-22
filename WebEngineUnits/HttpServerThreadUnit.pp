@@ -137,7 +137,8 @@ type
 
 implementation
 uses
-  DefaultPageHandlerUnit, WebUtilsUnit, CookieUnit, StringUnit, httpprotocol, HTTPDefs;
+  ALoggerUnit, DefaultPageHandlerUnit, WebUtilsUnit, CookieUnit, StringUnit, httpprotocol,
+  HTTPDefs;
 
 { TBasePageHandler }
 
@@ -154,7 +155,7 @@ end;
 function TBasePageHandler.WouldHandleRequest(ARequest: THTTPServerRequest
   ): Boolean;
 begin
-  Result := False;
+  Result := ARequest.PathInfo = ServingPath;
 
 end;
 

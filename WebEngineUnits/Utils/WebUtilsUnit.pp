@@ -22,7 +22,11 @@ begin
   for Ch in Str do
   begin
     Result *= 16;
-    Result += Ord(Ch) - 48;
+
+    if Ch in ['0'..'9'] then
+      Result += Ord(Ch) - 48
+    else
+      Result += Ord(Ch) - 55;
 
   end;
 end;
@@ -39,8 +43,9 @@ begin
   while i <= Length(Value) do
   begin
     Ch := Value[i];
-
-    if Ch = '%' then
+    if Ch = '+' then
+      Ch := ' '
+    else if Ch = '%' then
     begin
       Result += Chr(Decode(Copy(Value, i + 1, 2)));
       i += 3;

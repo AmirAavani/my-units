@@ -20,7 +20,7 @@ const
     + 'interface' + sLineBreak
     + sLineBreak
     + 'uses' + sLineBreak
-    + '  BaseDataModuleUnit, fgl;' + sLineBreak
+    + '  BaseDataModuleUnit, classes, fgl;' + sLineBreak
     + sLineBreak
     + 'type' + sLineBreak
     + sLineBreak;
@@ -43,14 +43,22 @@ const
   + '  public' + sLineBreak
   + '    class function TableName: AnsiString; override;' + sLineBreak
   + '    class function NumFields: Integer; override;' + sLineBreak
-  + '    class function ColumnNameByIndex(Index: Integer): AnsiString; override;' + sLineBreak
-  + '    class function MySQLColumnTypeByIndex(Index: Integer): AnsiString; override;' + sLineBreak
-  + '    class function FPCColumnTypeByIndex(Index: Integer): AnsiString; override;' + sLineBreak
-  + '    class function ColumnIndexByName(const aName: AnsiString): Integer; override;' + sLineBreak
-  + sLineBreak + sLineBreak;
+  + '    class function GetKeyColumnNames: TStringList; override;' + sLineBreak
+  + '    class function GetColumnNameByIndex(Index: Integer): AnsiString; override;' + sLineBreak
+  + '    class function GetMySQLColumnTypeByIndex(Index: Integer): AnsiString; override;' + sLineBreak
+  + '    class function GetFPCColumnTypeByIndex(Index: Integer): AnsiString; override;' + sLineBreak
+  + '    class function GetColumnIndexByName(const aName: AnsiString): Integer; override;' + sLineBreak
+  + sLineBreak
+  + '  protected' + sLineBreak
+  + '    function GetMySQLValuesForKeys: TStringList; override;' + sLineBreak
+  + sLineBreak
+  + '  public' + sLineBreak;
 
   procedure ImplementStaticFuctions(ClassName: AnsiString; TheTableName: AnsiString;
-    ColumnNames, ColumnTypes: TStringList; OutputStream: TMyTextStream);
+    ColumnNames, ColumnTypes, KeyColumnNames: TStringList; OutputStream: TMyTextStream);
+  var
+    ColName: AnsiString;
+
   begin
     OutputStream.WriteLine(Format('class function %s.TableName: AnsiString;', [ClassName]));
     OutputStream.WriteLine('begin');
@@ -62,6 +70,16 @@ const
     OutputStream.WriteLine(Format('class function %s.NumFields: Integer;', [ClassName]));
     OutputStream.WriteLine('begin');
     OutputStream.WriteLine(Format('  Result := %d;', [ColumnNames.Count]));
+    OutputStream.WriteLine('end;');
+    OutputStream.WriteLine('');
+
+    OutputStream.WriteLine('var');
+    OutputStream.WriteLine('  KeyColumnNames: TStringList;');
+    OutputStream.WriteLine('');
+
+    OutputStream.WriteLine(Format('class function %s.GetKeyColumnNames: TStringList;', [ClassName]));
+    OutputStream.WriteLine('begin');
+    OutputStream.WriteLine(Format('  Result := KeyColumnNames;', []));
     OutputStream.WriteLine('end;');
     OutputStream.WriteLine('');
 
@@ -158,14 +176,14 @@ begin
 
 end;
 
-procedure ImplementColumnNameByIndex(aClassName: String; aTheTableName: String;
+procedure ImplementGetColumnNameByIndex(aClassName: String; aTheTableName: String;
   aColumnNames: TStringList; aColumnTypes: TStringList;
   OutputStream: TMyTextStream);
 var
   i: Integer;
 
 begin
-  OutputStream.WriteLine(Format('class function %s.ColumnNameByIndex(Index: Integer): AnsiString;',
+  OutputStream.WriteLine(Format('class function %s.GetColumnNameByIndex(Index: Integer): AnsiString;',
     [aClassName]));
 
   OutputStream.WriteLine('begin');
@@ -183,14 +201,14 @@ begin
 
 end;
 
-procedure ImplementMySQLColumnTypeByIndex(aClassName: String; aTheTableName: String;
+procedure ImplementGetMySQLColumnTypeByIndex(aClassName: String; aTheTableName: String;
   aColumnNames: TStringList; aColumnTypes: TStringList;
   OutputStream: TMyTextStream);
 var
   i: Integer;
 
 begin
-  OutputStream.WriteLine(Format('class function %s.MySQLColumnTypeByIndex(Index: Integer): AnsiString;',
+  OutputStream.WriteLine(Format('class function %s.GetMySQLColumnTypeByIndex(Index: Integer): AnsiString;',
     [aClassName]));
 
   OutputStream.WriteLine('begin');
@@ -208,14 +226,14 @@ begin
 
 end;
 
-procedure ImplementFPCColumnTypeByIndex(aClassName: String; aTheTableName: String;
+procedure ImplementGetFPCColumnTypeByIndex(aClassName: String; aTheTableName: String;
   aColumnNames: TStringList; aColumnTypes: TStringList;
   OutputStream: TMyTextStream);
 var
   i: Integer;
 
 begin
-  OutputStream.WriteLine(Format('class function %s.FPCColumnTypeByIndex(Index: Integer): AnsiString;',
+  OutputStream.WriteLine(Format('class function %s.GetFPCColumnTypeByIndex(Index: Integer): AnsiString;',
     [aClassName]));
 
   OutputStream.WriteLine('begin');
@@ -233,14 +251,14 @@ begin
 
 end;
 
-procedure ImplementColumnIndexByName(aClassName: String; aTheTableName: String;
+procedure ImplementGetColumnIndexByName(aClassName: String; aTheTableName: String;
   aColumnNames: TStringList; aColumnTypes: TStringList;
   OutputStream: TMyTextStream);
 var
   i: Integer;
 
 begin
-  OutputStream.WriteLine(Format('class function %s.ColumnIndexByName(const aName: AnsiString): Integer;',
+  OutputStream.WriteLine(Format('class function %s.GetColumnIndexByName(const aName: AnsiString): Integer;',
     [aClassName]));
 
   OutputStream.WriteLine('begin');
@@ -409,6 +427,30 @@ begin
 
 end;
 
+procedure ImplementGetKeyValues(ClassName: String; TheTableName: String;
+  ColumnNames: TStringList; ColumnTypes, KeyColumnNames: TStringList;
+  OutputStream: TMyTextStream);
+begin
+  OutputStream.WriteLine(Format('function %s.GetMySQLValuesForKeys: TStringList;',
+   [ClassName]));
+  OutputStream.WriteLine(Format('var', []));
+  OutputStream.WriteLine(Format('  ColName: AnsiString;', []));
+  OutputStream.WriteLine(Format('  ColIndex: Integer;', []));
+  OutputStream.WriteLine('');
+  OutputStream.WriteLine(Format('begin', []));
+  OutputStream.WriteLine(Format('  Result := TStringList.Create;', []));
+  OutputStream.WriteLine(Format('  for ColName in GetKeyColumnNames do', []));
+  OutputStream.WriteLine(Format('  begin', []));
+  OutputStream.WriteLine(Format('    ColIndex := %s.GetColumnIndexByName(ColName);', [ClassName]));
+  OutputStream.WriteLine(Format('    Result.Add(ValueByIndex[ColIndex].AsMySQL);', []));
+  OutputStream.WriteLine('');
+  OutputStream.WriteLine(Format('  end;', []));
+  OutputStream.WriteLine('');
+  OutputStream.WriteLine(Format('end;', []));
+  OutputStream.WriteLine('');
+
+end;
+
 procedure GenerateCode(DBConnection: TMySQLDatabaseConnection;
   TheTableName: AnsiString; OutputDir: AnsiString);
 var
@@ -418,6 +460,7 @@ var
   i, NumElements: Integer;
   ARow: TStringList;
   ColumnNames, ColumnTypes: TStringList;
+  KeyColumnNames: TStringList;
   ColName, FieldName: AnsiString;
   ColType, FieldType: AnsiString;
   OutputFile: AnsiString;
@@ -466,12 +509,19 @@ begin
   ColumnNames := TStringList.Create;
   ColumnTypes := TStringList.Create;
 
+  KeyColumnNames := TStringList.Create;
   NumElements := Response.NumRows;
+  for i := 0 to Response.NumColumns - 1 do
+    Write(Response.Columns[i], ' ');
+  WriteLn;
   for i := 1 to Response.NumRows do
   begin
     ARow :=  Response.Row;
     ColName := ARow[0];
     ColType := ARow[1];
+
+    if (4 <= ARow.Count) and (ARow[3] = 'PRI') then
+      KeyColumnNames.Add(ColName);
     FieldName := TransformName(ColName);
     FieldType := TransformName(ColType);
 
@@ -544,17 +594,18 @@ begin
   OutputStream.WriteLine('  SysUtils;');
 
   OutputStream.WriteLine('');
-  ImplementStaticFuctions(ClassName, TheTableName, ColumnNames, ColumnTypes, OutputStream);
+  ImplementStaticFuctions(ClassName, TheTableName, ColumnNames, ColumnTypes,
+    KeyColumnNames, OutputStream);
   OutputStream.WriteLine('');
   ImplementCreate(ClassName, TheTableName, ColumnNames, ColumnTypes, OutputStream);
   OutputStream.WriteLine('');
-  ImplementColumnNameByIndex(ClassName, TheTableName, ColumnNames, ColumnTypes, OutputStream);
+  ImplementGetColumnNameByIndex(ClassName, TheTableName, ColumnNames, ColumnTypes, OutputStream);
   OutputStream.WriteLine('');
-  ImplementMySQLColumnTypeByIndex(ClassName, TheTableName, ColumnNames, ColumnTypes, OutputStream);
+  ImplementGetMySQLColumnTypeByIndex(ClassName, TheTableName, ColumnNames, ColumnTypes, OutputStream);
   OutputStream.WriteLine('');
-  ImplementFPCColumnTypeByIndex(ClassName, TheTableName, ColumnNames, ColumnTypes, OutputStream);
+  ImplementGetFPCColumnTypeByIndex(ClassName, TheTableName, ColumnNames, ColumnTypes, OutputStream);
   OutputStream.WriteLine('');
-  ImplementColumnIndexByName(ClassName, TheTableName, ColumnNames, ColumnTypes, OutputStream);
+  ImplementGetColumnIndexByName(ClassName, TheTableName, ColumnNames, ColumnTypes, OutputStream);
   OutputStream.WriteLine('');
   ImplementToString(ClassName, TheTableName, ColumnNames, ColumnTypes, OutputStream);
   OutputStream.WriteLine('');
@@ -562,8 +613,18 @@ begin
   OutputStream.WriteLine('');
   ImplementSetters(ClassName, TheTableName, ColumnNames, ColumnTypes, OutputStream);
   OutputStream.WriteLine('');
-
+  ImplementGetKeyValues(ClassName, TheTableName, ColumnNames, ColumnTypes, KeyColumnNames, OutputStream);
   OutputStream.WriteLine(sLineBreak + sLineBreak);
+  OutputStream.WriteLine('initialization');
+  OutputStream.WriteLine(Format('  KeyColumnNames := TStringList.Create;', []));
+
+  for i := 0 to KeyColumnNames.Count - 1 do
+    OutputStream.WriteLine(Format('  KeyColumnNames.Add(%s%s%s);', [SingleQuote, KeyColumnNames[i], SingleQuote]));
+  OutputStream.WriteLine('');
+
+  OutputStream.WriteLine('finalization');
+  OutputStream.WriteLine('  KeyColumnNames.Free;');
+  OutputStream.WriteLine('');
   OutputStream.WriteLine('end.');
 
   OutputStream.Free;

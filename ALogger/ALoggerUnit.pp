@@ -25,7 +25,7 @@ procedure FatalLn(Msg: AnsiString);
 implementation
 
 uses
-  ParameterManagerUnit, StringUnit, lnfodwrf;
+  ParameterManagerUnit, StringUnit, WideStringUnit, lnfodwrf;
 
 procedure GetParentLineInfo(var Filename: AnsiString; var LineNumber: Integer);
 var
