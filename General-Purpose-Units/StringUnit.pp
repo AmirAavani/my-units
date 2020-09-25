@@ -45,11 +45,11 @@ begin
     Exit(False);
 
   Result := False;
-  SuffixPtr := PChar(Suffix) + Length(Suffix);
-  StrPtr := PChar(Str) + Length(Str);
+  SuffixPtr := PChar(Suffix) + Length(Suffix) - 1;
+  StrPtr := PChar(Str) + Length(Str) - 1;
   for i := 1 to Length(Suffix) do
   begin
-    if SuffixPtr <> StrPtr then
+    if SuffixPtr^ <> StrPtr^ then
       Exit;
 
     Dec(SuffixPtr);
