@@ -31,24 +31,24 @@ type
     This is the base class for all Generic Queues.
 
     Jan 1, 2013: I had to make all the abstract functions, explicit to functions
-      to avoid some wierd compile errors.
+      to avoid some weird compile errors.
   }
   generic TGenericAbstractQueue<T>= class(TObject)
   private
-    {Returns the number of elemnts in the Queue}
-    function GetCount: Integer; virtual ; {abstract;}
-    {Checks if Queue is empty}
-    function GetIsEmpty: Boolean; virtual; {abstract;}
-    {Checks if Queue is full}
-    function GetIsFull: Boolean; virtual; {abstract;}
+    { Returns the number of elemnts in the Queue }
+    function GetCount: Integer; virtual;
+    { Checks if Queue is empty }
+    function GetIsEmpty: Boolean; virtual;
+    { Checks if Queue is full }
+    function GetIsFull: Boolean; virtual;
 
   protected
-    {The actual code for Insert goes here}
+    { The actual code for Insert goes here }
     procedure DoInsert(Entry: T); virtual; abstract;
-    {The actual code for Delete goes here}
+    { The actual code for Delete goes here }
     procedure DoDelete(var LastElement: T); virtual; abstract;
-    {The actual code for GetTop goes here}
-    function DoGetTop: T; virtual; {abstract;}
+    { The actual code for GetTop goes here}
+    function DoGetTop: T; virtual;
 
   public
     property Count: Integer read GetCount;
@@ -58,12 +58,11 @@ type
     procedure Insert(Entry: T); virtual;
     procedure Delete(var LastElement: T); virtual;
     function GetTop: T; virtual;
-    {Removes all the objects from Queue(does not free the objects)}
+    { Removes all the objects from Queue (Does not free the objects) }
     procedure Clear; virtual;
 
     constructor Create;
-    {Removes all the objects from Queue and Frees the objects}
-    destructor Destroy; override; {abstract}
+    destructor Destroy; override;
 
   end;
 
@@ -473,7 +472,7 @@ begin
   if IsEmpty then
     raise EQueueIsEmpty.Create;
 
-  LastElement:= FData [SoQ];
+  LastElement:= FData[SoQ];
   SoQ:=(SoQ+ 1) mod Count;
 
 end;
@@ -494,7 +493,7 @@ var
 
 begin
   for i:= 0 to Count- 1 do
-    FData [i].Free;
+    FData[i].Free;
 
   SetLength(FData, 0);
 
@@ -526,7 +525,7 @@ begin
   if IsEmpty then
     raise EQueueIsEmpty.Create;
 
-  LastElement:= T(FData [0]);
+  LastElement:= T(FData[0]);
   FData.Delete(0);
 
 end;
@@ -543,7 +542,7 @@ var
 
 begin
   for i:= 0 to Count- 1 do
-    T(FData.Items [i]).Free;
+    T(FData.Items[i]).Free;
 
 
   inherited Destroy;
@@ -576,7 +575,7 @@ end;
 
 function TGenericQueue.DoGetTop: T;
 begin
-  Result:= T(FData [0]);
+  Result:= T(FData[0]);
 
 end;
 

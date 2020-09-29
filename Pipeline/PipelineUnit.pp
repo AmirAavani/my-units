@@ -5,17 +5,17 @@ unit PipelineUnit;
 interface
 
 uses
-  TaskUnit, fgl, Classes, SysUtils;
+  QueueUnit, TaskUnit, fgl, Classes, SysUtils;
 
 type
   TTask = class;
-  TStepHandler = function (Task: TTask): Boolean;
+  TDoneTaskQueue = specialize TThreadSafeQueue<PInteger>;
+  TStepHandler = function (Task: TTask; Args: array of Pointer): Boolean;
 
   { TPipeline }
 
   TPipeline = class(TObject)
   private type
-
     { TStepInfo }
 
     TStepInfo = class(TObject)
@@ -44,8 +44,7 @@ type
     constructor Create(_Name: AnsiString);
     destructor Destroy; override;
 
-    procedure AddNewStep(InputPattern, OutputPattern: AnsiString;
-        Handler: TStepHandler; NumTasks: Integer);
+    procedure AddNewStep(Handler: TStepHandler; NumTasks: Integer);
 
     function Run: Boolean;
     function RunStep(StepIndex: Integer): Boolean;
@@ -55,7 +54,7 @@ type
 
   { TTask }
 
-  TTask = class(TOBject)
+  TTask = class(TObject)
   private
     ID: Integer;
     Step: TPipeline.TStepInfo;
@@ -65,8 +64,9 @@ type
 
   end;
 
-
 implementation
+uses
+  {ThreadPoolUnit, }ALoggerUnit, RunInAThreadUnit;
 
 { TTask }
 
@@ -98,11 +98,55 @@ begin
 
 end;
 
+function RunHandler(Args: array of Pointer): Boolean;
+var
+  Task: TTask;
+  Queue: TDoneTaskQueue;
+
+begin
+  Task := TTask(Args[0]);
+  Queue := TDoneTaskQueue(Args[1]);
+
+  Task.Step.StepHandler(Task, Args);
+
+  Queue.Insert(PInteger(@Task.ID));
+
+
+end;
+
 { TPipeline }
 
 function TPipeline.RunStep(Step: TStepInfo): Boolean;
-begin
+var
+  i: Integer;
+  Queue: TDoneTaskQueue;
+  TaskID: PInteger;
+  Args: array of Pointer;
 
+begin
+  Queue := TDoneTaskQueue.Create;
+
+  for i := 1 to Step.NumTasks do
+  begin
+    SetLength(Args, 2);
+    Args[0] := TTask.Create(i, Step);
+    Args[1] := Queue;
+
+    RunInThread(@RunHandler, Args);
+
+  end;
+  for i := 1 to Step.NumTasks do
+  begin
+    New(TaskID);
+    Queue.Delete(TaskID);
+
+    DebugLn(Format('Task %d is done', [TaskID^]));
+    Dispose(TaskID);
+  end;
+
+  Queue.Free;
+
+  Result := True;
 end;
 
 constructor TPipeline.Create(_Name: AnsiString);
@@ -125,8 +169,7 @@ begin
   inherited Destroy;
 end;
 
-procedure TPipeline.AddNewStep(InputPattern, OutputPattern: AnsiString;
-  Handler: TStepHandler; NumTasks: Integer);
+procedure TPipeline.AddNewStep(Handler: TStepHandler; NumTasks: Integer);
 begin
   Steps.Add(TStepInfo.Create(NumTasks, Handler));
 

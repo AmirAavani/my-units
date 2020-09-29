@@ -5,17 +5,17 @@ uses
   Classes, SysUtils;
 
 const
-  SpaceChars: set of char= [' '];
+  SpaceChars: set of char =  [' '];
 
 type
 
   { EEoStream }
 
-  EEoStream= class (Exception);
+  EEoStream =  class(Exception);
 
   { TMyTextStream }
 
-  TMyTextStream= class (TObject)
+  TMyTextStream =  class(TObject)
   private
     CurrentLine: AnsiString;
     FTargerStream: TStream;
@@ -23,7 +23,7 @@ type
     function GetEoStream: Boolean;
     function GetPosition: Integer;
     function GetSize: Integer;
-    procedure SetPosition (Pos: Integer);
+    procedure SetPosition(Pos: Integer);
 
   public
     property TargetStream: TStream read FTargerStream;
@@ -34,32 +34,33 @@ type
     function ReadCh: Char;
     function ReadLine: AnsiString;
     function ReadInteger: Integer;
+    function ReadAll: AnsiString;
 
     function ReadWideChar: WideChar;
     function ReadLnWideString: WideString;
     function ReadWideString: WideString;
 
-    procedure WriteLine (const S: AnsiString = '');
-    procedure WriteChar (Ch: Char);
-    procedure WriteStr (const S: AnsiString);
+    procedure WriteLine(const S: AnsiString  =  '');
+    procedure WriteChar(Ch: Char);
+    procedure WriteStr(const S: AnsiString);
 
     {
       Does not reset the position of AnStream
     }
-    constructor Create (AnStream: TStream; DeleteInputStream: Boolean= False);
+    constructor Create(AnStream: TStream; DeleteInputStream: Boolean =  False);
     destructor Destroy; override;
 
   end;
 
   {
   I am goint to implement it later
-  TMyTextFileStream= class (TMyTextStream)
+  TMyTextFileStream =  class(TMyTextStream)
   private
     FTargerStream: TextFile;
     function GetEoStream: Boolean;
     function GetPosition: Integer;
     function GetSize: Integer;
-    procedure SetPosition (Pos: Integer);
+    procedure SetPosition(Pos: Integer);
 
   public
     property Size: Integer read GetSize;
@@ -74,14 +75,14 @@ type
     function ReadLnWideString: WideString;
     function ReadWideString: WideString;
 
-    procedure WriteLine (const S: AnsiString);
-    procedure WriteChar (Ch: Char);
-    procedure WriteStr (const S: AnsiString);
+    procedure WriteLine(const S: AnsiString);
+    procedure WriteChar(Ch: Char);
+    procedure WriteStr(const S: AnsiString);
 
     {
       Does not reset the position of AnStream
     }
-    constructor Create (AnStream: TStream; DeleteInputStream: Boolean= False);
+    constructor Create(AnStream: TStream; DeleteInputStream: Boolean =  False);
     destructor Destroy; override;
 
   end;
@@ -89,7 +90,7 @@ type
 
   { TMyBinStream }
 
-  TMyBinStream= class (TObject)
+  TMyBinStream =  class(TObject)
   private
     FDeleteInputStream: Boolean;
     FTargerStream: TStream;
@@ -102,11 +103,11 @@ type
     function ReadByte: Byte;
     function ReadStr: AnsiString;
 
-    procedure WriteChar (const Ch: Char);
-    procedure WriteInt (const n: Integer);
-    procedure WriteStr (const S: AnsiString);
+    procedure WriteChar(const Ch: Char);
+    procedure WriteInt(const n: Integer);
+    procedure WriteStr(const S: AnsiString);
 
-    constructor Create (AnStream: TStream; DeleteInputStream: Boolean= False);
+    constructor Create(AnStream: TStream; DeleteInputStream: Boolean =  False);
     destructor Destroy; override;
 
   end;
@@ -115,15 +116,15 @@ type
 
 implementation
 uses
-  WideStringUnit;
+  WideStringUnit, StringUnit;
 
 function ReadFile(aFilename: AnsiString): AnsiString;
 var
   Stream: TFileStream;
 
 begin
-  Stream := TFileStream.Create(aFilename, fmOpenRead);
-  Stream.Position := 0;
+  Stream  := TFileStream.Create(aFilename, fmOpenRead);
+  Stream.Position  := 0;
 
   SetLength(Result, Stream.Size) ;
 
@@ -136,31 +137,31 @@ end;
 
 function TMyTextStream.GetPosition: Integer;
 begin
-  Result:= FTargerStream.Position;
+  Result := FTargerStream.Position;
 
 end;
 
 function TMyTextStream.GetEoStream: Boolean;
 begin
-  Exit (Size<= Position);
+  Exit(Size <=  Position);
 
 end;
 
 function TMyTextStream.GetSize: Integer;
 begin
-  Result:= FTargerStream.Size;
+  Result := FTargerStream.Size;
 
 end;
 
-procedure TMyTextStream.SetPosition (Pos: Integer);
+procedure TMyTextStream.SetPosition(Pos: Integer);
 begin
-  FTargerStream.Position:= Pos;
+  FTargerStream.Position := Pos;
 
 end;
 
 function TMyTextStream.ReadCh: Char;
 begin
-  FTargerStream.Read (Result, 1);
+  FTargerStream.Read(Result, 1);
   
 end;
 
@@ -169,125 +170,146 @@ var
   Ch: Char;
 
 begin
-  Result:= '';
+  Result := '';
   
   while Position< Size do
   begin
-    Ch:= ReadCh;
-    if (Ch= #10) then
+    Ch := ReadCh;
+    if(Ch =  #10) then
       Break;
-    Result:= Result+ Ch;
+    Result := Result+ Ch;
 
   end;
 
-  if Result= '' then
+  if Result =  '' then
     Exit;
 
-  if Result [Length (Result)]= #13 then
-    Delete (Result, Length (Result), 1);
+  if Result [Length(Result)] =  #13 then
+    Delete(Result, Length(Result), 1);
 
 end;
 
 function TMyTextStream.ReadInteger: Integer;
 const
-  IntDigitChar: set of Char= ['0'..'9'];
+  IntDigitChar: set of Char =  ['0'..'9'];
 
 var
   Ch, Sign: Char;
 
 begin
-  Result:= 0;
+  Result := 0;
 
-  Ch:= ReadCh;
-  while (Ch in SpaceChars) and (Position< Size) do
-    Ch:= ReadCh;
+  Ch := ReadCh;
+  while(Ch in SpaceChars) and(Position< Size) do
+    Ch := ReadCh;
   if Ch in SpaceChars then
     Exit;
 
-  Sign:= '+';
+  Sign := '+';
   if Ch in ['+', '-'] then
   begin
-    Sign:= Ch;
-    Ch:= ReadCh;
+    Sign := Ch;
+    Ch := ReadCh;
 
   end;
 
-  while (Ch in IntDigitChar) and (Position< Size) do
+  while(Ch in IntDigitChar) and(Position< Size) do
   begin
-    Result:= 10* Result+ Ord (Ch)- 48;
-    Ch:= ReadCh;
+    Result := 10* Result+ Ord(Ch)- 48;
+    Ch := ReadCh;
 
   end;
 
-  if not (Ch in IntDigitChar) then
-    SetPosition (Position- 1);
+  if not(Ch in IntDigitChar) then
+    SetPosition(Position- 1);
 
-  if Sign= '-' then
-    Result*= -1;
+  if Sign = '-' then
+    Result *=  -1;
 
 end;
 
-function TMyTextStream.ReadWideChar: widechar;
+function TMyTextStream.ReadAll: AnsiString;
+var
+  Lines: TStringList;
+  S: AnsiString;
+
+begin
+  Lines := TStringList.Create;
+
+  TargetStream.Position := 0;
+  while TargetStream.Position < TargetStream.Size do
+  begin
+    S := ReadLine;
+    Lines.Add(S);
+
+  end;
+
+  Result := JoinStrings(Lines, sLineBreak);
+  Lines.Free;
+
+end;
+
+function TMyTextStream.ReadWideChar: WideChar;
 var
   c1, c2, c3, c4: Char;
   b1, b2, b3, b4: Byte;
   Value: Integer;
 
 begin
-  if FTargerStream.Size<= FTargerStream.Position then
-    raise EEoStream.Create ('');
+  if FTargerStream.Size <=  FTargerStream.Position then
+    raise EEoStream.Create('');
 
-  FTargerStream.Read (c1, 1);
-  b1:= Ord (c1);
+  FTargerStream.Read(c1, 1);
+  b1 := Ord(c1);
 
-  if b1 and 128= 0 then
-    Result:= WideChar (b1)
-  else if b1 and 32= 0 then
+  if b1 and 128 =  0 then
+    Result := WideChar(b1)
+  else if b1 and 32 =  0 then
   begin
-    FTargerStream.Read (c2, 1);
-    b2:= Ord (c2);
-    b2:= b2 xor 128;
-    b1:= b1 xor (128+ 64);
-    Value:= b2+ b1 shl 6;
-    Result:= WideChar (Value);
+    FTargerStream.Read(c2, 1);
+    b2 := Ord(c2);
+    b2 := b2 xor 128;
+    b1 := b1 xor(128+ 64);
+    Value := b2+ b1 shl 6;
+    Result := WideChar(Value);
 
   end
-  else if b1 and 16= 0 then
+  else if b1 and 16 =  0 then
   begin
-    FTargerStream.Read (c2, 1);
+    FTargerStream.Read(c2, 1);
 
-    b2:= Ord (c2);
-    FTargerStream.Read (c3, 1);
+    b2 := Ord(c2);
+    FTargerStream.Read(c3, 1);
 
-    b3:= Ord (c3);
-    b3:= b3 xor 128;
-    b2:= b2 xor 128;
-    b1:= b1 xor (128+ 64+ 32);
-    Value:= b3+ b2 shl 6+ b1 shl 12;
-    Result:= WideChar (Value);
+    b3 := Ord(c3);
+    b3 := b3 xor 128;
+    b2 := b2 xor 128;
+    b1 := b1 xor(128+ 64+ 32);
+    Value := b3+ b2 shl 6+ b1 shl 12;
+    Result := WideChar(Value);
 
   end
-  else if b1 and 8= 0 then
+  else if b1 and 8 =  0 then
   begin
-    FTargerStream.Read (c2, 1);
+    FTargerStream.Read(c2, 1);
 
-    b2:= Ord (c2);
-    FTargerStream.Read (c3, 1);
+    b2 := Ord(c2);
+    FTargerStream.Read(c3, 1);
 
-    b3:= Ord (c3);
-    FTargerStream.Read (c4, 1);
+    b3 := Ord(c3);
+    FTargerStream.Read(c4, 1);
 
-    b4:= Ord (c4);
-    b4:= b4 xor 128;
-    b3:= b3 xor 128;
-    b2:= b2 xor 128;
-    b1:= b1 xor (128+ 64+ 32+ 16);
-    Value:= b4+ b3 shl 6+ b2 shl 12+ (b1 shl 18);
-    Result:= WideChar (Value);
+    b4 := Ord(c4);
+    b4 := b4 xor 128;
+    b3 := b3 xor 128;
+    b2 := b2 xor 128;
+    b1 := b1 xor(128+ 64+ 32+ 16);
+    Value := b4+ b3 shl 6+ b2 shl 12+(b1 shl 18);
+    Result := WideChar(Value);
 
   end
   else
-    Result:= WideChar (' ');
+    Result := WideChar(' ');
 
 end;
 
@@ -296,22 +318,22 @@ var
   Ch: WideChar;
 
 begin
-  Result:= '';
+  Result := '';
 
   while Position< Size do
   begin
-    Ch:= ReadWideChar;
-    if (Ch= #10) then
+    Ch := ReadWideChar;
+    if(Ch =  #10) then
       Break;
-    Result:= Result+ Ch;
+    Result := Result+ Ch;
 
   end;
 
-  if Result= '' then
+  if Result =  '' then
     Exit;
 
-  if Result [Length (Result)]= #13 then
-    WideStrDelete (Result, Length (Result), 1);
+  if Result [Length(Result)] =  #13 then
+    WideStrDelete(Result, Length(Result), 1);
 
 end;
 
@@ -320,37 +342,37 @@ var
   Ch: WideChar;
 
 begin
-  Result:= '';
+  Result := '';
 
   while Position< Size do
   begin
-    Ch:= ReadWideChar;
+    Ch := ReadWideChar;
     if Ch in [#10, ' '] then
       Break;
-    Result:= Result+ Ch;
+    Result := Result+ Ch;
 
   end;
 
-  if Result= '' then
+  if Result =  '' then
     Exit;
 
-  if Result [Length (Result)]= #13 then
-    WideStrDelete (Result, Length (Result), 1);
+  if Result [Length(Result)] =  #13 then
+    WideStrDelete(Result, Length(Result), 1);
 
 end;
 
-procedure TMyTextStream.WriteStr (const S: AnsiString);
+procedure TMyTextStream.WriteStr(const S: AnsiString);
 begin
-  FTargerStream.Write (Pointer (@S[1])^, Length (S));
+  FTargerStream.Write(Pointer(@S[1])^, Length(S));
 
 end;
 
-constructor TMyTextStream.Create (AnStream: TStream; DeleteInputStream: Boolean);
+constructor TMyTextStream.Create(AnStream: TStream; DeleteInputStream: Boolean);
 begin
   inherited Create;
 
-  FTargerStream:= AnStream;
-  FDeleteInputStream:= DeleteInputStream;;
+  FTargerStream := AnStream;
+  FDeleteInputStream := DeleteInputStream;;
 
 end;
 
@@ -363,13 +385,13 @@ begin
 
 end;
 
-procedure TMyTextStream.WriteChar (Ch: Char);
+procedure TMyTextStream.WriteChar(Ch: Char);
 begin
-  FTargerStream.Write (Ch, 1);
+  FTargerStream.Write(Ch, 1);
   
 end;
 
-procedure TMyTextStream.WriteLine (const S: AnsiString);
+procedure TMyTextStream.WriteLine(const S: AnsiString);
 begin
   if Length(S) <> 0 then
     FTargerStream.WriteBuffer(S[1], Length(S));
@@ -413,7 +435,7 @@ end;
 
 function TMyBinStream.ReadStr: AnsiString;
 begin
-  Result:= '';
+  Result := '';
   raise Exception.Create('Not Implemented Yet!');
 
 end;
@@ -441,7 +463,7 @@ constructor TMyBinStream.Create(AnStream: TStream; DeleteInputStream: Boolean);
 begin
   inherited Create;
 
-  FTargerStream:= AnStream;
+  FTargerStream := AnStream;
   FDeleteInputStream := DeleteInputStream;
 
 end;
