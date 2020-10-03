@@ -136,7 +136,7 @@ const
   begin
     ArgType := '';
     for ArgInfo in ValidArgumentsInfo do
-      if GetNameFromArgInfo(ArgInfo) = ArgName then
+      if UpperCase(GetNameFromArgInfo(ArgInfo)) = UpperCase(ArgName) then
       begin
         ArgType := Copy(ArgInfo, Pos(':', ArgInfo) + 1, Length(ArgInfo));
         Break;

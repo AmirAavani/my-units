@@ -10,7 +10,7 @@ uses
 type
   TTask = class;
   TDoneTaskQueue = specialize TThreadSafeQueue<PInteger>;
-  TStepHandler = function (Task: TTask; Args: array of Pointer): Boolean;
+  TStepHandler = function (Task: TTask): Boolean;
 
   { TPipeline }
 
@@ -56,10 +56,13 @@ type
 
   TTask = class(TObject)
   private
-    ID: Integer;
-    Step: TPipeline.TStepInfo;
+    FID: Integer;
+    FStep: TPipeline.TStepInfo;
 
   public
+    property ID: Integer read FID;
+    property StepInfo: TPipeline.TStepInfo read FStep;
+
     constructor Create(_ID: Integer; _Step: TPipeline.TStepInfo);
 
   end;
@@ -74,8 +77,8 @@ constructor TTask.Create(_ID: Integer; _Step: TPipeline.TStepInfo);
 begin
   inherited Create;
 
-  ID := _ID;
-  Step := _Step;
+  FID := _ID;
+  FStep := _Step;
 
 
 end;
@@ -107,10 +110,10 @@ begin
   Task := TTask(Args[0]);
   Queue := TDoneTaskQueue(Args[1]);
 
-  Task.Step.StepHandler(Task, Args);
+  Result := Task.StepInfo.StepHandler(Task);
 
+  DebugLn(Format('%d: Inserting %d into Queue', [ThreadID, Task.ID]));
   Queue.Insert(PInteger(@Task.ID));
-
 
 end;
 
@@ -121,10 +124,13 @@ var
   i: Integer;
   Queue: TDoneTaskQueue;
   TaskID: PInteger;
-  Args: array of Pointer;
+  Args: TArrayOfPointer;
+  Status: array of Boolean;
+  Thread: TThread;
 
 begin
   Queue := TDoneTaskQueue.Create;
+  SetLength(Status, Step.NumTasks + 1);
 
   for i := 1 to Step.NumTasks do
   begin
@@ -132,16 +138,17 @@ begin
     Args[0] := TTask.Create(i, Step);
     Args[1] := Queue;
 
-    RunInThread(@RunHandler, Args);
+    RunInThread(@RunHandler, Args, @Status[i]);
 
   end;
   for i := 1 to Step.NumTasks do
   begin
-    New(TaskID);
+    DebugLn(Format('%d: Task %d?', [ThreadID, i]));
+    DebugLn(Format('%d: Before delete', [ThreadID]));
     Queue.Delete(TaskID);
 
-    DebugLn(Format('Task %d is done', [TaskID^]));
-    Dispose(TaskID);
+    DebugLn(Format('%d: Task %d is Done with Status: %s', [ThreadID, TaskID^,
+      BoolToStr(Status[TaskID^], 'True', 'False')]));
   end;
 
   Queue.Free;
@@ -155,6 +162,7 @@ begin
 
   FName := _Name;
   Steps := TStepInfoList.Create;
+  Steps.Add(nil);
 
 end;
 
@@ -183,7 +191,11 @@ end;
 
 function TPipeline.RunStep(StepIndex: Integer): Boolean;
 begin
+  DebugLn(Format('%d StepIndex: %d', [ThreadID, StepIndex]));
+
   Result := RunStep(Steps[StepIndex]);
+
+  DebugLn(Format('%d Result: %s', [ThreadID, BoolToStr(Result, 'True', 'False')]));
 
 end;
 
@@ -192,7 +204,7 @@ var
   Step: Integer;
 
 begin
-  for Step := StepIndex to Steps.Count do
+  for Step := StepIndex to Steps.Count - 1 do
     if not RunStep(Step) then
       Exit(False);
 

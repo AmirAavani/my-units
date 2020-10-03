@@ -206,13 +206,14 @@ end;
 
 procedure TThreadSafeQueue.DoInsert(Entry: T);
 begin
-  WriteLn('Who am I?');
-  WriteLn('M.Lock!');
+  DebugLn(Format('%d: Who am I?', [ThreadID]));
+  DebugLn(Format('%d: DoInsert M.Lock!', [ThreadID]));
   Mutex.Lock;
-  WriteLn('M.Lock passed!');
+  DebugLn(Format('%d: M.Lock passed!', [ThreadID]));
 
   FData.Add(Entry);
 
+  DebugLn(Format('%d: Sending Signal!', [ThreadID]));
   RTLeventSetEvent(NonEmptyBlockEvent);
   Mutex.Unlock;
 
@@ -221,28 +222,29 @@ end;
 procedure TThreadSafeQueue.DoDelete(var LastElement: T);
 begin
    LastElement := nil;
-   WriteLn('Who am I?');
+   DebugLn(Format('%d: Who am I?', [ThreadID]));
    while LastElement = nil do
    begin
-     WriteLn('Waiting for Signal!');
+     DebugLn(Format('%d: Waiting for Signal!', [ThreadID]));
      RTLeventWaitFor(NonEmptyBlockEvent);
-     WriteLn('Signal Recieved!');
+     DebugLn(Format('%d: Signal Recieved!', [ThreadID]));
 
-     WriteLn('M.Lock!');
+     DebugLn(Format('%d: Do.Delete M.Lock!', [ThreadID]));
      Mutex.Lock;
-     WriteLn('M.Lock passed!');
-     WriteLn('FData.Count = ' + IntToStr(FData.Count));
+     DebugLn(Format('%d: M.Lock passed!', [ThreadID]));
+     DebugLn(Format('%d: FData.Count = %d ', [ThreadID, FData.Count]));
 
      if 0 < FData.Count then
      begin
        LastElement := FData.Last;
        FData.Delete(FData.Count - 1);
+       DebugLn(Format('%d: FData.Count = %d ', [ThreadID, FData.Count]));
        Mutex.Unlock;
 
        Break;
      end;
 
-     WriteLn('M.UnLock');
+     DebugLn(Format('%d: M.UnLock', [ThreadID]));
      Mutex.Unlock;
    end;
 
@@ -267,6 +269,7 @@ begin
 
   FData := TDataList.Create;
   NonEmptyBlockEvent := RTLEventCreate;
+  Mutex := TMutex.Create;
 
 end;
 

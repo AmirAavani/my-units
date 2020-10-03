@@ -35,6 +35,7 @@ type
     function ReadLine: AnsiString;
     function ReadInteger: Integer;
     function ReadAll: AnsiString;
+    function ReadTheRest: AnsiString;
 
     function ReadWideChar: WideChar;
     function ReadLnWideString: WideString;
@@ -116,7 +117,7 @@ type
 
 implementation
 uses
-  WideStringUnit, StringUnit;
+  WideStringUnit, StringUnit, ALoggerUnit;
 
 function ReadFile(aFilename: AnsiString): AnsiString;
 var
@@ -229,6 +230,15 @@ begin
 end;
 
 function TMyTextStream.ReadAll: AnsiString;
+begin
+  TargetStream.Position := 0;
+  Result := '';
+  SetLength(Result, TargetStream.Size);
+  TargetStream.Read(Result[1], TargetStream.Size);
+
+end;
+
+function TMyTextStream.ReadTheRest: AnsiString;
 var
   Lines: TStringList;
   S: AnsiString;
@@ -236,11 +246,15 @@ var
 begin
   Lines := TStringList.Create;
 
-  TargetStream.Position := 0;
   while TargetStream.Position < TargetStream.Size do
   begin
     S := ReadLine;
     Lines.Add(S);
+    if Lines.Count mod 10000 = 0 then
+    begin
+      DebugLn(Format('StreamUnit %d: %d', [Lines.Count, (100 * TargetStream.Position) div TargetStream.Size]));
+      Break;
+    end;
 
   end;
 

@@ -18,6 +18,8 @@ type
     procedure Lock;
     procedure Unlock;
 
+    constructor Create;
+    destructor Destroy; override;
   end;
 
   { TSemaphore }
@@ -120,6 +122,22 @@ end;
 procedure TMutex.Unlock;
 begin
   LeaveCriticalSection(CS);
+
+end;
+
+constructor TMutex.Create;
+begin
+  inherited;
+
+  InitCriticalSection(CS);
+
+end;
+
+destructor TMutex.Destroy;
+begin
+  DoneCriticalSection(CS);
+
+  inherited Destroy;
 end;
 
 end.

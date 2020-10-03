@@ -25,7 +25,7 @@ procedure FatalLn(Msg: AnsiString);
 implementation
 
 uses
-  ParameterManagerUnit, StringUnit, WideStringUnit, lnfodwrf;
+  ParameterManagerUnit, StringUnit, WideStringUnit, SyncUnit, lnfodwrf;
 
 procedure GetParentLineInfo(var Filename: AnsiString; var LineNumber: Integer);
 var
@@ -38,7 +38,11 @@ var
   Parts: TStringList;
 
 begin
+  Filename:= 'UNKOWN';
+  LineNumber := -1;
+
   bp := get_frame;
+
   // This trick skip SendCallstack item
   // bp:= get_caller_frame(get_frame);
   try
@@ -62,22 +66,34 @@ begin
    end;
 
    Parts := Split(Source, '/');
-   Filename := Parts[Parts.Count - 1];
+   if Parts.Count <> 0 then
+     Filename := Parts[Parts.Count - 1];
    Parts.Free;
 
 end;
 
+var
+  Mutex: TMutex;
+
 procedure DebugLn(Msg: AnsiString);
+{
 var
   Filename: AnsiString;
   LineNumber: Integer;
+}
 
 begin
   if RunTimeParameterManager.ValueByName['--Debug'].AsBooleanOrDefault(True) then
   begin
+    Mutex.Lock;
+
+    System.Writeln(Format('%s] %s', [DateTimeToStr(Now), Msg]));
+{
     GetParentLineInfo(Filename, LineNumber);
     System.Writeln(Format('%s-%s:%d] %s', [DateTimeToStr(Now), Filename, LineNumber, Msg]));
-    Flush(Output);
+}
+     Flush(Output);
+     Mutex.Unlock;
 
   end;
 end;
@@ -88,6 +104,8 @@ var
   LineNumber: Integer;
 
 begin
+  Mutex.Lock;
+
   GetParentLineInfo(Filename, LineNumber);
   System.Writeln(Format('%s-%s:%d] %s', [DateTimeToStr(Now), Filename, LineNumber, Msg]));
   Halt(1);
@@ -106,6 +124,12 @@ destructor TALogger.Destroy;
 begin
   inherited Destroy;
 end;
+
+initialization
+  Mutex := TMutex.Create;
+
+finalization
+  Mutex.Free;
 
 end.
 
