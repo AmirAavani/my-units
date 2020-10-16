@@ -238,7 +238,14 @@ begin
 end;
 
 destructor TRunTimeParameterManager.Destroy;
+var
+  i: Integer;
+
 begin
+  for i := 0 to Values.Count - 1 do
+    Values.Data[i].Free;
+
+  Values.Free;
   inherited Destroy;
 
 end;

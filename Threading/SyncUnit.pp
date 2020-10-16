@@ -75,6 +75,7 @@ destructor TSemaphore.Destroy;
 begin
   if sem_destroy(Sem) <> 0 then
     WriteLn(Format('Failed in sem_destroy, (err: %d)', [fpgeterrno]));
+  Dispose(Sem);
 
   inherited Destroy;
 end;

@@ -5,7 +5,7 @@ unit PipelineUnit;
 interface
 
 uses
-  QueueUnit, TaskUnit, fgl, Classes, SysUtils;
+  ThreadSafeQueueUnit, TaskUnit, fgl, Classes, SysUtils;
 
 type
   TTask = class;
@@ -57,10 +57,12 @@ type
   TTask = class(TObject)
   private
     FID: Integer;
+    FCount: Integer;
     FStep: TPipeline.TStepInfo;
 
   public
     property ID: Integer read FID;
+    property Count: Integer read FCount;
     property StepInfo: TPipeline.TStepInfo read FStep;
 
     constructor Create(_ID: Integer; _Step: TPipeline.TStepInfo);
@@ -108,6 +110,7 @@ var
 
 begin
   Task := TTask(Args[0]);
+  DebugLn(Format('Running Task %d', [Task.ID]));
   Queue := TDoneTaskQueue(Args[1]);
 
   Result := Task.StepInfo.StepHandler(Task);
@@ -120,37 +123,47 @@ end;
 { TPipeline }
 
 function TPipeline.RunStep(Step: TStepInfo): Boolean;
+type
+  TTasks = specialize TFPGList<TTask>;
+
 var
   i: Integer;
   Queue: TDoneTaskQueue;
   TaskID: PInteger;
+  AllTasks: TTasks;
   Args: TArrayOfPointer;
   Status: array of Boolean;
   Thread: TThread;
 
 begin
   Queue := TDoneTaskQueue.Create;
+  AllTasks := TTasks.Create;
   SetLength(Status, Step.NumTasks + 1);
 
   for i := 1 to Step.NumTasks do
   begin
     SetLength(Args, 2);
-    Args[0] := TTask.Create(i, Step);
+    AllTasks.Add(TTask.Create(i, Step));
+    Args[0] := AllTasks.Last;
     Args[1] := Queue;
 
     RunInThread(@RunHandler, Args, @Status[i]);
 
   end;
+
   for i := 1 to Step.NumTasks do
   begin
-    DebugLn(Format('%d: Task %d?', [ThreadID, i]));
-    DebugLn(Format('%d: Before delete', [ThreadID]));
+    DebugLn(Format('Task %d?', [i]));
+    DebugLn(Format('Before Delete', []));
     Queue.Delete(TaskID);
 
-    DebugLn(Format('%d: Task %d is Done with Status: %s', [ThreadID, TaskID^,
+    DebugLn(Format('%d Task %d is Done with Status: %s', [i, TaskID^,
       BoolToStr(Status[TaskID^], 'True', 'False')]));
   end;
 
+  for i := 0 to AllTasks.Count - 1 do
+    AllTasks[i].Free;
+  AllTasks.Free;
   Queue.Free;
 
   Result := True;
@@ -173,6 +186,8 @@ var
 begin
   for Step in Steps do
     Step.Free;
+
+  Steps.Free;
 
   inherited Destroy;
 end;
