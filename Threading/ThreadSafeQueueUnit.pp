@@ -90,6 +90,8 @@ begin
    while LastElement = nil do
    begin
      DebugLn(Format('Count: %d', [Semaphore.Value]));
+     DebugLn(Format('Before Semaphore.Dec', []));
+
      Semaphore.Dec;
      DebugLn(Format('Count: %d', [Semaphore.Value]));
 
@@ -133,21 +135,15 @@ constructor TThreadSafeQueue.Create;
 begin
   inherited Create;
 
-  DebugLn('FData');
   FData := TDataList.Create;
-  DebugLn('Mutex');
   Mutex := TMutex.Create;
-  DebugLn('Semaphore');
   Semaphore := TSemaphore.Create(0);
 end;
 
 destructor TThreadSafeQueue.Destroy;
 begin
-  DebugLn('Mutex');
   Mutex.Free;
-  DebugLn('FData');
   FData.Free;
-  DebugLn('Semaphore');
   Semaphore.Free;
 
   inherited Destroy;

@@ -1,5 +1,4 @@
 unit ALoggerUnit;
-
 {$mode objfpc}{$H+}
 
 interface
@@ -53,6 +52,7 @@ begin
     Mutex4LineInfo.Unlock();
     Exit;
   end;
+
   CallerAddress := get_caller_addr(bp);
   CallerFrame := get_caller_frame(bp);
   if (CallerAddress = nil) or (CallerFrame = nil) then
@@ -75,14 +75,17 @@ var
   LineNumber: Integer;
 
 begin
-   // if Verbosity <= RunTimeParameterManager.ValueByName['--Debug'].AsIntegerOrDefault(-1)  then
+   if Verbosity <= RunTimeParameterManager.ValueByName['--Debug'].AsIntegerOrDefault(-1)  then
   begin
     Filename := 'UNKNOWN';
     LineNumber := -1;
     GetParentLineInfo(Filename, LineNumber, 1);
-    System.Writeln(Format('%d-%s-%s:%d] %s', [ThreadID, DateTimeToStr(Now), Filename, LineNumber, Msg]));
+    if (Filename <> 'UNKNOWN') and (LineNumber <> -1) then
+      System.Writeln(Format('%d-%s-%s:%d] %s', [ThreadID, DateTimeToStr(Now), Filename, LineNumber, Msg]))
+    else
+      System.Writeln(Format('%d-%s] %s', [ThreadID, DateTimeToStr(Now), Msg]));
 
-    Flush(Output);
+      Flush(Output);
 
   end;
 end;
@@ -105,6 +108,8 @@ var
 begin
   if RunTimeParameterManager.ValueByName['--Debug'].AsIntegerOrDefault(-1) < Verbosity then
     Exit;
+  Filename:= 'UNKNOWN';
+  LineNumber := -1;
   GetParentLineInfo(Filename, LineNumber, 1);
   LineInfo := Format('%s:%d', [Filename, LineNumber]);
 
@@ -135,8 +140,15 @@ var
   LineNumber: Integer;
 
 begin
+  Filename := 'UNKNOWN';
+  LineNumber := -1;
   GetParentLineInfo(Filename, LineNumber, 1);
-  System.Writeln(Format('%s-%s:%d] %s', [DateTimeToStr(Now), Filename, LineNumber, Msg]));
+  if (Filename <> 'UNKNOWN') and (LineNumber <> -1) then
+    System.Writeln(Format('%d-%s-%s:%d] %s', [ThreadID, DateTimeToStr(Now), Filename, LineNumber, Msg]))
+  else
+    System.Writeln(Format('%d-%s] %s', [ThreadID, DateTimeToStr(Now), Msg]));
+
+  Flush(Output);
   Halt(1);
 
 end;

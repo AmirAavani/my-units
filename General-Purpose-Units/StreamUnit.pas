@@ -80,9 +80,9 @@ type
     procedure WriteChar(Ch: Char);
     procedure WriteStr(const S: AnsiString);
 
-    {
+    /*
       Does not reset the position of AnStream
-    }
+    */
     constructor Create(AnStream: TStream; DeleteInputStream: Boolean =  False);
     destructor Destroy; override;
 

@@ -55,7 +55,7 @@ end;
 procedure TSemaphore.Wait;
 var
   aWait: Boolean;
-  aEvent: PRTLEvent;
+  aEvent: RTLEvent;
 
 begin
   EnterCriticalSection(FLock);
@@ -69,6 +69,7 @@ begin
     end
     else
     begin
+      New(aEvent);
       aEvent := RTLEventCreate;
       FBlockQueue.Push(aEvent);
       aWait := True;

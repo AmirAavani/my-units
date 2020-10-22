@@ -40,7 +40,7 @@ var
 begin
   Thread := TRunnerThread.Create(F, Args, OutputResult);
   Thread.FreeOnTerminate := True;
-  Thread.Resume;
+  Thread.Suspended := False;
 
 end;
 

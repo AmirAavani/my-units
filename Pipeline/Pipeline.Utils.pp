@@ -174,7 +174,7 @@ var
 begin
   Stream := TMyBinStream.Create(TFileStream.Create(OutputFileName, fmCreate), true);
 
-  SaveToStream(Stream);
+  Result := SaveToStream(Stream);
 
   Stream.Free;
 end;
