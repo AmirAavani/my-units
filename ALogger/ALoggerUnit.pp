@@ -75,19 +75,19 @@ var
   LineNumber: Integer;
 
 begin
-   if Verbosity <= RunTimeParameterManager.ValueByName['--Debug'].AsIntegerOrDefault(-1)  then
-  begin
-    Filename := 'UNKNOWN';
-    LineNumber := -1;
-    GetParentLineInfo(Filename, LineNumber, 1);
-    if (Filename <> 'UNKNOWN') and (LineNumber <> -1) then
-      System.Writeln(Format('%d-%s-%s:%d] %s', [ThreadID, DateTimeToStr(Now), Filename, LineNumber, Msg]))
-    else
-      System.Writeln(Format('%d-%s] %s', [ThreadID, DateTimeToStr(Now), Msg]));
+   if RunTimeParameterManager.ValueByName['--Debug'].AsIntegerOrDefault(-1) < Verbosity then
+     Exit;
 
-      Flush(Output);
+   Filename := 'UNKNOWN';
+  LineNumber := -1;
+  GetParentLineInfo(Filename, LineNumber, 1);
+  if (Filename <> 'UNKNOWN') and (LineNumber <> -1) then
+    System.Writeln(Format('%d-%s-%s:%d] %s', [ThreadID, DateTimeToStr(Now), Filename, LineNumber, Msg]))
+  else
+    System.Writeln(Format('%d-%s] %s', [ThreadID, DateTimeToStr(Now), Msg]));
 
-  end;
+  Flush(Output);
+
 end;
 
 type
