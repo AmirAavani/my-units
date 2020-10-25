@@ -5,7 +5,7 @@ unit BaseDataModuleUnit;
 interface
 
 uses
-  DBConnectorUnit, QueryResponeUnit, ValueUnit, Classes, SysUtils, fgl;
+  DBConnectorUnit, QueryResponeUnit, ValueUnit, DataModuleUtilUnit, Classes, SysUtils, fgl;
 
 type
   { EInvalidColumnName }
@@ -111,7 +111,7 @@ type
     // Returns all the elements in aResponse.
     function ExtractFromResponse(aResponse: TQueryResponse; MaxReturnedResult: Integer = -1): TDataList; virtual;
     // Retruns all Data satisfying the query.
-    function GetAllWhere(WhereClause: AnsiString; MaxReturnedResult: Integer = -1): TDataList; virtual;
+    function GetAllWhere(WhereClause: AnsiString; Option: TGetWhereAllOptions): TDataList; virtual;
 
   end;
 
@@ -263,17 +263,28 @@ end;
 { TBaseDataModuleManager }
 
 function TBaseDataModuleManager.GetAllWhere(WhereClause: AnsiString;
-  MaxReturnedResult: Integer): TDataList;
+  Option: TGetWhereAllOptions): TDataList;
 var
   Query: AnsiString;
   Response: TQueryResponse;
+  i: Integer;
 
 begin
   Query := Format('SELECT * FROM %s WHERE %s', [TData.TableName, WhereClause]);
+  if Length(Option.OrderByColumns) <> 0 then
+    Query += ' ORDER BY ';
+  for i := 0 to High(Option.OrderByColumns) do
+  begin
+    Query += Option.OrderByColumns[i];
+    if (i < Length(Option.OrderDesc)) and (Option.OrderDesc[i]) then
+      Query += ' DESC ';
+
+  end;
+
   DebugLn(Format('Q: %s', [Query]));
   Response := DB.RunQuery(Query);
 
-  Result := ExtractFromResponse(Response, MaxReturnedResult);
+  Result := ExtractFromResponse(Response, Option.MaxCount);
 
   Response.Free;
 

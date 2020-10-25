@@ -64,7 +64,7 @@ begin
   Parts := Split(Source, '/');
    if Parts.Count <> 0 then
      Filename := Parts[Parts.Count - 1];
-    Parts.Free;
+   Parts.Free;
   Mutex4LineInfo.Unlock();
 
 end;
