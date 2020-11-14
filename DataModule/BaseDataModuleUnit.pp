@@ -111,7 +111,7 @@ type
     // Returns all the elements in aResponse.
     function ExtractFromResponse(aResponse: TQueryResponse; MaxReturnedResult: Integer = -1): TDataList; virtual;
     // Retruns all Data satisfying the query.
-    function GetAllWhere(WhereClause: AnsiString; Option: TGetWhereAllOptions): TDataList; virtual;
+    function GetAllWhere(WhereClause: AnsiString; Option: TGetWhereAllOptions = nil): TDataList; virtual;
 
   end;
 
@@ -271,21 +271,35 @@ var
 
 begin
   Query := Format('SELECT * FROM %s WHERE %s', [TData.TableName, WhereClause]);
-  if Length(Option.OrderByColumns) <> 0 then
-    Query += ' ORDER BY ';
-  for i := 0 to High(Option.OrderByColumns) do
+  if Option <> nil then
   begin
-    Query += Option.OrderByColumns[i];
-    if (i < Length(Option.OrderDesc)) and (Option.OrderDesc[i]) then
-      Query += ' DESC ';
+    if Option.OrderByColumns <> nil then
+    begin
+      if Option.OrderByColumns.Count <> 0 then
+        Query += ' ORDER BY ';
+
+      for i := 0 to Option.OrderByColumns.Count - 1 do
+      begin
+        Query += Option.OrderByColumns[i];
+        if Option.OrderDesc[i] then
+          Query += ' DESC ';
+
+      end;
+    end;
+
+    if (Option.StartLimit <> -1) and (Option.CountLimit <> -1) then
+      Query += Format(' LIMIT %d, %d', [Option.StartLimit, Option.CountLimit])
+    else if Option.CountLimit <> -1 then
+      Query += Format(' LIMIT %d', [Option.CountLimit])
 
   end;
 
   DebugLn(Format('Q: %s', [Query]));
   Response := DB.RunQuery(Query);
 
-  Result := ExtractFromResponse(Response, Option.MaxCount);
+  Result := ExtractFromResponse(Response, -1);
 
+  Option.Free;
   Response.Free;
 
 end;
