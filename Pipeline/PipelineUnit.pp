@@ -183,6 +183,7 @@ begin
     AllTasks[i].Free;
   AllTasks.Free;
   Queue.Free;
+  wg.Free;
 
   Result := True;
 end;

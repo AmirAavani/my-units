@@ -81,6 +81,7 @@ end;
 destructor TWaitGroup.Destroy;
 begin
   Mutex.Free;
+  BlockQueue.Free;
 
   inherited Destroy;
 end;
