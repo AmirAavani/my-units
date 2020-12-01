@@ -80,9 +80,9 @@ type
     procedure WriteChar(Ch: Char);
     procedure WriteStr(const S: AnsiString);
 
-    {
+    /*
       Does not reset the position of AnStream
-    }
+    */
     constructor Create(AnStream: TStream; DeleteInputStream: Boolean =  False);
     destructor Destroy; override;
 
@@ -101,11 +101,20 @@ type
 
     function ReadCh: Char;
     function ReadInt: Integer;
+    function ReadInt32: Int32;
+    function ReadInt64: Int64;
+    function ReadUInt32: UInt32;
+    function ReadUInt64: UInt64;
     function ReadByte: Byte;
     function ReadStr: AnsiString;
 
     procedure WriteChar(const Ch: Char);
     procedure WriteInt(const n: Integer);
+    procedure WriteInt32(const n: Int32);
+    procedure WriteInt64(const n: Int64);
+    // procedure WriteUInt(const n: UInteger);
+    procedure WriteUInt32(const n: uInt32);
+    procedure WriteUInt64(const n: uInt64);
     procedure WriteStr(const S: AnsiString);
 
     constructor Create(AnStream: TStream; DeleteInputStream: Boolean =  False);
@@ -429,22 +438,39 @@ begin
 end;
 
 function TMyBinStream.ReadInt: Integer;
-var
-  Data: array[0..3] of Byte;
-  i: Integer;
 begin
-  FTargerStream.ReadBuffer(Data, 4);
-  Result := 0;
-  for i := 0 to 3 do
-  begin
-    Result := Result shl 8;
-    Result := (Result or Data[i]);
-  end;
+  FTargerStream.ReadBuffer(Result, 4);
+
+end;
+
+function TMyBinStream.ReadInt32: Int32;
+begin
+  FTargerStream.ReadBuffer(Result, 4);
+
+end;
+
+function TMyBinStream.ReadInt64: Int64;
+begin
+  FTargerStream.ReadBuffer(Result, 8);
+
+end;
+
+function TMyBinStream.ReadUInt32: UInt32;
+begin
+  FTargerStream.ReadBuffer(Result, 4);
+
+end;
+
+function TMyBinStream.ReadUInt64: UInt64;
+begin
+  FTargerStream.ReadBuffer(Result, 8);
+
 end;
 
 function TMyBinStream.ReadByte: Byte;
 begin
   FTargerStream.Read(Result, 1);
+
 end;
 
 function TMyBinStream.ReadStr: AnsiString;
@@ -464,6 +490,29 @@ procedure TMyBinStream.WriteInt(const n: Integer);
 begin
   FTargerStream.Write(n, 4);
 
+end;
+
+procedure TMyBinStream.WriteInt32(const n: Int32);
+begin
+  FTargerStream.Write(n, 4);
+
+end;
+
+procedure TMyBinStream.WriteInt64(const n: Int64);
+begin
+  FTargerStream.Write(n, 8);
+
+end;
+
+procedure TMyBinStream.WriteUInt32(const n: uInt32);
+begin
+  FTargerStream.Write(n, 4);
+
+end;
+
+procedure TMyBinStream.WriteUInt64(const n: uInt64);
+begin
+  FTargerStream.Write(n, 8);
 
 end;
 

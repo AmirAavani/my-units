@@ -5,7 +5,7 @@ unit BaseDataModuleUnit;
 interface
 
 uses
-  DBConnectorUnit, QueryResponeUnit, ValueUnit, Classes, SysUtils, fgl;
+  DBConnectorUnit, QueryResponeUnit, ValueUnit, DataModuleUtilUnit, Classes, SysUtils, fgl;
 
 type
   { EInvalidColumnName }
@@ -111,7 +111,7 @@ type
     // Returns all the elements in aResponse.
     function ExtractFromResponse(aResponse: TQueryResponse; MaxReturnedResult: Integer = -1): TDataList; virtual;
     // Retruns all Data satisfying the query.
-    function GetAllWhere(WhereClause: AnsiString; MaxReturnedResult: Integer = -1): TDataList; virtual;
+    function GetAllWhere(WhereClause: AnsiString; Option: TGetWhereAllOptions = nil): TDataList; virtual;
 
   end;
 
@@ -263,18 +263,43 @@ end;
 { TBaseDataModuleManager }
 
 function TBaseDataModuleManager.GetAllWhere(WhereClause: AnsiString;
-  MaxReturnedResult: Integer): TDataList;
+  Option: TGetWhereAllOptions): TDataList;
 var
   Query: AnsiString;
   Response: TQueryResponse;
+  i: Integer;
 
 begin
   Query := Format('SELECT * FROM %s WHERE %s', [TData.TableName, WhereClause]);
+  if Option <> nil then
+  begin
+    if Option.OrderByColumns <> nil then
+    begin
+      if Option.OrderByColumns.Count <> 0 then
+        Query += ' ORDER BY ';
+
+      for i := 0 to Option.OrderByColumns.Count - 1 do
+      begin
+        Query += Option.OrderByColumns[i];
+        if Option.OrderDesc[i] then
+          Query += ' DESC ';
+
+      end;
+    end;
+
+    if (Option.StartLimit <> -1) and (Option.CountLimit <> -1) then
+      Query += Format(' LIMIT %d, %d', [Option.StartLimit, Option.CountLimit])
+    else if Option.CountLimit <> -1 then
+      Query += Format(' LIMIT %d', [Option.CountLimit])
+
+  end;
+
   DebugLn(Format('Q: %s', [Query]));
   Response := DB.RunQuery(Query);
 
-  Result := ExtractFromResponse(Response, MaxReturnedResult);
+  Result := ExtractFromResponse(Response, -1);
 
+  Option.Free;
   Response.Free;
 
 end;

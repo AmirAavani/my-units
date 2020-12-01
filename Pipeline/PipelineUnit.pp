@@ -5,7 +5,7 @@ unit PipelineUnit;
 interface
 
 uses
-  QueueUnit, TaskUnit, fgl, Classes, SysUtils;
+  ThreadSafeQueueUnit, fgl, Classes, SysUtils;
 
 type
   TTask = class;
@@ -21,10 +21,11 @@ type
     TStepInfo = class(TObject)
     private
       NumTasks: Integer;
+      FTaskID: Integer;
       StepHandler: TStepHandler;
 
     public
-      constructor Create(_NumTasks: Integer; Handler: TStepHandler);
+      constructor Create(_TaskID: Integer; _NumTasks: Integer; Handler: TStepHandler);
       destructor Destroy; override;
 
     end;
@@ -57,10 +58,12 @@ type
   TTask = class(TObject)
   private
     FID: Integer;
+    FCount: Integer;
     FStep: TPipeline.TStepInfo;
 
   public
     property ID: Integer read FID;
+    property Count: Integer read FCount;
     property StepInfo: TPipeline.TStepInfo read FStep;
 
     constructor Create(_ID: Integer; _Step: TPipeline.TStepInfo);
@@ -69,7 +72,7 @@ type
 
 implementation
 uses
-  {ThreadPoolUnit, }ALoggerUnit, RunInAThreadUnit;
+  SyncUnit, ALoggerUnit, RunInAThreadUnit, Crt;
 
 { TTask }
 
@@ -85,8 +88,8 @@ end;
 
 { TPipeline.TStepInfo }
 
-constructor TPipeline.TStepInfo.Create(_NumTasks: Integer; Handler: TStepHandler
-  );
+constructor TPipeline.TStepInfo.Create(_TaskID: Integer; _NumTasks: Integer;
+  Handler: TStepHandler);
 begin
   inherited Create;
 
@@ -105,53 +108,82 @@ function RunHandler(Args: array of Pointer): Boolean;
 var
   Task: TTask;
   Queue: TDoneTaskQueue;
+  wg: TWaitGroup;
 
 begin
   Task := TTask(Args[0]);
   Queue := TDoneTaskQueue(Args[1]);
+  wg := TWaitGroup(Args[2]);
+  DebugLn(Format('Running Task %d', [Task.ID]));
+  DebugLn(IntToStr(Task.ID));
+  DebugLn(IntToStr(Task.ID));
 
   Result := Task.StepInfo.StepHandler(Task);
 
+  DebugLn(IntToStr(Task.ID));
   DebugLn(Format('%d: Inserting %d into Queue', [ThreadID, Task.ID]));
   Queue.Insert(PInteger(@Task.ID));
 
+  wg.Done(1);
 end;
 
 { TPipeline }
 
 function TPipeline.RunStep(Step: TStepInfo): Boolean;
+type
+  TTasks = specialize TFPGList<TTask>;
+
 var
   i: Integer;
   Queue: TDoneTaskQueue;
   TaskID: PInteger;
+  AllTasks: TTasks;
   Args: TArrayOfPointer;
   Status: array of Boolean;
   Thread: TThread;
+  Wg: TWaitGroup;
 
 begin
   Queue := TDoneTaskQueue.Create;
+  AllTasks := TTasks.Create;
   SetLength(Status, Step.NumTasks + 1);
+
+  Wg := TWaitGroup.Create;
+  Wg.Add(Step.NumTasks);
 
   for i := 1 to Step.NumTasks do
   begin
-    SetLength(Args, 2);
-    Args[0] := TTask.Create(i, Step);
+    SetLength(Args, 3);
+    AllTasks.Add(TTask.Create(i, Step));
+    Args[0] := AllTasks.Last;
     Args[1] := Queue;
+    Args[2] := wg;
 
     RunInThread(@RunHandler, Args, @Status[i]);
 
   end;
+
+  DebugLn(Format('Waiting for all jobs of Task %d to Finsih', [Step.FTaskID]));
+  Wg.Wait();
+  DebugLn(Format('All are Done', [Step.FTaskID]));
+
+  DebugLn('All jobs are Running');
+
   for i := 1 to Step.NumTasks do
   begin
-    DebugLn(Format('%d: Task %d?', [ThreadID, i]));
-    DebugLn(Format('%d: Before delete', [ThreadID]));
+    DebugLn(Format('Task %d?', [i]));
+    DebugLn(Format('Before Delete', []));
     Queue.Delete(TaskID);
 
-    DebugLn(Format('%d: Task %d is Done with Status: %s', [ThreadID, TaskID^,
+    DebugLn(Format('%d Task %d is Done with Status: %s', [i, TaskID^,
       BoolToStr(Status[TaskID^], 'True', 'False')]));
   end;
 
+  for i := 0 to AllTasks.Count - 1 do
+    AllTasks[i].Free;
+  AllTasks.Free;
   Queue.Free;
+  wg.Free;
 
   Result := True;
 end;
@@ -174,12 +206,14 @@ begin
   for Step in Steps do
     Step.Free;
 
+  Steps.Free;
+
   inherited Destroy;
 end;
 
 procedure TPipeline.AddNewStep(Handler: TStepHandler; NumTasks: Integer);
 begin
-  Steps.Add(TStepInfo.Create(NumTasks, Handler));
+  Steps.Add(TStepInfo.Create(Steps.Count, NumTasks, Handler));
 
 end;
 
