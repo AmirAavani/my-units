@@ -76,24 +76,20 @@ var
   Mutex: TMutex;
 
 procedure DebugLn(Msg: AnsiString);
-{
 var
   Filename: AnsiString;
   LineNumber: Integer;
-}
 
 begin
   if RunTimeParameterManager.ValueByName['--Debug'].AsBooleanOrDefault(True) then
   begin
     Mutex.Lock;
 
-    System.Writeln(Format('%s] %s', [DateTimeToStr(Now), Msg]));
-{
     GetParentLineInfo(Filename, LineNumber);
     System.Writeln(Format('%s-%s:%d] %s', [DateTimeToStr(Now), Filename, LineNumber, Msg]));
-}
-     Flush(Output);
-     Mutex.Unlock;
+
+    Flush(Output);
+    Mutex.Unlock;
 
   end;
 end;
