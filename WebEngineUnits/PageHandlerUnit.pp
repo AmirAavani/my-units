@@ -17,6 +17,7 @@ type
 
     function Execute(Sender: THTTPServerThread; TheRequest: THTTPServerRequest;
       TheResponse : THTTPServerResponse): Boolean; override;
+    function WouldHandleRequest(ARequest: THTTPServerRequest): Boolean; override;
   end;
 
 implementation
@@ -37,6 +38,13 @@ begin
   TheResponse.OriginalResponse.SetHeader(hhContentType, 'text/html; charset=utf-8');
 
   Result := True;
+end;
+
+function THTMLBasePageHandler.WouldHandleRequest(ARequest: THTTPServerRequest
+  ): Boolean;
+begin
+  Result := ARequest.PathInfo = Self.ServingPath;
+
 end;
 
 end.

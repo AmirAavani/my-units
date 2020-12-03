@@ -112,6 +112,7 @@ type
     function ExtractFromResponse(aResponse: TQueryResponse; MaxReturnedResult: Integer = -1): TDataList; virtual;
     // Retruns all Data satisfying the query.
     function GetAllWhere(WhereClause: AnsiString; Option: TGetWhereAllOptions = nil): TDataList; virtual;
+    procedure DeleteAllWhere(WhereClause: AnsiString); virtual;
 
   end;
 
@@ -300,6 +301,22 @@ begin
   Result := ExtractFromResponse(Response, -1);
 
   Option.Free;
+  Response.Free;
+
+end;
+
+procedure TBaseDataModuleManager.DeleteAllWhere(WhereClause: AnsiString);
+var
+  Query: AnsiString;
+  Response: TQueryResponse;
+  i: Integer;
+
+begin
+  Query := Format('DELETE FROM %s WHERE %s', [TData.TableName, WhereClause]);
+
+  DebugLn(Format('Q: %s', [Query]));
+  Response := DB.RunQuery(Query);
+
   Response.Free;
 
 end;
