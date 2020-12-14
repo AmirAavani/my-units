@@ -35,6 +35,7 @@ type
     function GetParamNameByIndex(Index: Integer): AnsiString;
     function GetParamValueByIndex(Index: Integer): AnsiString;
     function GetParamValueByName(Name: AnsiString): AnsiString;
+    function GetParamValueOrDefaultByName(Name, DefaultValue: AnsiString): AnsiString;
     function GetPathInfo: AnsiString;
     function GetQueryString: AnsiString;
 
@@ -54,6 +55,7 @@ type
     property ParamNameByIndex[Index: Integer]: AnsiString read GetParamNameByIndex;
     property ParamValueByIndex[Index: Integer]: AnsiString read GetParamValueByIndex;
     property ParamValueByName[Name: AnsiString]: AnsiString read GetParamValueByName;
+    property ParamValueOrDefaultByName[Name, DefaultValue: AnsiString]: AnsiString read GetParamValueOrDefaultByName;
     property OriginalRequest: TFPHTTPConnectionRequest read FOriginalRequest;
     property CookieByName[const aName: AnsiString]: AnsiString read GetCookieByName;
 
@@ -377,6 +379,14 @@ begin
     Exit('');
   Result := FParams[Name];
 
+end;
+
+function THTTPServerRequest.GetParamValueOrDefaultByName(Name, DefaultValue: AnsiString
+  ): AnsiString;
+begin
+  if FParams.IndexOf(Name) < 0 then
+    Exit(DefaultValue);
+  Result := FParams[Name];
 end;
 
 function THTTPServerRequest.GetPathInfo: AnsiString;
