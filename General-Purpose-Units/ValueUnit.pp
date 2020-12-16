@@ -73,30 +73,45 @@ end;
 
 function TValue.GetAsAnsiString: AnsiString;
 begin
+  if Self = nil then
+    Exit('');
+
   Result := PAnsiString(ValuePtr)^;
 
 end;
 
 function TValue.GetAsBoolean: Boolean;
 begin
+  if Self = nil then
+    Exit(False);
+
   Result := PBoolean(ValuePtr)^;
 
 end;
 
 function TValue.GetAsExtended: Extended;
 begin
+  if Self = nil then
+    Exit(0.0);
+
   Result := PExtended(ValuePtr)^;
 
 end;
 
 function TValue.GetAsInteger: Int64;
 begin
+  if Self = nil then
+    Exit(0);
+
   Result := PInt64(ValuePtr)^;
 
 end;
 
 function TValue.GetAsUInteger: uInt64;
 begin
+  if Self = nil then
+    Exit(0);
+
   Result := PUInt64(ValuePtr)^;
 
 end;

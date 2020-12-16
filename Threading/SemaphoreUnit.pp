@@ -83,6 +83,7 @@ begin
 
   if aWait then
   begin
+    DebugLn('Sempahore Await');
     RTLeventWaitFor(aEvent);
     RTLEventDestroy(aEvent);
 
