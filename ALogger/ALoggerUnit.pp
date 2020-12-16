@@ -19,8 +19,11 @@ type
   end;
 
 procedure DebugLn(Msg: AnsiString; Verbosity: Integer = 0);
+procedure FMTDebugLn(Fmt: AnsiString; const Args : array of const; Verbosity: Integer = 0);
 procedure DebugLnEveryN(N: Integer; Msg: AnsiString; Verbosity: Integer = 0);
+procedure FMTDebugLnEveryN(N: Integer; Fmt: AnsiString; const Args : array of const; Verbosity: Integer = 0);
 procedure FatalLn(Msg: AnsiString);
+procedure FmtFatalLn(Fmt: AnsiString; const Args: array of const);
 
 implementation
 
@@ -30,7 +33,7 @@ uses
 var
   Mutex4LineInfo: TMutex;
 
-procedure GetParentLineInfo(var Filename: AnsiString; var LineNumber: Integer; Index: Integer);
+procedure GetParentLineInfo(var Filename: AnsiString; var LineNumber: Integer);
 var
   i: Integer;
   prevbp: Pointer;
@@ -69,24 +72,54 @@ begin
 
 end;
 
+var
+  MutexWriteLn: TMutex;
+
+procedure _WriteLn(Message: AnsiString);
+begin
+  MutexWriteLn.Lock;
+
+  System.Writeln(Message);
+  Flush(Output);
+
+  MutexWriteLn.Unlock;
+
+end;
+
+procedure _DebugLn(Filename: AnsiString; LineNumber: Integer;
+  Fmt: AnsiString; const Args: array of const; Verbosity: Integer);
+begin
+  if RunTimeParameterManager.ValueByName['--Debug'].AsIntegerOrDefault(-1) < Verbosity then
+     Exit;
+
+  if (Filename <> 'UNKNOWN') and (LineNumber <> -1) then
+    _Writeln(Format('%d-%s-%s:%d] %s', [ThreadID, DateTimeToStr(Now), Filename, LineNumber,
+      Format(Fmt, Args)]))
+  else
+    _Writeln(Format('%d-%s] %s', [ThreadID, DateTimeToStr(Now), Format(Fmt, Args)]));
+
+end;
+
+
 procedure DebugLn(Msg: AnsiString; Verbosity: Integer);
 var
   Filename: AnsiString;
   LineNumber: Integer;
 
 begin
-   if RunTimeParameterManager.ValueByName['--Debug'].AsIntegerOrDefault(-1) < Verbosity then
-     Exit;
+  GetParentLineInfo(Filename, LineNumber);
+  _DebugLn(Filename, LineNumber, '%s', [Msg], Verbosity);
+end;
 
-   Filename := 'UNKNOWN';
-  LineNumber := -1;
-  GetParentLineInfo(Filename, LineNumber, 1);
-  if (Filename <> 'UNKNOWN') and (LineNumber <> -1) then
-    System.Writeln(Format('%d-%s-%s:%d] %s', [ThreadID, DateTimeToStr(Now), Filename, LineNumber, Msg]))
-  else
-    System.Writeln(Format('%d-%s] %s', [ThreadID, DateTimeToStr(Now), Msg]));
+procedure FMTDebugLn(Fmt: AnsiString; const Args: array of const;
+  Verbosity: Integer);
+var
+  Filename: AnsiString;
+  LineNumber: Integer;
 
-  Flush(Output);
+begin
+  GetParentLineInfo(Filename, LineNumber);
+  _DebugLn(Filename, LineNumber, Fmt, Args, Verbosity);
 
 end;
 
@@ -95,12 +128,10 @@ type
 
 var
   Counters: TLineInfoIntegerMap;
-  Mutex4DebugLn: TMutex;
+  Mutex4Counters: TMutex;
 
-procedure DebugLnEveryN(N: Integer; Msg: AnsiString; Verbosity: Integer);
+procedure _DebugLnEveryN(Filename: AnsiString; LineNumber: Integer; N: Integer; Fmt: AnsiString; const Args: array of const; Verbosity: Integer; Depth: Integer);
 var
-  Filename: AnsiString;
-  LineNumber: Integer;
   LineInfo: AnsiString;
   Index: Integer;
   b: Boolean;
@@ -108,12 +139,9 @@ var
 begin
   if RunTimeParameterManager.ValueByName['--Debug'].AsIntegerOrDefault(-1) < Verbosity then
     Exit;
-  Filename:= 'UNKNOWN';
-  LineNumber := -1;
-  GetParentLineInfo(Filename, LineNumber, 1);
   LineInfo := Format('%s:%d', [Filename, LineNumber]);
 
-  Mutex4DebugLn.Lock;
+  Mutex4Counters.Lock;
   if not Counters.Find(LineInfo, Index) then
   begin
     Counters.Add(LineInfo, 0);
@@ -123,18 +151,38 @@ begin
 
   b := Counters.Data[Index] mod N = 0;
   Counters.Data[Index] := Counters.Data[Index] + 1;
-  Mutex4DebugLn.Unlock;
+  Mutex4Counters.Unlock;
 
   if b then
-  begin
-    System.Writeln(Format('%d-%s-%s:%d] %s', [ThreadID, DateTimeToStr(Now), Filename, LineNumber, Msg]));
-    Flush(Output);
-
-  end;
+    _Writeln(Format('%d-%s-%s:%d] %s', [ThreadID, DateTimeToStr(Now), Filename, LineNumber,
+    Format(Fmt, Args)]));
 
 end;
 
-procedure FatalLn(Msg: AnsiString);
+procedure DebugLnEveryN(N: Integer; Msg: AnsiString; Verbosity: Integer);
+var
+  Filename: AnsiString;
+  LineNumber: Integer;
+
+begin
+  GetParentLineInfo(Filename, LineNumber);
+  _DebugLnEveryN(Filename, LineNumber, N, '%s', [Msg], Verbosity, 2);
+
+end;
+
+procedure FMTDebugLnEveryN(N: Integer; Fmt: AnsiString;
+  const Args: array of const; Verbosity: Integer);
+var
+  Filename: AnsiString;
+  LineNumber: Integer;
+
+begin
+  GetParentLineInfo(Filename, LineNumber);
+  _DebugLnEveryN(Filename, LineNumber, N, Fmt, Args, Verbosity, 2);
+
+end;
+
+procedure _FatalLn(Msg: AnsiString; Depth: Integer);
 var
   Filename: AnsiString;
   LineNumber: Integer;
@@ -142,14 +190,25 @@ var
 begin
   Filename := 'UNKNOWN';
   LineNumber := -1;
-  GetParentLineInfo(Filename, LineNumber, 1);
+  GetParentLineInfo(Filename, LineNumber);
   if (Filename <> 'UNKNOWN') and (LineNumber <> -1) then
-    System.Writeln(Format('%d-%s-%s:%d] %s', [ThreadID, DateTimeToStr(Now), Filename, LineNumber, Msg]))
+    _Writeln(Format('%d-%s-%s:%d] %s', [ThreadID, DateTimeToStr(Now), Filename, LineNumber, Msg]))
   else
-    System.Writeln(Format('%d-%s] %s', [ThreadID, DateTimeToStr(Now), Msg]));
+    _Writeln(Format('%d-%s] %s', [ThreadID, DateTimeToStr(Now), Msg]));
 
-  Flush(Output);
   Halt(1);
+
+end;
+
+procedure FatalLn(Msg: AnsiString);
+begin
+  _FatalLn(Msg, 2);
+end;
+
+
+procedure FmtFatalLn(Fmt: AnsiString; const Args: array of const);
+begin
+  _FatalLn(Format(Fmt, Args), 2);
 
 end;
 
@@ -168,14 +227,16 @@ end;
 
 initialization
   Mutex4LineInfo := TMutex.Create;
-  Mutex4DebugLn := TMutex.Create;
+  Mutex4Counters := TMutex.Create;
+  MutexWriteLn := TMutex.Create;
   Counters := TLineInfoIntegerMap.Create;
   Counters.Sorted := True;
 
 finalization
   Counters.Free;
   Mutex4LineInfo.Free;
-  Mutex4DebugLn.Free;
+  Mutex4Counters.Free;
+  MutexWriteLn.Free;
 
 end.
 

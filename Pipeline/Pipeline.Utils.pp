@@ -28,8 +28,8 @@ type
     constructor LoadFromFile(InputFileName: AnsiString); virtual;
     constructor Create; virtual;
 
-    procedure ComputeModule(Divisor, Remainder: Integer; Result: TPipelineListT);
-    procedure ComputeDividee(Divisor, Quotient: Integer; Result: TPipelineListT);
+    procedure ComputeModule(Modulo, Remainder: Integer; Result: TPipelineListT);
+    procedure ComputeDivide(Modulo, Quotient: Integer; Result: TPipelineListT);
 
   end;
 
@@ -199,31 +199,33 @@ begin
 
 end;
 
-procedure TPipelineList.ComputeModule(Divisor, Remainder: Integer; Result: TPipelineListT);
+procedure TPipelineList.ComputeModule(Modulo, Remainder: Integer;
+  Result: TPipelineListT);
 var
   i: Integer;
 
 begin
   Result.Clear;
 
-  i := Remainder;
+  i := Remainder mod Modulo;
   while i < Self.Count do
   begin
     Result.Add(Self[i]);
-    Inc(i, Divisor);
+    Inc(i, Modulo);
 
   end;
 end;
 
-procedure TPipelineList.ComputeDividee(Divisor, Quotient: Integer; Result: TPipelineListT);
+procedure TPipelineList.ComputeDivide(Modulo, Quotient: Integer;
+  Result: TPipelineListT);
 var
   i: Integer;
 
 begin
   Result.Clear;
 
-  i := Divisor * Quotient;
-  while (i < Self.Count) and (i < Divisor * (Quotient + 1)) do
+  i := Modulo * Quotient;
+  while (i < Self.Count) and (i < Modulo * (Quotient + 1)) do
   begin
     Result.Add(Self[i]);
     Inc(i);

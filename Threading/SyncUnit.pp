@@ -58,6 +58,7 @@ type
 
     procedure Add(k: Integer);
     procedure Done(k: Integer);
+    function GetValue: Integer;
 
     procedure Wait;
   end;
@@ -102,20 +103,28 @@ var
 begin
   DebugLn('Done');
   Mutex.Lock;
-  DebugLn(Format('Value : %d', [Value]));
+  FMTDebugLn('Value: %d k: %d', [Value, k]);
 
   Value -= k;
-  DebugLn(Format('Value : %d', [Value]));
 
+  FMTDebugLn('Value: %d k: %d', [Value, k]);
   if Value < 0 then
      FatalLn(Format('Value(%d) < 0', [Value]));
 
   if Value = 0 then
     for i := 1 to BlockQueue.Count do
+    begin
+      FMTDebugLn('Value: %d k: %d', [Value, k]);
       RTLEventSetEvent(PRTLEvent(BlockQueue.Pop));
+    end;
 
   Mutex.Unlock;
 
+end;
+
+function TWaitGroup.GetValue: Integer;
+begin
+  Result := Value;
 end;
 
 procedure TWaitGroup.Wait;

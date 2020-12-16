@@ -5,49 +5,52 @@ unit RunInAThreadUnit;
 interface
 
 uses
-  Classes, SysUtils;
+  Pipeline.Types, Classes, SysUtils;
 
 type
-  TThreadFunctionPtr = function (Args: array of Pointer): Boolean;
-  TArrayOfPointer = array of Pointer;
+  TThreadFunctionPtr = function (SysArgs, Args: TPointerArray): Boolean;
 
-procedure RunInThread(F: TThreadFunctionPtr; Args: TArrayOfPointer;
+procedure RunInThread(F: TThreadFunctionPtr; SysArgs, Args: TPointerArray;
   OutputResult: PBoolean);
 
 implementation
+uses
+  ALoggerUnit, PipelineUnit;
 
 type
   { TRunnerThread }
 
   TRunnerThread = class(TThread)
   private
-    Arguments: array of Pointer;
+    SysArguments, Arguments: array of Pointer;
     F: TThreadFunctionPtr;
     Result: PBoolean;
 
   public
-    constructor Create(FToRun: TThreadFunctionPtr; Args: TArrayOfPointer; Res: PBoolean);
+    constructor Create(FToRun: TThreadFunctionPtr; SysArgs, Args: TPointerArray;
+       Res: PBoolean);
     destructor Destroy; override;
 
     procedure Execute; override;
   end;
 
-procedure RunInThread(F: TThreadFunctionPtr; Args: TArrayOfPointer;
+procedure RunInThread(F: TThreadFunctionPtr; SysArgs, Args: TPointerArray;
   OutputResult: PBoolean);
 var
   Thread: TThread;
 
 begin
-  Thread := TRunnerThread.Create(F, Args, OutputResult);
+  Thread := TRunnerThread.Create(F, SysArgs, Args, OutputResult);
   Thread.FreeOnTerminate := True;
   Thread.Suspended := False;
+  FMTDebugLn('New Thread ID: %d', [Thread.ThreadID]);
 
 end;
 
 { TRunnerThread }
 
-constructor TRunnerThread.Create(FToRun: TThreadFunctionPtr;
-  Args: TArrayOfPointer; Res: PBoolean);
+constructor TRunnerThread.Create(FToRun: TThreadFunctionPtr; SysArgs,
+  Args: TPointerArray; Res: PBoolean);
 var
   i: Integer;
 
@@ -58,13 +61,16 @@ begin
   SetLength(Arguments, Length(Args));
   for i := 0 to High(Args) do
     Arguments[i] := Args[i];
-
+  SetLength(SysArguments, Length(SysArgs));
+  for i := 0 to High(SysArgs) do
+    SysArguments[i] := SysArgs[i];
   Result := Res;
 
 end;
 
 destructor TRunnerThread.Destroy;
 begin
+  DebugLn('In TRunnerThread.Destroy');
   SetLength(Arguments, 0);
 
   inherited Destroy;
@@ -72,7 +78,10 @@ end;
 
 procedure TRunnerThread.Execute;
 begin
-  Result^ := F(Arguments);
+  FMTDebugLn('TaskID: %d New Thread ID: %d',
+  [TTask(SysArguments[0]).ID, Self.ThreadID]);
+
+  Result^ := F(SysArguments, Arguments);
 
 end;
 
