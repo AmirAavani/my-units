@@ -101,20 +101,16 @@ var
   i: Integer;
 
 begin
-  DebugLn('Done');
   Mutex.Lock;
-  FMTDebugLn('Value: %d k: %d', [Value, k]);
 
   Value -= k;
 
-  FMTDebugLn('Value: %d k: %d', [Value, k]);
   if Value < 0 then
-     FatalLn(Format('Value(%d) < 0', [Value]));
+     FmtFatalLn('Value(%d) < 0', [Value]);
 
   if Value = 0 then
     for i := 1 to BlockQueue.Count do
     begin
-      FMTDebugLn('Value: %d k: %d', [Value, k]);
       RTLEventSetEvent(PRTLEvent(BlockQueue.Pop));
     end;
 
@@ -133,31 +129,23 @@ var
   anEvent: PRTLEvent;
 
 begin
-  DebugLn('Wait');
   Mutex.Lock;
-  DebugLn(Format('Value : %d', [Value]));
 
   aWait:= False;
   if 0 < Value then
   begin
-    DebugLn(Format('Waiting Value : %d', [Value]));
     anEvent := RTLEventCreate;
     BlockQueue.Push(anEvent);
     aWait := True;
-    DebugLn(Format('Waiting Value : %d', [Value]));
 
   end;
 
   Mutex.Unlock;
-  DebugLn('Unlocked');
 
   if aWait then
   begin
-    DebugLn('aWait');
     RTLeventWaitFor(anEvent);
-    DebugLn('aWait');
     RTLEventDestroy(anEvent);
-    DebugLn('aWait');
 
   end;
 
@@ -179,10 +167,9 @@ constructor TSemaphore.Create(const v: Integer);
 begin
   inherited Create;
 
-  DebugLn('Before New');
   New(Sem);
   if sem_init(Sem, 0, v) <> 0 then
-    WriteLn(Format('Failed in sem_init, (err: %d)', [fpgeterrno]));
+    FmtFatalLn('Failed in sem_init, (err: %d)', [fpgeterrno]);
 end;
 
 destructor TSemaphore.Destroy;
@@ -197,18 +184,18 @@ end;
 procedure TSemaphore.Inc;
 begin
   if sem_post(Sem) <> 0 then
-    WriteLn(Format('Failed in getting value, (err: %d)', [fpgeterrno]));
+  begin
+    FmtFatalLn('Failed in getting value, (err: %d)', [fpgeterrno]);
+  end;
+
 end;
 
 procedure TSemaphore.Dec;
 begin
-  DebugLn('Before Dec');
   if sem_wait(Sem) <> 0 then
   begin
-    DebugLn('-Before Dec');
     FatalLn(Format('Failed in getting value, (err: %d)', [fpgeterrno]));
   end;
-  DebugLn('+Before Dec');
 end;
 
 procedure TSemaphore.Inc(const Delta: Integer);

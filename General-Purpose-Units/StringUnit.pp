@@ -16,7 +16,7 @@ function JoinStrings(const Strings: array of AnsiString; Separator: AnsiString;
 
 implementation
 uses
-  sysutils, strings;
+  sysutils;
 
 function IsPrefix(const Prefix, Str: AnsiString): Boolean;
 var

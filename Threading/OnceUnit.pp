@@ -54,6 +54,7 @@ end;
 function TOnce.Run: Boolean;
 begin
   EnterCriticalsection(CS);
+
   if FBeenCalled then
   begin
     LeaveCriticalsection(CS);

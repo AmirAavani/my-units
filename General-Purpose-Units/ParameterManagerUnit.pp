@@ -26,15 +26,12 @@ type
   private
     Values: TNameValueMap;
 
-    function GetValueByNameOrDefault(Name, DefaultValue: AnsiString
-      ): AnsiString;
     function GetVerbosity: Integer;
     function GetValueByName(Name: AnsiString): TValue;
 
   public
     property Verbosity: Integer read GetVerbosity;
     property ValueByName[Name: AnsiString]: TValue read GetValueByName;
-    property ValueByNameOrDefault[Name, DefaultValue: AnsiString]: AnsiString read GetValueByNameOrDefault;
 
     constructor Create;
     destructor Destroy; override;
@@ -87,12 +84,6 @@ begin
 end;
 
 { TRunTimeParameterManager }
-
-function TRunTimeParameterManager.GetValueByNameOrDefault(Name,
-  DefaultValue: AnsiString): AnsiString;
-begin
-
-end;
 
 function TRunTimeParameterManager.GetVerbosity: Integer;
 begin
@@ -257,6 +248,7 @@ end;
 
 function TRunTimeParameterManager.GetValueByName(Name: AnsiString): TValue;
 begin
+  Result := nil;
   Values.TryGetData(UpperCase(Name), Result);
 
 
