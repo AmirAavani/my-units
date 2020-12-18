@@ -1,15 +1,15 @@
 const
  DeclareNonRepeatedNonSimpleFieldTemplate : AnsiString =
- '  // Declarations for [[Field.Type]] [[Field.Name]] = [[Field.Number]];' + sLineBreak +
+ '  // Declarations for [[Field.PackageNameWithDot]][[Field.Type]] [[Field.Name]] = [[Field.Number]];' + sLineBreak +
  '  private' + sLineBreak +
- '    F[[CanName]]: [[FieldType]];' + sLineBreak +
+ '    F[[CanName]]: [[Field.UnitNameAndFPCType]];' + sLineBreak +
  '  public' + sLineBreak +
- '    property [[CanName]]: [[FieldType]] read F[[CanName]] write F[[CanName]];' + sLineBreak;
+ '    property [[CanName]]: [[Field.UnitNameAndFPCType]] read F[[CanName]] write F[[CanName]];' + sLineBreak;
  ImplementNonRepeatedNonSimpleFieldToStringTemplate : AnsiString =
   '  if F[[CanName]] <> nil then' + sLineBreak +
   '  begin' + sLineBreak +
-  '    Result += Indent + ''[[Field.Name]]: '' + sLineBreak;' + sLineBreak +
-  '    Result += F[[CanName]].ToString(Indent +''  '');' + sLineBreak +
+  '    Result += ''[[Field.Name]] = '';' + sLineBreak +
+  '    Result += F[[CanName]].ToString;' + sLineBreak +
   '    Result += sLineBreak;' + sLineBreak +
   '  end;' + sLineBreak;
 

@@ -29,16 +29,15 @@ type
   private
     function GetCount: Integer;
   protected
-    FormatString: AnsiString;
+    function SimpleObjectToString(Obj: TSimpleObject): AnsiString; virtual; abstract;
 
   public
     property Count: Integer read GetCount write SetCount;
 
-    constructor Create(FmtString: AnsiString);
+    constructor Create;
     destructor Destroy; override;
 
     function ToString: AnsiString; override;
-    function ToString(const Indent: AnsiString): AnsiString;
     function LoadFromStream(Stream: TStream): Boolean;
     procedure SaveToStream(Stream: TStream);
   end;
@@ -79,11 +78,10 @@ begin
   Result := FCount;
 end;
 
-constructor TSimpleTypeList.Create(FmtString: AnsiString);
+constructor TSimpleTypeList.Create;
 begin
   inherited Create;
 
-  FormatString := FmtString;
 end;
 
 destructor TSimpleTypeList.Destroy;
@@ -92,21 +90,16 @@ begin
 end;
 
 function TSimpleTypeList.ToString: AnsiString;
-begin
-  Result:= Self.ToString('');
-end;
-
-function TSimpleTypeList.ToString(const Indent: AnsiString): AnsiString;
 var
   Data: TSimpleObject;
 
 begin
-  Result := Indent + '[';
+  Result := '[';
   for data in Self do
   begin
     if Length(Result) <> 1 then
       Result += ', ';
-    Result += Format(FormatString, [data]);
+    Result += SimpleObjectToString(data);
   end;
   Result += ']';
 
@@ -114,12 +107,12 @@ end;
 
 function TSimpleTypeList.LoadFromStream(Stream: TStream): Boolean;
 begin
-
+  raise Exception.Create('NIY');
 end;
 
 procedure TSimpleTypeList.SaveToStream(Stream: TStream);
 begin
-
+  raise Exception.Create('NIY');
 end;
 
 { TObjectList }

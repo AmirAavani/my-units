@@ -81,6 +81,7 @@ type
     property Size: Int64 read GetSize;
     property Root: TLinkListNode read FRoot;
 
+    // Takes the ownership of AnStream Object.
     constructor Create(AnStream: TStream);
     destructor Destroy; override;
 
@@ -102,8 +103,12 @@ type
     procedure WriteFloat(FieldNumber: Integer; Value: Single);
     (* Write a int64 field, including tag. *)
     procedure WriteInt64(FieldNumber: Integer; Value: Int64);
+    (* Write a sint64 field, including tag. *)
+    procedure WriteSInt64(FieldNumber: Integer; Value: Integer);
     (* Write a int32 field, including tag. *)
     procedure WriteInt32(FieldNumber: Integer; Value: Integer);
+    (* Write a sint32 field, including tag. *)
+    procedure WriteSInt32(FieldNumber: Integer; Value: Integer);
     (* Write a UInt64 field, including tag. *)
     procedure WriteUInt64(FieldNumber: Integer; Value: UInt64);
     (* Write a UInt32 field, including tag. *)
@@ -112,8 +117,10 @@ type
     procedure WriteFixed64(FieldNumber: Integer; Value: Int64);
     (* Write a fixed32 field, including tag. *)
     procedure WriteFixed32(FieldNumber: Integer; Value: Integer);
-    (* Write a boolean field, including tag. *)
+    (* Write a Boolean field, including tag. *)
     procedure WriteBoolean(FieldNumber: Integer; Value: Boolean);
+    (* Write a byte field, including tag. *)
+    procedure WriteByte(FieldNumber: Integer; Value: Byte);
     (* Write a string field, including tag. *)
     procedure WriteString(FieldNumber: Integer; const Value: AnsiString);
 //    (*  Write a unsigned int32 field, including tag. *)
@@ -144,11 +151,13 @@ type
     property Size: Int64 read GetSize;
     property Position: Int64 read GetPosition;
 
+    // Takes the ownership of AnStream Object.
     constructor Create(AnStream: TStream);
     destructor Destroy; override;
 
     function ReadAnsiString: AnsiString;
     function ReadBoolean: Boolean;
+    function ReadByte: Byte;
     function ReadDouble: Double;
     function ReadRawVarint64: Int64;
     function ReadRawVarint32: Int32;
@@ -267,6 +276,8 @@ end;
 
 destructor TProtoStreamReader.Destroy;
 begin
+  FStream.Free;
+
   inherited Destroy;
 end;
 
@@ -288,6 +299,12 @@ var
 begin
   Self.ReadRawData(@b, 1);
   Result := b <> 0;
+
+end;
+
+function TProtoStreamReader.ReadByte: Byte;
+begin
+  Self.ReadRawData(@Result, 1);
 
 end;
 
@@ -444,8 +461,7 @@ begin
   end;
 
   Delta := ByteArraySize - NextIndex;
-  if Delta <> 0 then
-    Move(p^, FData[NextIndex], Delta);
+  Move(p^, FData[NextIndex], Delta);
   NextIndex := ByteArraySize;
   FNext := TLinkListNode.Create;
 
@@ -499,6 +515,7 @@ destructor TProtoStreamWriter.Destroy;
 begin
   Self.WriteToStream;
   Root.Free;
+  FStream.Free;
 
   inherited;
 
@@ -521,7 +538,7 @@ end;
 
 function TProtoStreamWriter.AddIntervalNode: TLinkListNode;
 begin
-  Assert(FCurrentNode.Next = nil, 'FCurrentNode <> nil');
+  Assert(FCurrentNode.Next <> nil, 'FCurrentNode <> nil');
   Result := TLinkListNode.Create;
   FCurrentNode.FNext := Result;
   Result.FNext := TLinkListNode.Create;
@@ -544,7 +561,7 @@ begin
   until Value = 0;
 end;
 
-procedure TProtoStreamWriter.WriteRawVarint64(Value: int64);
+procedure TProtoStreamWriter.WriteRawVarint64(Value: Int64);
 var
   b: Byte;
 
@@ -590,10 +607,20 @@ begin
 
 end;
 
-procedure TProtoStreamWriter.WriteInt64(FieldNumber: Integer; Value: int64);
+procedure TProtoStreamWriter.WriteInt64(FieldNumber: Integer; Value: Int64);
 begin
   WriteTag(FieldNumber, WIRETYPE_VARINT);
-  WriteRawVarint64(Value);
+  WriteRawVarint64((Value shl 1) xor (Value shr 63));
+
+end;
+
+procedure TProtoStreamWriter.WriteSInt64(FieldNumber: Integer; Value: Integer);
+begin
+  WriteLn('NIY WriteSInt32');
+  Halt(2);
+
+  WriteTag(FieldNumber, WIRETYPE_VARINT);
+  WriteRawVarint32(Value);
 
 end;
 
@@ -604,9 +631,18 @@ begin
 
 end;
 
+procedure TProtoStreamWriter.WriteSInt32(FieldNumber: Integer; Value: Integer);
+begin
+  WriteLn('NIY WriteSInt32');
+  Halt(2);
+  WriteTag(FieldNumber, WIRETYPE_VARINT);
+  WriteRawVarint32((Value shl 1) xor (Value shr 31));
+
+end;
+
 procedure TProtoStreamWriter.WriteUInt64(FieldNumber: Integer; Value: UInt64);
 begin
-  Self.WriteInt64(FieldNumber, Value);
+  WriteInt64(FieldNumber, Value);
 
 end;
 
@@ -616,7 +652,7 @@ begin
 
 end;
 
-procedure TProtoStreamWriter.WriteFixed64(FieldNumber: Integer; Value: int64);
+procedure TProtoStreamWriter.WriteFixed64(FieldNumber: Integer; Value: Int64);
 begin
   WriteTag(fieldNumber, WIRETYPE_FIXED64);
   WriteRawData(@value, SizeOf(value));
@@ -630,10 +666,17 @@ begin
 
 end;
 
-procedure TProtoStreamWriter.WriteBoolean(FieldNumber: Integer; Value: boolean);
+procedure TProtoStreamWriter.WriteBoolean(FieldNumber: Integer; Value: Boolean);
 begin
   WriteTag(FieldNumber, WIRETYPE_VARINT);
   WriteRawByte(Ord(Value));
+
+end;
+
+procedure TProtoStreamWriter.WriteByte(FieldNumber: Integer; Value: Byte);
+begin
+  WriteTag(FieldNumber, WIRETYPE_VARINT);
+  WriteRawByte(Value);
 
 end;
 

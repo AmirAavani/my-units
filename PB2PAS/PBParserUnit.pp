@@ -1,1584 +1,185 @@
 unit PBParserUnit;
+{$modeswitch advancedrecords}
 
 {$mode objfpc}{$H+}
 
 interface
 
 uses
-  Classes, SysUtils, fgl, StreamUnit;
+  PBDefinitionUnit, Classes, SysUtils, fgl, StreamUnit, gvector, ProtoHelperUnit;
 
 type
-  TProto = class;
+
+  { TBaseProtoParser }
+
+  TBaseProtoParser = class(TObject)
+  private
+    InputFilename: AnsiString;
+  public
+    class function GetParser(_InputFilename: AnsiString): TBaseProtoParser;
+    class function Parse(_InputFilename: AnsiString): TProto;
+    class function ParseAll(_InputFilename: AnsiString): TProtoMap;
+
+    function ParseProto: TProto; virtual; abstract;
+    destructor Destroy; override;
+  end;
+
+implementation
+
+uses
+  UtilsUnit, StringUnit, ALoggerUnit, PBOptionUnit;
+
+type
   TTokenKind = (ttkStart, ttkDot, ttkOpenBrace, ttkCloseBrace, ttkOpenPar,
-    ttkClosePar, ttkSemiColon, ttkEqualSign,
+    ttkClosePar, ttkSemiColon, ttkEqualSign, ttkStar,
     ttkColon, ttkComma, ttkDoubleQuote, ttkSingleQuote,
-    ttkMinus, ttkQuestionMark, ttkLessThan, ttkGreaterThan, ttkOpenBracket,
-      ttkCloseBracket,
-    ttkIdentifier, ttkComment, ttkNumber, ttkSpace, ttkSlash, ttkEndLine, ttkEOF);
+    ttkMinus, ttkPlus, ttkQuestionMark, ttkLessThan, ttkGreaterThan, ttkOpenBracket,
+      ttkCloseBracket, ttkAtSgin,
+    ttkIdentifier, ttkComment, ttkNumber, ttkSpace, ttkSlash,
+    ttkEndLine, ttkEOF);
   TCharKind = (tckStart, tckDot, tckOpenBrace, tckCloseBrace, tckOpenPar,
-    tckClosePar, tckSemiColon, tckEqualSign,
+    tckClosePar, tckSemiColon, tckEqualSign, tckStar,
       tckColon, tckComma, tckDoubleQuote, tckSingleQuote,
-      tckMinus, tckQuestionMark, tckLessThan, tckGreaterThan, tckOpenBracket,
-      tckCloseBracket,
-      tckLetter, tckDigit,  tckUnderline, tckSpace, tckSlash,
+      tckMinus, tckPlus, tckQuestionMark, tckLessThan, tckGreaterThan, tckOpenBracket,
+      tckCloseBracket, tckAtSgin,
+
+      tckLetter, tckDigit,  tckUnderline, tckSpace, tckSlash, tckBackSlash, tckNumberSign,
+      tckExclamationMark,
       tckEndLine, tckEoF);
   { TToken }
-
   TToken = record
     Kind: TTokenKind;
     TokenString: AnsiString;
+         // class operator +(a,b : TToken) : TToken;
   end;
 
+type
+  { EInvalidCharacter }
 
-  TIntList = specialize TFPGList<Integer>;
+  EInvalidCharacter = class(Exception)
+  public
+    constructor Create(Ch: Char; Code: Integer);
+
+  end;
+
+  { EInvalidToken }
+
+  EInvalidToken = class(Exception)
+  public
+    constructor Create(TokenStr: AnsiString; TokenKind: TTokenKind);
+
+  end;
+  EParseIntFailed = class(Exception)
+
+  end;
 
   { TTokenizer }
 
   TTokenizer = class(TObject)
   private
     Current: Integer;
+    Currents: TIntList;
     FileSize: Integer;
     WholeFile: AnsiString;
+    Stream: TStream;
 
+    function ExpectAll(const TokenStrs: array of AnsiString): Boolean;
+    function Expect(const TokenStr: AnsiString): Boolean;
+    function ExpectAll(Ts: array of TTokenKind): Boolean;
+    function ExpectOne(Ts: array of TTokenKind): Boolean;
+    function Expect(const TokenKind: TTokenKind): Boolean;
+
+    function NextTokenIsIn(Ts: array of TTokenKind): Boolean;
+    function NextTokenIsIn(Ts: array of AnsiString): Boolean;
   public
-    constructor Create(Stream: TStream);
+    constructor Create(_Stream: TStream);
     destructor Destroy; override;
 
     function GetNextToken: TToken;
+    procedure Rewind(Count: Integer = 1);
 
   end;
 
-  { TOption }
+  { TTokenArray }
 
-  TOption = class(TObject)
-  private
-    FOptionName: AnsiString;
-    FConstValue: AnsiString;
-
+  TTokenArray = class(specialize TVector<TToken>)
   public
-    constructor Create(Tokenizer: TTokenizer);
-
-    property OptionName: AnsiString read FOptionName;
-    property ConstValue: AnsiString read FConstValue;
-  end;
-
-
-  { TSpecialList }
-
-  generic TObjectList<TObject> = class(specialize TFPGList<TObject>)
-  public
+    procedure AddToken(aToken: TToken);
     destructor Destroy; override;
 
-    function ToString: AnsiString; override;
   end;
 
-  TType = AnsiString;
+  { TProtoParser }
 
-  { TEnumField }
+  TProtoParser = class(TBaseProtoParser)
+  protected
+    FTokenizer: TTokenizer;
 
-  TEnumField = class(TObject)
-  private
-    FName: AnsiString;
-    FOptions: specialize TObjectList<TOption>;
-    FValue: Integer;
+    function ParseStrLit: TStrLit;
+    function ParseIdent: TIdentifier;
+    function ParseFieldNumber: Integer;
+    function ParseFullIdent: TFullIdentifier;
+    function ParseType: TType;
+
+    function CollectUntil(EndTokenKind: TTokenKind): TTokenArray;
+
+    property Tokenizer: TTokenizer read FTokenizer;
   public
-    property Name: AnsiString read FName;
-    property Value: Integer read FValue;
-    property Options: specialize TObjectList<TOption> read FOptions;
-
-    constructor Create(EnumName: AnsiString; Tokenizer: TTokenizer);
-    destructor Destroy; override;
-    function ToString: AnsiString; override;
-
-  end;
-
-  { TEnum }
-
-  TEnum = class(specialize TObjectList<TEnumField>)
-  private
-    FName: AnsiString;
-
-    procedure GenerateCode(Stream: TMyTextStream);
-    function GetEnumerationName(Index: Integer): AnsiString;
-  public
-    property Name: AnsiString read FName;
-    property EnumerationName[Index: Integer]: AnsiString read GetEnumerationName;
-
-    constructor Create(Tokenizer: TTokenizer);
-  end;
-
-
-  { TOneOfField }
-
-  TOneOfField = class(TObject)
-  private
-    FOneOfFieldType: AnsiString;
-    FName: AnsiString;
-    FOptions: specialize TObjectList<TOption>;
-    FFeildNumber: Integer;
-  public
-    property OneOfFieldType: AnsiString read FOneOfFieldType;
-    property Name: AnsiString read FName;
-    property FieldNumber: Integer read FFeildNumber;
-    property Options: specialize TObjectList<TOption> read FOptions;
-
-    constructor Create(OneOfType: AnsiString; Tokenizer: TTokenizer);
-    destructor Destroy; override;
-    function ToString: AnsiString; override;
-
-  end;
-
-  { TOneOf }
-
-  TOneOf = class(specialize TObjectList<TOneOfField>)
-  private
-    FName: AnsiString;
-    FOptions: specialize TObjectList<TOption>;
-
-    procedure GenerateDeclaration(Output: TMyTextStream);
-  public
-    property Name: AnsiString read FName;
-    property Options: specialize TObjectList<TOption> read FOptions;
-
-    constructor Create(Tokenizer: TTokenizer);
-  end;
-
-  { TMap }
-
-  TMap = class(TObject)
-  private
-    FName: AnsiString;
-    FKeyType: AnsiString;
-    FValueType: AnsiString;
-    FFieldNumber: Integer;
-
-  public
-    property Name: AnsiString read FName;
-    property KeyType: AnsiString read FKeyType;
-    property ValueType: AnsiString read FValueType;
-    property FieldNumber: Integer read FFieldNumber;
-
-    constructor Create(Tokenizer: TTokenizer);
-
-  end;
-
-  { TMessageField }
-
-  TMessageField = class(TObject)
-  private
-    FFieldNumber: Integer;
-    FIsRepeated: Boolean;
-    FFieldType: TType;
-    FName: AnsiString;
-    FOptions: specialize TObjectList<TOption>;
-    ParentProto: TProto;
-
-    function ApplyPattern(MessageClassName: AnsiString; const Template: AnsiString): AnsiString;
-    procedure GenerateDeclaration(MessageClassName: AnsiString; Output: TMyTextStream);
-    procedure GenerateImplementation(MessageClassName: AnsiString; Output: TMyTextStream);
-    function GetDefaultValue: AnsiString;
-    procedure GenerateToString(Output: TMyTextStream);
-    // Returns the translation of FieldType to FPC.
-    function GetType: AnsiString;
-
-  public
-    property IsRepeated: Boolean read FIsRepeated;
-    property FieldType: TType read FFieldType;
-    property Name: AnsiString read FName;
-    property FieldNumber: Integer read FFieldNumber;
-    property Options: specialize TObjectList<TOption> read FOptions;
-    property DefaultValue: AnsiString read GetDefaultValue;
-
-    constructor Create(TokenString: AnsiString; Tokenizer: TTokenizer; PProto: TProto);
+    constructor Create(_Tokenizer: TTokenizer);
     destructor Destroy; override;
 
-    function ToString: AnsiString; override;
   end;
 
-  { TMessage }
+  { TProto3Parser }
 
-  TMessage = class(TObject)
+  TProto3Parser = class(TProtoParser)
   private
-    FFields: specialize TObjectList<TMessageField>;
-    FMessages: specialize TObjectList<TMessage>;
-    FOptions: specialize TObjectList<TOption>;
-    FOneOfs: specialize TObjectList<TOneOf>;
-    FMaps: specialize TObjectList<TMap>;
-    FEnums: specialize TObjectList<TEnum>;
-    FName: AnsiString;
-    ParentProto: TProto;
+    function ParseImport: AnsiString;
+    function ParseSyntax: Boolean;
+    function ParseMessage(Parent: TParent): TMessage;
+    function ParseEnum(Parent: TParent): TEnum;
+    function ParseEnumField(EnumName: AnsiString): TEnumField;
+    function ParsePackage: AnsiString;
+    function ParseOption(EndTokenTypes: array of TTokenKind): TOption;
+    function MaybeParseOptions: TOptions;
+    function ParseOneOf(ParentMessage: TMessage): TOneOf;
+    function ParseOneOfField(ParentOneOf: TOneOf): TOneOfField;
+    function ParseMap(ParentMessage: TMessage): TMap;
+    function ParseMessageField(ParentMessage: TMessage): TMessageField;
+    function ParseConstant: TConstant;
 
-    MessageClassName: AnsiString;
-
-    procedure PrepareForCodeGeneration;
-    procedure GenerateDeclaration(Output: TMyTextStream);
-    procedure GenerateImplementation(Output: TMyTextStream);
-
-    function HasRepeatedHasNonSimple: Boolean;
   public
-    property Name: AnsiString read FName;
-    property Fields: specialize TObjectList<TMessageField> read FFields;
-    property Messages: specialize TObjectList<TMessage> read FMessages;
-    property Options: specialize TObjectList<TOption> read FOptions;
-    property Enums: specialize TObjectList<TEnum> read FEnums;
-    property OneOfs: specialize TObjectList<TOneOf> read FOneOfs;
-
-    constructor Create(Tokenizer: TTokenizer; PProto: TProto);
+    constructor Create(_Tokenizer: TTokenizer);
     destructor Destroy; override;
 
-    function ToString: AnsiString; override;
-  end;
-
-  { TProto }
-
-  TProto = class(TObject)
-  private
-    Imports: TStringList;
-    Packages: TStringList;
-    Options: specialize TObjectList<TOption>;
-    Messages: specialize TObjectList<TMessage>;
-    Enums: specialize TObjectList<TEnum>;
-
-    procedure PrepareForCodeGeneration;
-    class function Parse(InputStream: TStream): TProto;
-    procedure GenerateCode(
-        OutputUnitName: AnsiString; OutputStream: TStream); virtual; abstract;
-
-    function IsSimpleType(AField: TMessageField): Boolean;
-  public
-    constructor Create;
-    destructor Destroy; override;
-
-    class procedure GenerateCode(InputFilename: AnsiString);
-
-    function ToString: AnsiString; override;
+    function ParseProto: TProto; override;
 
   end;
 
-  { TProto3 }
-
-  TProto3 = class(TProto)
-    constructor Create(Tokenizer: TTokenizer);
-
-    procedure GenerateCode(
-        OutputUnitName: AnsiString; OutputStream: TStream); override;
-  public
-
-  end;
-
-implementation
-uses
-  strutils;
-
-type
   EExpectFailed = class(Exception)
   end;
 
-function Expect(const Token: TToken; const T: AnsiString): Boolean;
-begin
-  Result := Token.TokenString = T;
-
-  if not Result then
-    raise EExpectFailed.Create(Format('Expected "%s" Visited "%s".',
-      [Token.TokenString, T]));
-end;
-
-function Expect(const Token: TToken; Ts: array of TTokenKind): Boolean;
-var
-  Kind: TTokenKind;
-begin
-  Result := False;
-  for Kind in Ts do
-    Result := Result or (Token.Kind = Kind);
-
-  if not Result then
-    raise EExpectFailed.Create(Format('Expected "%d" Visited "%d".',
-              [Ord(Token.Kind), Ord(Ts[0])]));
-end;
-
-function ParseType(const TokenString: AnsiString; Tokenizer: TTokenizer): AnsiString;
-var
-  Token: TToken;
-  Pos: Integer;
-
-begin
-  Result := TokenString;
-  Pos := Tokenizer.Current;
-  Token := Tokenizer.GetNextToken;
-
-  while Token.Kind = ttkDot do
-  begin
-    Result += Token.TokenString;
-
-    Token := Tokenizer.GetNextToken;
-    Expect(Token, [ttkIdentifier]);
-    Result += Token.TokenString;
-
-    Pos := Tokenizer.Current;
-    Token := Tokenizer.GetNextToken;
-  end;
-
-  Tokenizer.Current := Pos;
-end;
-
-function ParseImport(Tokenizer: TTokenizer): AnsiString;
-var
-  CurrentToken: TToken;
-  // import = "import" [ "weak" | "public" ] strLit ";"
-begin
-  Expect(Tokenizer.GetNextToken, [ttkDoubleQuote, ttkSingleQuote]);
-
-  Result := '';
-  CurrentToken := Tokenizer.GetNextToken;
-
-  while not (CurrentToken.Kind in [ttkDoubleQuote, ttkSingleQuote]) do
-  begin
-    Result += CurrentToken.TokenString;
-    CurrentToken := Tokenizer.GetNextToken;
-  end;
-  Expect(CurrentToken, [ttkDoubleQuote, ttkSingleQuote]);
-  Expect(Tokenizer.GetNextToken, [ttkSemiColon]);
-
-end;
-
-function Canonicalize(AName: AnsiString): AnsiString;
-var
-  c: Char;
-  LastCharWasUnderline: Boolean;
-
-begin
-  LastCharWasUnderline:= True;
-  Result := '';
-  for c in AName do
-    if c in ['_', '-'] then
-      LastCharWasUnderline:= True
-    else
-    begin
-      if LastCharWasUnderline then
-        Result += upcase(c)
-      else
-        Result += c;
-      LastCharWasUnderline := False;
-    end;
-end;
-
-function GetUnitName(const Filename: AnsiString): AnsiString;
-var
-  PureFilename: Ansistring;
-  c: Char;
-
-begin
-  PureFilename := Copy(ExtractFileName(Filename), 1,
-        Length(ExtractFileName(Filename)) - Length(ExtractFileExt(Filename)));
-  Result := Canonicalize(PureFilename) + 'Unit';
-
-end;
-
-function IsBasicType(aField: TMessageField): Boolean;
-begin
-  Result := True;
-  case aField.FFieldType of
-    'double': Exit;
-    'float': Exit;
-    'int16': Exit;
-    'sint16': Exit;
-    'int32': Exit;
-    'sint32': Exit;
-    'fixed32': Exit;
-    'int64': Exit;
-    'sint64': Exit;
-    'fixed64': Exit;
-    'uint16': Exit;
-    'uint32': Exit;
-    'uint64': Exit;
-    'bool': Exit;
-    'string': Exit;
-    'byte': Exit;
-    'bytes': Exit;
-    else
-      Result := False;
-  end;
-end;
-
-function GetTypeName(TypeName: AnsiString): AnsiString;
-begin
-  case TypeName of
-    'double': Result := 'Double';
-    'float': Result := 'Single';
-    'int16': Result := 'Int16';
-    'sint16': Result := 'Int16';
-    'int32': Result := 'Int32';
-    'sint32': Result := 'Int32';
-    'fixed32': Result := 'Int32';
-    'int64': Result := 'Int64';
-    'sint64': Result := 'Int64';
-    'fixed64': Result := 'Int64';
-    'uint16': Result := 'UInt16';
-    'uint32': Result := 'UInt32';
-    'uint64': Result := 'UInt64';
-    'bool': Result := 'Boolean';
-    'string': Result := 'AnsiString';
-    'byte': Result := 'Byte';
-    else
-      Result := 'T' + Canonicalize(TypeName);
-  end;
-
-end;
-
-function GetTypeSize(TypeName: AnsiString): Integer;
-begin
-  case TypeName of
-    'Double': Result := SizeOf(Double);
-    'Float': Result := SizeOf(Single);
-    'Int16': Result := SizeOf(Int16);
-    'Int32': Result := SizeOf(Int32);
-    'Int64': Result := SizeOf(Int64);
-    'UInt16': Result := SizeOf(UInt16);
-    'UInt32': Result := SizeOf(UInt32);
-    'UInt64': Result := SizeOf(UInt64);
-    'Boolean': Result := SizeOf(Boolean);
-    'Byte': Result := SizeOf(Byte)
-  else
-     raise Exception.Create(Format('GetTypeSize NIY for Typename %s', [TypeName]));
-  end;
-end;
-
-function FormatString(const FieldType: AnsiString): AnsiString;
-begin
-  case FieldType of
-  'double': Exit('e');
-  'float': Exit('e');
-  'int16': Exit('d');
-  'sint16': Exit('d');
-  'int32': Exit('d');
-  'sint32': Exit('d');
-  'fixed32': Exit('d');
-  'int64': Exit('d');
-  'sint64': Exit('d');
-  'fixed64': Exit('d');
-  'uint16': Exit('u');
-  'uint32': Exit('u');
-  'uint64': Exit('u');
-  'bool': Exit('d');
-  'string': Exit('s');
-  'byte': Exit('d');
-  'bytes': Exit('p');
-
-  end;
-end;
-
-function GenerateCodeForImports(Imports: TStringList; Output: TMyTextStream): AnsiString;
-var
-  i: Integer;
-
-begin
-  Result := 'uses ' + sLineBreak +
-    '    classes, fgl, sysutils, ProtoHelperUnit, ProtoHelperListsUnit, ProtoStreamUnit';
-  for i := 0 to Imports.Count - 1 do
-    Result += ', ' + GetUnitName(Imports[i]);
-
-   Result += ';';
-end;
-
-function ParsePackage(Tokenizer: TTokenizer): AnsiString;
-var
-  Token: TToken;
-  // package = "package" fullIdent ";"
-begin
-  Token := Tokenizer.GetNextToken;
-  Expect(Token, [ttkIdentifier]);
-  Result := Token.TokenString;
-
-  Token := Tokenizer.GetNextToken;
-  while Token.Kind in [ttkIdentifier, ttkDot] do
-  begin
-    Result += Token.TokenString;
-    Token := Tokenizer.GetNextToken;
-  end;
-  Expect(Token, [ttkSemiColon]);
-
-end;
-
-function ParseSyntax(Tokenizer: TTokenizer): Integer;
-// syntax = "syntax" "=" quote "proto3" quote ";"
-begin
-  Expect(Tokenizer.GetNextToken, [ttkEqualSign]);
-  Expect(Tokenizer.GetNextToken, [ttkDoubleQuote]);
-  Expect(Tokenizer.GetNextToken, 'proto3');
-  Expect(Tokenizer.GetNextToken, [ttkDoubleQuote]);
-  Expect(Tokenizer.GetNextToken, [ttkSemiColon]);
-  Result := 3;
-
-end;
-
-{ TProto3 }
-
-constructor TProto3.Create(Tokenizer: TTokenizer);
-var
-  Token: TToken;
-
-begin
-  inherited Create;
-
-  Token := Tokenizer.GetNextToken;
-  while Token.Kind <> ttkEOF do
-  begin
-    if Token.TokenString = 'import' then
-      Self.Imports.Add(ParseImport(Tokenizer))
-    else if Token.TokenString = 'package' then
-      Self.Packages.Add(ParsePackage(Tokenizer))
-    else if Token.TokenString = 'option' then
-      Self.Options.Add(TOption.Create(Tokenizer))
-    else if Token.TokenString = 'message' then
-      Self.Messages.Add(TMessage.Create(Tokenizer, Self))
-    else if Token.TokenString = 'enum' then
-      Self.Enums.Add(TEnum.Create(Tokenizer))
-    else
-      raise Exception.Create(Format('Invalid token: %s', [Token.TokenString]));
-    Token := Tokenizer.GetNextToken;
-  end;
-
-end;
-
-procedure TProto3.GenerateCode(OutputUnitName: AnsiString; OutputStream: TStream);
-var
-  Output: TMyTextStream;
-  Enum: TEnum;
-  Message: TMessage;
-
-begin
-  Output := TMyTextStream.Create(OutputStream, False);
-
-  Output.WriteLine(Format('unit %s;', [OutputUnitName]));
-  Output.WriteLine(Format('{$Mode objfpc}', []));
-  Output.WriteLine(Format('interface', []));
-  Output.WriteLine;
-  Output.WriteLine(GenerateCodeForImports(Imports, Output));
-
-  Output.WriteLine;
-  if (Enums.Count <> 0) or (Messages.Count <> 0) then
-    Output.WriteLine(Format('type', []));
-  Output.WriteLine;
-
-  for Enum in Enums do
-  begin
-    Enum.GenerateCode(Output);
-  end;
-  Output.WriteLine;
-
-  for Message in Messages do
-  begin
-    Message.GenerateDeclaration(Output);
-    Output.WriteLine;
-  end;
-
-  Output.WriteLine(sLineBreak + 'implementation' + sLineBreak);
-  Output.WriteLine('uses strutils;');
-
-  for Message in Messages do
-  begin
-    Output.WriteLine(sLineBreak + Format(' { T%s }', [Canonicalize(Message.Name)]) +
-      sLineBreak);
-    Message.GenerateImplementation(Output);
-    Output.WriteLine;
-  end;
-
-  Output.WriteLine('end.');
-
-  Output.Free;
-end;
-
-{ TMap }
-
-constructor TMap.Create(Tokenizer: TTokenizer);
-// mapField = "map" "<" keyType "," type ">" mapName "=" fieldNumber [ "[" fieldOptions "]" ] ";"
-//keyType = "int32" | "int64" | "uint32" | "uint64" | "sint32" | "sint64" |
-//          "fixed32" | "fixed64" | "sfixed32" | "sfixed64" | "bool" | "string"
-var
-  Token: TToken;
-
-begin
-  inherited Create;
-
-  Expect(Tokenizer.GetNextToken, [ttkLessThan]);
-  Token := Tokenizer.GetNextToken;
-  Expect(Token, [ttkIdentifier]);
-  FKeyType := Token.TokenString;
-
-  Token := Tokenizer.GetNextToken;
-  Expect(Token, [ttkComma]);
-
-  Token := Tokenizer.GetNextToken;
-  Expect(Token, [ttkIdentifier]);
-  FValueType := ParseType(Token.TokenString, Tokenizer);
-
-  Expect(Tokenizer.GetNextToken, [ttkGreaterThan]);
-
-  Token := Tokenizer.GetNextToken;
-  Expect(Token, [ttkIdentifier]);
-  FName := Token.TokenString;
-
-  Expect(Tokenizer.GetNextToken, [ttkEqualSign]);
-
-  Token := Tokenizer.GetNextToken;
-  Expect(Token, [ttkNumber]);
-  FFieldNumber := StrToInt(Token.TokenString);
-
-  Token := Tokenizer.GetNextToken;
-  Expect(Token, [ttkSemiColon]);
-end;
-
-{ TOneOf }
-
-procedure TOneOf.GenerateDeclaration(Output: TMyTextStream);
-var
-  i: Integer;
-
-begin
-  raise Exception.Create('NIY: OneOf');
-  Output.WriteLine(Format('  T%s = Class(TObject)', [FName]));
-  Output.WriteLine('  private');
-
-  for i := 0 to Self.Count - 1 do
-    Output.WriteLine(Format('    F%s: %s;', [Self[i].Name, Self[i].OneOfFieldType]));
-  Output.WriteLine;
-{  for i := 0 to Self.Count - 1 do
-  begin
-    EnumField := Self[i];
-    Stream.WriteStr(Format('%s', [ifthen(i = 0, '(', ', ')]));
-    Stream.WriteStr(Format('%s:%d', [EnumField.Name, EnumField.Value]));
-  end;}
-
-  Output.WriteLine('  public');
-
-  for i := 0 to Self.Count - 1 do
-    Output.WriteLine(Format('    property %s: %s read F%s write F%s;',
-      [Self[i].Name, Self[i].OneOfFieldType, Self[i].Name, Self[i].Name]));
-  Output.WriteLine;
-
-  Output.WriteLine('  end;');
-end;
-
-constructor TOneOf.Create(Tokenizer: TTokenizer);
-// oneof = "oneof" oneofName "{" { oneofField | emptyStatement } "}"
-var
-  Token: TToken;
-  OneOfType: AnsiString;
-
-begin
-  inherited Create;
-
-  Token := Tokenizer.GetNextToken;
-  Expect(Token, [ttkIdentifier]);
-  Fname := Token.TokenString;
-
-  Expect(Tokenizer.GetNextToken, [ttkOpenBrace]);
-  Token := Tokenizer.GetNextToken;
-
-  while Token.Kind <> ttkCloseBrace do
-  begin
-    OneOfType := ParseType(Token.TokenString, Tokenizer);
-    Self.Add(TOneOfField.Create(OneOfType, Tokenizer));
-
-    Token := Tokenizer.GetNextToken;
-  end;
-end;
-
-{ TOneOfField }
-
-constructor TOneOfField.Create(OneOfType: AnsiString; Tokenizer: TTokenizer);
-// Parses a limitted form
-//  oneofField = type fieldName "=" fieldNumber ";"
-// AND NOT
-//  oneofField = type fieldName "=" fieldNumber [ "[" fieldOptions "]" ] ";"
-var
-  Token: TToken;
-
-begin
-  inherited Create;
-
-  FOneOfFieldType := OneOfType;
-  Token := Tokenizer.GetNextToken;
-
-  Expect(Token, [ttkIdentifier]);
-  FName:= Token.TokenString;
-  Expect(Tokenizer.GetNextToken, [ttkEqualSign]);
-
-  Token := Tokenizer.GetNextToken;
-  Expect(Token, [ttkNumber]);
-  FFeildNumber := StrToInt(Token.TokenString);
-  Expect(Tokenizer.GetNextToken, [ttkSemiColon]);
-
-end;
-
-destructor TOneOfField.Destroy;
-begin
-  inherited Destroy;
-end;
-
-function TOneOfField.ToString: AnsiString;
-begin
-  Result:=inherited ToString;
-end;
-
-{ TObjectList }
-
-destructor TObjectList.Destroy;
-var
-  Obj: TObject;
-begin
-  for Obj in Self do
-    Obj.Free;
-
-  inherited Destroy;
-
-end;
-
-function TObjectList.ToString: AnsiString;
-var
-  Obj: TObject;
-
-begin
-  Result := '';
-  for Obj in Self do
-    Result += Obj.ToString;
-end;
-
-{ TEnumField }
-
-constructor TEnumField.Create(EnumName: AnsiString; Tokenizer: TTokenizer);
-var
-  Token: TToken;
-{
-  This function just parses a simple form of enum:
-  enumField = ident "=" int ";"
-
-  And not the complete form:
-  enumField = ident "=" intLit [ "[" enumValueOption { ","  enumValueOption } "]" ]";"
-  enumValueOption = optionName "=" constant
-}
-begin
-  inherited Create;
-
-  FName:= EnumName;
-  Expect(Tokenizer.GetNextToken, [ttkEqualSign]);
-  Token := Tokenizer.GetNextToken;
-  Expect(Token, [ttkNumber]);
-  FValue:= StrToInt(Token.TokenString);
-
-  Expect(Tokenizer.GetNextToken, [ttkSemiColon]);
-end;
-
-destructor TEnumField.Destroy;
-begin
-  FOptions.Free;
-
-  inherited Destroy;
-end;
-
-function TEnumField.ToString: AnsiString;
-begin
-  Result:=Format('%s %s %d', [Name, Options.ToString, FValue]);
-
-end;
-
-{ TEnum }
-
-procedure TEnum.GenerateCode(Stream: TMyTextStream);
-var
-  EnumField: TEnumField;
-  i: Integer;
-
-begin
-  Stream.WriteStr(Format('  T%s = ', [FName]));
-  for i := 0 to Self.Count - 1 do
-  begin
-    EnumField := Self[i];
-    Stream.WriteStr(Format('%s', [ifthen(i = 0, '(', ', ')]));
-    Stream.WriteStr(Format('%s = %d', [Self.EnumerationName[i], EnumField.Value]));
-  end;
-  Stream.WriteLine(');');
-end;
-
-function TEnum.GetEnumerationName(Index: Integer): AnsiString;
-var
-  EnumField: TEnumField;
-
-begin
-  EnumField := Self[Index];
-  Result := Format('%s_%s', [FName, EnumField.Name]);
-
-end;
-
-constructor TEnum.Create(Tokenizer: TTokenizer);
-{
-  enum = "enum" enumName enumBody
-  enumBody = "{" { option | enumField | emptyStatement } "}"
-}
-var
-  Token: TToken;
-
-begin
-  inherited Create;
-
-  Token := Tokenizer.GetNextToken;
-  Expect(Token, ttkIdentifier);
-  FName := Token.TokenString;
-
-  Expect(Tokenizer.GetNextToken, [ttkOpenBrace]);
-  Token := Tokenizer.GetNextToken;
-  while Token.Kind <> ttkCloseBrace do
-  begin
-    if Token.TokenString = 'option' then
-      raise Exception.Create('NIY(Option in enum)!')
-    else
-    begin
-      Self.Add(TEnumField.Create(Token.TokenString, Tokenizer));
-    end;
-    Token := Tokenizer.GetNextToken;
-  end;
-  Expect(Token, ttkCloseBrace);
-
-end;
-
-{ TMessage }
-
-function CompareMessageFields(const F1, F2: TMessageField): Integer;
-begin
-  Result := F1.FieldNumber - F2.FieldNumber;
-end;
-
-procedure TMessage.PrepareForCodeGeneration;
-begin
-  FFields.Sort(@CompareMessageFields);
-end;
-
-procedure TMessage.GenerateDeclaration(Output: TMyTextStream);
-var
-  i: Integer;
-  Field: TMessageField;
-  S: AnsiString;
-
-begin
-  MessageClassName := Format('T%s', [Canonicalize(Name)]);
-  for i := 0 to Enums.Count - 1 do
-  begin
-    Enums[i].FName := Format('%s%s',
-      [MessageClassName, Canonicalize(Enums[i].FName)]);
-    Enums[i].GenerateCode(Output);
-  end;
-
-  if OneOfs.Count <> 0 then
-    raise Exception.Create('NIY OneOfs');
-  if Options.Count <> 0 then
-    raise Exception.Create('NIY: Options in Message');
-
-  Output.WriteLine(Format('  T%s = Class(TBaseMessage)', [Canonicalize(FName)]));
-  for Field in Fields do
-    Field.GenerateDeclaration(MessageClassName, Output);
-
-  Output.WriteLine('  protected ');
-  Output.WriteLine('    procedure SaveToStream(Stream: TProtoStreamWriter); override;');
-  Output.WriteLine('    function LoadFromStream(Stream: TProtoStreamReader; Len: Integer): Boolean; override;');
-  Output.WriteLine('    function ToString(const Indent: AnsiString): AnsiString;');
-  Output.WriteLine;
-  Output.WriteLine('  public ');
-  Output.WriteLine('    constructor Create;');
-  if Fields.Count <> 0 then
-  begin
-    S := '    constructor Create(';
-    for Field in Fields do
-      S += Format('a%s: %s; ', [Canonicalize(Field.Name),
-        Field.GetType]);
-    S[Length(S) - 1] := ')';
-    S[Length(S)] := ';';
-    Output.WriteLine(S);
-
-  end;
-
-  Output.WriteLine('    destructor Destroy; override;');
-  Output.WriteLine('    function ToString: AnsiString; override;');
-  Output.WriteLine(' ');
-  Output.WriteLine('  end;');
-
-end;
-
-type
-  TAllSimpleTypes = specialize TFPGMap<String, Boolean>;
-
-procedure TMessage.GenerateImplementation(Output: TMyTextStream);
-
-  procedure GenerateConstructors;
-  var
-    Field: TMessageField;
-    CanName: AnsiString;
-    CreateDeclaration: AnsiString;
-
-  begin
-    Output.WriteLine(Format('constructor %s.Create;', [MessageClassName]));
-    Output.WriteLine('begin');
-    Output.WriteLine(Format('  inherited Create;', []));
-    Output.WriteLine;
-
-    for Field in Fields do
-    begin
-      CanName := Canonicalize(Field.Name);
-      if Field.DefaultValue <> '' then
-        Output.WriteLine(Format('  F%s := %s;', [CanName, Field.DefaultValue]));
-    end;
-
-    Output.WriteLine('end;' + sLineBreak);
-
-    if Fields.Count <> 0 then
-    begin
-      CreateDeclaration := 'Create(';
-      for Field in Fields do
-        CreateDeclaration += Format('a%s: %s; ', [Canonicalize(Field.Name),
-          Field.GetType]);
-      CreateDeclaration[Length(CreateDeclaration) - 1] := ')';
-      CreateDeclaration[Length(CreateDeclaration)] := ';';
-      Output.WriteLine(Format('constructor %s.%s',
-        [MessageClassName, CreateDeclaration]));
-      Output.WriteLine('begin');
-      Output.WriteLine(Format('  inherited Create;', []));
-      Output.WriteLine;
-      for Field in Fields do
-        Output.WriteLine(Format('  F%s := a%s; ', [Canonicalize(Field.Name),
-            Canonicalize(Field.Name)]));
-
-      Output.WriteLine(sLineBreak + 'end;');
-    end;
-
-  end;
-
-  procedure GenerateDestructor;
-  var
-    Field: TMessageField;
-    CanName: AnsiString;
-
-  begin
-    Output.WriteLine(Format('destructor %s.Destroy;', [MessageClassName]));
-    Output.WriteLine('begin');
-    for Field in FFields do
-    begin
-      CanName := Canonicalize(Field.Name);
-      if not ParentProto.IsSimpleType(Field) or Field.IsRepeated then
-        Output.WriteLine(Format('  F%s.Free;', [CanName]));
-    end;
-    Output.WriteLine;
-    Output.WriteLine('  inherited;');
-    Output.WriteLine('end;');
-
-
-  end;
-
-  procedure GenerateToString;
-  var
-    Field: TMessageField;
-    CanName: AnsiString;
-
-  begin
-    Output.WriteLine(Format('function %s.ToString: AnsiString;', [MessageClassName]));
-    Output.WriteLine('begin');
-    Output.WriteLine('  Exit(Self.ToString(''''))');
-    Output.WriteLine('end;');
-    Output.WriteLine;
-
-    Output.WriteLine(Format('function %s.ToString(const Indent: AnsiString): AnsiString;', [MessageClassName]));
-    if HasRepeatedHasNonSimple then
-    begin
-      Output.WriteLine('var');
-      Output.WriteLine('  BaseMessage: TBaseMessage;');
-      Output.WriteLine;
-    end;
-
-    Output.WriteLine('begin');
-    Output.WriteLine('  Result := '''';');
-    Output.WriteLine;
-
-    for Field in FFields do
-      Field.GenerateToString(Output);
-    Output.WriteLine;
-    Output.WriteLine('end;');
-
-  end;
-
-  procedure GenerateSaveToStream;
-  var
-    Field: TMessageField;
-    CanName: AnsiString;
-    FieldType: AnsiString;
-    Enum: TEnum;
-    Handled: Boolean;
-
-  begin
-    Output.WriteLine(Format('procedure %s.SaveToStream(Stream: TProtoStreamWriter);', [MessageClassName]));
-    if HasRepeatedHasNonSimple then
-    begin
-      Output.WriteLine('var');
-      Output.WriteLine('  SizeNode: TLinkListNode;');
-      Output.WriteLine('  BaseMessage: TBaseMessage;');
-      Output.WriteLine;
-    end;
-
-    Output.WriteLine('begin');
-
-    for Field in Fields do
-    begin
-      CanName := Canonicalize(Field.Name);
-      FieldType :=  GetTypeName(Field.FieldType);
-      Handled := False;
-
-      if ParentProto.IsSimpleType(Field) and not Field.IsRepeated then
-      begin
-        if IsBasicType(Field) then
-        begin
-          Output.WriteLine(Format('  Save%s(Stream, F%s, %d);',
-            [FieldType, CanName, Field.FieldNumber]));
-          Handled := True;
-        end
-        else
-        begin
-          for Enum in ParentProto.Enums do
-            if Enum.Name = Field.FieldType then
-            begin
-              Output.WriteLine(Format('  SaveInt32(Stream, Ord(F%s), %d);',
-                [CanName, Field.FieldNumber]));
-              Handled := True;
-              Break;
-            end;
-        end;
-        if not Handled then
-          raise Exception.Create(Format('Type %s is not supported yet',
-               [GetTypeName(Field.FieldType)]));
-      end
-      else if ParentProto.IsSimpleType(Field) and Field.IsRepeated then
-      begin
-        CanName := Canonicalize(Field.Name);
-        FieldType :=  GetTypeName(Field.FieldType);
-        Handled := True;
-
-        case GetTypeName(Field.FieldType) of
-        'AnsiString', 'Single', 'Double', 'Int32', 'Int64', 'UInt32', 'UInt64', 'Boolean':
-          Output.WriteLine(Format('  SaveRepeated%s(Stream, F%s, %d);',
-            [FieldType, CanName, Field.FieldNumber]))
-        else
-           raise Exception.Create(Format('Type %s is not supported yet',
-               [GetTypeName(Field.FieldType)]));
-        end;
-      end
-      else if not ParentProto.IsSimpleType(Field) and not Field.IsRepeated then
-      begin
-        Handled := True;
-        Output.WriteLine(Format('  SaveMessage(Stream, F%s, %d);',
-          [CanName, Field.FieldNumber]));
-      end
-      else if not ParentProto.IsSimpleType(Field) and Field.IsRepeated then
-      begin
-        Handled := True;
-        Output.WriteLine(Format('  if F%s <> nil then', [CanName]));
-        Output.WriteLine(Format('    for BaseMessage in F%s do', [CanName]));
-        Output.WriteLine(Format('      SaveMessage(Stream, BaseMessage, %d);',
-                         [Field.FieldNumber]));
-        Output.WriteLine;
-      end;
-
-      Output.WriteLine;
-      if not Handled then
-        raise Exception.Create(Format('Type %s is not supported yet',
-           [GetTypeName(Field.FieldType)]));
-    end;
-
-    Output.WriteLine('end;');
-    Output.WriteLine;
-
-  end;
-
-  procedure GenerateLoadFromStream;
-  var
-    Field: TMessageField;
-    CanName: AnsiString;
-    FieldType: AnsiString;
-    Enum: TEnum;
-
-  begin
-    Output.WriteLine(Format('function %s.LoadFromStream(Stream: TProtoStreamReader; Len: Integer): Boolean;', [MessageClassName]));
-    if Fields.Count = 0 then
-    begin
-      Output.WriteLine('begin');
-      Output.WriteLine('  Result := True;');
-      Output.WriteLine('end;');
-      Exit;
-
-    end;
-
-    Output.WriteLine('var');
-    Output.WriteLine('  StartPos, FieldNumber, WireType: Integer;'+ sLineBreak);
-    if HasRepeatedHasNonSimple then
-    begin
-      Output.WriteLine('  BaseMessage: TBaseMessage;');
-      Output.WriteLine;
-    end;
-
-    Output.WriteLine('begin');
-    Output.WriteLine('  Result := True;');
-    Output.WriteLine('');
-    Output.WriteLine('  StartPos := Stream.Position;');
-    Output.WriteLine('  while Stream.Position < StartPos + Len do');
-    Output.WriteLine('  begin');
-    Output.WriteLine('    Stream.ReadTag(FieldNumber, WireType);');
-
-    Output.WriteLine;
-    Output.WriteLine('    case FieldNumber of');
-
-    for Field in Fields do
-    begin
-      CanName := Canonicalize(Field.Name);
-      FieldType :=  GetTypeName(Field.FieldType);
-
-
-      if ParentProto.IsSimpleType(Field) and not Field.IsRepeated then
-      begin
-        if IsBasicType(Field) then
-          Output.WriteLine(Format('    %d: F%s := Load%s(Stream);' + sLineBreak,
-            [Field.FieldNumber, CanName, FieldType]))
-        else
-        begin
-          for Enum in ParentProto.Enums do
-            if Enum.Name = Field.FieldType then
-            begin
-              Output.WriteLine(Format('    %d: F%s := %s(LoadInt32(Stream));' + sLineBreak,
-              [Field.FieldNumber, CanName, FieldType]));
-              Break;
-            end;
-        end;
-      end
-      else if ParentProto.IsSimpleType(Field) and Field.IsRepeated then
-      begin
-        CanName := Canonicalize(Field.Name);
-        FieldType :=  GetTypeName(Field.FieldType);
-
-        case GetTypeName(Field.FieldType) of
-        'AnsiString', 'Single', 'Double', 'Int32', 'Int64', 'UInt32', 'UInt64', 'Boolean':
-        begin
-          Output.WriteLine(Format('    %d:', [Field.FieldNumber]));
-          Output.WriteLine       ('    begin' + sLineBreak);
-          Output.WriteLine       ('      if WireType <> 2 then' + sLineBreak +
-                                  '        Exit(False);');
-          Output.WriteLine(Format('      LoadRepeated%s(Stream, GetOrCreateAll%s);',
-               [FieldType, CanName]));
-          Output.WriteLine       ('    end;' + sLineBreak);
-        end
-        else
-           raise Exception.Create(Format('Type %s is not supported yet',
-               [GetTypeName(Field.FieldType)]));
-        end;
-      end
-      else if not ParentProto.IsSimpleType(Field) and not Field.IsRepeated then
-      begin
-        Output.WriteLine(Format('    %d:', [Field.FieldNumber]));
-        Output.WriteLine       ('    begin');
-        Output.WriteLine       ('      if WireType <> 2 then' + sLineBreak +
-                                '        Exit(False);');
-        Output.WriteLine(Format('      F%s := %s.Create;', [CanName, FieldType]));
-        Output.WriteLine(Format('      if not LoadMessage(Stream, F%s) then' + sLineBreak +
-                                '        Exit(False);', [CanName]));
-        Output.WriteLine       ('    end;' + sLineBreak);
-      end
-      else if not ParentProto.IsSimpleType(Field) and Field.IsRepeated then
-      begin
-        Output.WriteLine(Format('    %d:', [Field.FieldNumber]));
-        Output.WriteLine       ('    begin');
-        Output.WriteLine       ('      if WireType <> 2 then' + sLineBreak +
-                                '        Exit(False);');
-        Output.WriteLine(Format('      GetOrCreateAll%s.Add(%s.Create);', [CanName, FieldType]));
-        Output.WriteLine(Format('      if not LoadMessage(Stream, F%s.Last) then' + sLineBreak +
-                                '        Exit(False);', [CanName]));
-        Output.WriteLine       ('    end;' + sLineBreak);
-        Output.WriteLine;
-      end;
-
-      Output.WriteLine;
-    end;
-    Output.WriteLine('    end;');
-    Output.WriteLine('  end;' + sLineBreak);
-
-    Output.WriteLine('  Result := StartPos + Len = Stream.Position;');
-    Output.WriteLine('end;');
-
-  end;
-
-
-var
-  Field: TMessageField;
-
-begin
-  for Field in Fields do
-    Field.GenerateImplementation(MessageClassName, Output);
-  GenerateConstructors;
-  Output.WriteLine;
-  GenerateDestructor;
-  Output.WriteLine;
-  GenerateToString;
-  Output.WriteLine;
-  GenerateSaveToStream;
-  GenerateLoadFromStream;
-
-  {
-  Output.WriteLine;
-  GenerateLoadFromStream;
-  }
-end;
-
-function TMessage.HasRepeatedHasNonSimple: Boolean;
-var
-  Field: TMessageField;
-
-begin
-  Result := False;
-
-  for Field in Fields do
-    if Field.IsRepeated and not ParentProto.IsSimpleType(Field) then
-      Exit(True);
-
-end;
-
-constructor TMessage.Create(Tokenizer: TTokenizer; PProto: TProto);
-var
-  Token: TToken;
-
-begin
-  inherited Create;
-
-  ParentProto := PProto;
-
-  FFields := specialize TObjectList<TMessageField>.Create;
-  FMessages := specialize TObjectList<TMessage>.Create;
-  FOptions := specialize TObjectList<TOption>.Create;
-  FOneOfs := specialize TObjectList<TOneOf>.Create;
-  FMaps := specialize TObjectList<TMap>.Create;
-  FEnums := specialize TObjectList<TEnum>.Create;
-
-  Token := Tokenizer.GetNextToken;
-  Expect(Token, ttkIdentifier);
-  FName := Token.TokenString;
-  Expect(Tokenizer.GetNextToken, ttkOpenBrace);
-  Token := Tokenizer.GetNextToken;
-
-  while Token.Kind <> ttkCloseBrace do
-  begin
-    if Token.TokenString = 'enum' then
-      FEnums.Add(TEnum.Create(Tokenizer))
-    else if Token.TokenString = 'message' then
-      FMessages.Add(TMessage.Create(Tokenizer, PProto))
-    else if Token.TokenString = 'option' then
-      FOptions.Add(TOption.Create(Tokenizer))
-    else if Token.TokenString = 'oneof' then
-      FOneOfs.Add(TOneOf.Create(Tokenizer))
-    else if Token.TokenString = 'map' then
-      FMaps.Add(TMap.Create(Tokenizer))
-    else if Token.TokenString = 'reserved' then
-      raise Exception.Create('NIY reserved')
-    else if Token.Kind = ttkSemiColon then
-    else
-      FFields.Add(TMessageField.Create(Token.TokenString, Tokenizer, ParentProto));
-    Token := Tokenizer.GetNextToken;
-  end;
-  Expect(Token, ttkCloseBrace);
-
-end;
-
-destructor TMessage.Destroy;
-begin
-  FFields.Free;
-  FMessages.Free;
-  FOptions.Free;
-  FOneOfs.Free;
-  FMaps.Free;
-  FEnums.Free;
-
-  inherited Destroy;
-end;
-
-function TMessage.ToString: AnsiString;
-begin
-  Result:= Format('Name = %s Options: (%s) Fields: (%s) Messages: (%s)',
-    [Name, Options.ToString, Fields.ToString, Messages.ToString]);
-end;
-
-{ TMessageField }
-
-function TMessageField.ApplyPattern(MessageClassName: AnsiString;
-  const Template: AnsiString): AnsiString;
-begin
-  Result := Template;
-  Result := StringReplace(Result, '[[Field.Type]]', Self.FieldType, [rfReplaceAll]);
-  Result := StringReplace(Result, '[[Field.Name]]', Self.Name, [rfReplaceAll]);
-  Result := StringReplace(Result, '[[Field.Number]]', IntToStr(Self.FieldNumber), [rfReplaceAll]);
-  Result := StringReplace(Result, '[[Field.DefaultValue]]', Self.DefaultValue, [rfReplaceAll]);
-  Result := StringReplace(Result, '[[CanName]]', Canonicalize(Self.Name), [rfReplaceAll]);
-  Result := StringReplace(Result, '[[FieldType]]', GetTypeName(Self.FieldType), [rfReplaceAll]);
-  Result := StringReplace(Result, '[[FormatString]]', FormatString(FieldType), [rfReplaceAll]);
-  Result := StringReplace(Result, '[[ClassName]]', MessageClassName, [rfReplaceAll]);
-
-end;
-
-{$i NonRepeatedSimpleFieldTemplate.inc}
-{$i NonRepeatedNonSimpleFieldTemplate.inc}
-{$i RepeatedNonSimpleFieldTemplate.inc}
-{$i RepeatedSimpleFieldTemplate.inc}
-
-
-procedure TMessageField.GenerateDeclaration(MessageClassName: AnsiString;
-  Output: TMyTextStream);
-begin
-  if not IsRepeated and ParentProto.IsSimpleType(Self) then
-    Output.WriteLine(ApplyPattern(MessageClassName, DeclareNonRepeatedSimpleFieldTemplate))
-  else if not IsRepeated and not ParentProto.IsSimpleType(Self) then
-    Output.WriteLine(ApplyPattern(MessageClassName, DeclareNonRepeatedNonSimpleFieldTemplate))
-  else if IsRepeated and not ParentProto.IsSimpleType(Self) then
-    Output.WriteLine(ApplyPattern(MessageClassName, DeclareRepeatedNonSimpleFieldTemplate))
-  else
-    Output.WriteLine(ApplyPattern(MessageClassName, DeclareRepeatedSimpleFieldTemplate));
-end;
-
-procedure TMessageField.GenerateImplementation(MessageClassName: AnsiString;
-  Output: TMyTextStream);
-begin
-  if not IsRepeated then
-  else if not ParentProto.IsSimpleType(Self) then
-    Output.WriteLine(ApplyPattern(MessageClassName, ImplementRepeatedNonSimpleFieldTemplate))
-  else if GetTypeName(FieldType) = 'Boolean' then
-    Output.WriteLine(ApplyPattern(MessageClassName, ImplementRepeatedBooleanTemplate))
-  else
-    Output.WriteLine(ApplyPattern(MessageClassName, ImplementRepeatedSimpleFieldTemplate));
-end;
-
-function TMessageField.GetDefaultValue: AnsiString;
-var
-  Enum: TEnum;
-
-begin
-  if IsRepeated or not ParentProto.IsSimpleType(Self) then
-    Exit('');
-
-  if IsBasicType(Self) then
-    case GetTypeName(FieldType) of
-      'Double',
-      'Single': Exit('0.0');
-      'Int16',
-      'Int32',
-      'Int64',
-      'UInt16',
-      'UInt32',
-      'UInt64': Exit('0');
-      'Boolean': Exit('False');
-      'AnsiString': Exit('''''')
-      else
-       raise Exception.Create(Format('Type %s is not supported yet',
-         [GetTypeName(FieldType)]));
-    end
-  else
-  begin
-    for Enum in ParentProto.Enums do
-      if Enum.Name = Self.FieldType then
-        Exit(Enum.EnumerationName[0]);
-  end;
-end;
-
-procedure TMessageField.GenerateToString(Output: TMyTextStream);
-var
-  CanName: AnsiString;
-  Enum: TEnum;
-
-begin
-  CanName := Canonicalize(Self.Name);
-
-  if ParentProto.IsSimpleType(Self) and not IsRepeated then
-  begin
-    if not IsBasicType(Self) then
-    begin
-      for Enum in ParentProto.Enums do
-        if Enum.Name = Self.FieldType then
-        begin
-          Output.WriteLine(Format(
-                         '  Result += Indent + IntToStr(Ord(F%s)) + sLineBreak;',
-                         [CanName]));
-          Break;
-        end;
-    end
-    else if GetTypeName(FieldType) = 'Boolean' then
-    begin
-      Output.WriteLine(Format(
-                       '  if F%s then',
-                       [CanName]));
-      Output.WriteLine(Format(
-                       '    Result += Indent + Format(''F%s: %%s'', [IfThen(F%s, ''True'', ''False'')]) + sLineBreak;',
-                       [CanName, CanName]));
-      Output.WriteLine;
-    end
-    else if DefaultValue <> '' then
-      Output.WriteLine(
-        ApplyPattern('', ImplementNonRepeatedSimpleFieldToStringTemplate))
-    else
-    begin
-      Output.WriteLine(Format('  Result += Indent + Format(''%s: %%%s '', [F%s]) + sLineBreak;',
-        [Self.Name, FormatString(FieldType), CanName]));
-      Output.WriteLine;
-    end;
-
-  end
-  else if not ParentProto.IsSimpleType(Self) and not IsRepeated then
-    Output.WriteLine(
-      ApplyPattern('', ImplementNonRepeatedNonSimpleFieldToStringTemplate))
-  else if ParentProto.IsSimpleType(Self) and IsRepeated then
-    Output.WriteLine(
-      ApplyPattern('', ImplementRepeatedSimpleFieldToStringTemplate))
-  else if ParentProto.IsSimpleType(Self) and IsRepeated then
-    Output.WriteLine(
-      ApplyPattern('', ImplementRepeatedNonSimpleFieldToStringTemplate))
-  else if not ParentProto.IsSimpleType(Self) and IsRepeated then
-  begin
-    Output.WriteLine(Format('    if F%s <> nil then', [CanName]));
-    Output.WriteLine(       '    begin');
-    Output.WriteLine(Format('      Result += ''%s  = '';', [Self.Name]));
-    Output.WriteLine(Format('      for BaseMessage in F%s do',
-                   [CanName]));
-    Output.WriteLine(       '        Result += Format(''[%s%s]'', [Indent, BaseMessage.ToString]);');
-    Output.WriteLine(       '      Result += sLineBreak;');
-    Output.WriteLine(       '    end;');
-  end
-  else
-  raise Exception.Create('Invalid Msg');
-end;
-
-function TMessageField.GetType: AnsiString;
-begin
-  if ParentProto.IsSimpleType(Self) and not IsRepeated then
-    Result := GetTypeName(FieldType)
-  else if not ParentProto.IsSimpleType(Self) and not IsRepeated then
-      Result := Format('%s', [GetTypeName(FieldType)])
-  else if ParentProto.IsSimpleType(Self) and IsRepeated then
-    Result := Format('specialize TSimpleTypeList<%s>', [GetTypeName(FieldType)])
-  else
-    Result := Format('specialize TObjectList<%s>', [GetTypeName(FieldType)]);
-
-end;
-
-constructor TMessageField.Create(TokenString: AnsiString;
-  Tokenizer: TTokenizer; PProto: TProto);
-var
-  Token: TToken;
-  //  field = [ "repeated" ] type fieldName "=" fieldNumber [ "[" fieldOptions "]" ] ";"
-begin
-  inherited Create;
-
-  ParentProto := PProto;
-  FOptions := specialize TObjectList<TOption>.Create;
-  FIsRepeated := TokenString = 'repeated';
-  if TokenString = 'repeated' then
-  begin
-    Token := Tokenizer.GetNextToken;
-    Expect(Token, ttkIdentifier);
-    FFieldType := ParseType(Token.TokenString, Tokenizer);
-  end
-  else
-    FFieldType := ParseType(TokenString, Tokenizer);
-
-  Token := Tokenizer.GetNextToken;
-  Expect(Token, ttkIdentifier);
-  FName := Token.TokenString;
-  Expect(Tokenizer.GetNextToken, ttkEqualSign);
-  Token := Tokenizer.GetNextToken;
-  Expect(Token, ttkNumber);
-  FFieldNumber := StrToInt(Token.TokenString);
-  Token := Tokenizer.GetNextToken;
-
-  if Token.Kind <> ttkSemiColon then
-  begin
-    Expect(Token, ttkOpenBracket);
-    Options.Add(TOption.Create(Tokenizer));
-    Token := Tokenizer.GetNextToken;
-  end;
-  Expect(Token, ttkSemiColon);
-
-end;
-
-destructor TMessageField.Destroy;
-begin
-  FOptions.Free;
-
-  inherited Destroy;
-end;
-
-function TMessageField.ToString: AnsiString;
-begin
-  Result:= '';
-  if IsRepeated then
-    Result += 'repeated ';
-  Result += Format('%s %s = %d (%s)',
-    [FieldType, Name, FFieldNumber, Options.ToString]);
-
-end;
-
-{ TOption }
-
-constructor TOption.Create(Tokenizer: TTokenizer);
-var
-  Token: TToken;
-  // This function just support optionName = 'default';
-  // option = "option" optionName  "=" constant ";"
-  // optionName = ( ident | "(" fullIdent ")" ) { "." ident }
-  // constant ::= ident | intLit | floatLit | strLit | boolLit
-begin
-  inherited Create;
-
-  Token := Tokenizer.GetNextToken;
-  Expect(Token, [ttkIdentifier]);
-  FOptionName:= Token.TokenString;
-  Expect(Token, 'default');
-
-  Token := Tokenizer.GetNextToken;
-  while Token.Kind in [ttkDot, ttkIdentifier] do
-  begin
-    FOptionName += Token.TokenString;
-    Token := Tokenizer.GetNextToken;
-  end;
-  Expect(Token, [ttkEqualSign]);
-
-  Token := Tokenizer.GetNextToken;
-  if Token.Kind = ttkNumber then
-    FConstValue := Token.TokenString// ParseNumber
-  else if Token.Kind = ttkSingleQuote then
-  begin
-    Token := Tokenizer.GetNextToken;
-    while Token.Kind <> ttkSingleQuote do
-    begin
-      FConstValue += Token.TokenString;
-      Token := Tokenizer.GetNextToken;
-    end;
-    Expect(Token, [ttkSingleQuote]);
-  end;
-
-  Token := Tokenizer.GetNextToken;
-  Expect(Token, [ttkCloseBracket]);
-end;
-
 { TTokenizer }
 
-constructor TTokenizer.Create(Stream: TStream);
+constructor TTokenizer.Create(_Stream: TStream);
 begin
   inherited Create;
 
+  Stream := _Stream;
+  Stream.Position := 0;
   SetLength(WholeFile, Stream.Size);
   Stream.ReadBuffer(WholeFile[1], Stream.Size);
   FileSize := Stream.Size;
+  Currents := TIntList.Create;
   Current := 1;
+  Currents.Add(Current);
 
 end;
 
 destructor TTokenizer.Destroy;
 begin
+  Currents.Free;
+  Stream.Free;
 
   inherited Destroy;
 end;
@@ -1597,7 +198,7 @@ type
     Ch: Char;
   end;
 
-function TTokenizer.GetNextToken: Ttoken;
+function TTokenizer.GetNextToken: TToken;
 
   function GetNextChar: TChar;
   begin
@@ -1620,6 +221,7 @@ function TTokenizer.GetNextToken: Ttoken;
     '{': Result.Kind := tckOpenBrace;
     '}': Result.Kind := tckCloseBrace;
     '=': Result.Kind := tckEqualSign;
+    '*': Result.Kind := tckStar;
     ':': Result.Kind := tckColon;
     ',': Result.Kind := tckComma;
     '"': Result.Kind := tckDoubleQuote;
@@ -1634,16 +236,45 @@ function TTokenizer.GetNextToken: Ttoken;
     '>': Result.Kind := tckGreaterThan;
     '[': Result.Kind := tckOpenBracket;
     ']': Result.Kind := tckCloseBracket;
+    '#': Result.Kind := tckNumberSign;
+    '!': Result.Kind := tckExclamationMark;
+    '@': Result.Kind := tckAtSgin;
+    '+': Result.Kind := tckPlus
     else
-      WriteLn(Result.ch + ' ' + IntToStr(Ord(Result.Ch)));
-      raise Exception.Create(Result.ch + ' ' + IntToStr(Ord(Result.Ch)));
+      FatalLn(Result.ch + ' ' + IntToStr(Ord(Result.Ch)));
+      raise EInvalidCharacter.Create(Result.ch, Ord(Result.Ch));
     end;
 
   end;
 
+  type
+    TCharKindSet = set of TCharKind;
+
+    function NextCharIs(ChSet: TCharKindSet): Boolean;
+    var
+      StartPos: Integer;
+      Ch: TCharKind;
+      NextChar: TChar;
+
+    begin
+      StartPos := Current;
+
+      for Ch in ChSet do
+      begin
+        NextChar := GetNextChar;
+        if (NextChar.Kind = tckEoF) or (NextChar.Kind <> Ch) then
+        begin
+          Current := StartPos;
+          Exit(False);
+        end;
+
+      end;
+
+      Current := StartPos;
+      Result := True;
+    end;
+
 var
-  State: Integer;
-  Ch: Char;
   CurrentChar: TChar;
 
 begin
@@ -1676,7 +307,7 @@ begin
       tckCloseBrace, tckOpenPar, tckClosePar, tckSemiColon, tckEqualSign,
       tckColon, tckComma, tckDoubleQuote, tckSingleQuote,
       tckMinus, tckQuestionMark, tckLessThan, tckGreaterThan, tckOpenBracket,
-      tckCloseBracket:
+      tckCloseBracket, tckAtSgin:
     begin
       Result.TokenString += CurrentChar.Ch;
       Result.Kind := TTokenKind(Ord(CurrentChar.Kind));
@@ -1690,7 +321,9 @@ begin
       end;
       Dec(Current);
       Result.Kind:= ttkSpace;
+
       Result := Self.GetNextToken;
+      Exit;
     end;
     tckEndLine:
     begin
@@ -1709,6 +342,7 @@ begin
         Exit;
       end;
       Result := Self.GetNextToken;
+      Exit;
     end;
     tckEoF:
       Result.Kind := ttkEOF;
@@ -1716,143 +350,1004 @@ begin
     begin
       Result.TokenString += CurrentChar.Ch;
       Result.Kind := ttkSlash;
-      if GetNextChar.Kind <> tckSlash then
+
+      if NextCharIs([tckSlash]) then
       begin
-        Dec(Current);
+        CurrentChar := GetNextChar;
+        Result.TokenString += CurrentChar.Ch;
+        Result.Kind := ttkComment;
+        CurrentChar := GetNextChar;
+        while not (CurrentChar.Kind in [tckEndLine, tckEoF]) do
+        begin
+          Result.TokenString += CurrentChar.Ch;
+          CurrentChar := GetNextChar;
+        end;
+        Result := Self.GetNextToken;
+        Exit;
+      end
+      else if NextCharIs([tckStar]) then
+      begin
+        CurrentChar := GetNextChar;
+        Result.TokenString += CurrentChar.Ch;
+        Result.Kind := ttkComment;
+
+        while not NextCharIs([tckStar, tckSlash]) do
+        begin
+          Result.TokenString += CurrentChar.Ch;
+          CurrentChar := GetNextChar;
+        end;
+        Result.TokenString += GetNextChar.Ch;
+        Result.TokenString += GetNextChar.Ch;
+
+        Result := Self.GetNextToken;
         Exit;
       end;
-      Result.TokenString += CurrentChar.Ch;
-      Result.Kind := ttkComment;
-      CurrentChar := GetNextChar;
-      while not (CurrentChar.Kind in [tckEndLine, tckEoF]) do
-      begin
-        Result.TokenString += CurrentChar.Ch;
-        CurrentChar := GetNextChar;
-      end;
-      Result := Self.GetNextToken;
+
     end
     else
     begin
-      WriteLn(CurrentChar.ch + ' Ch:' + IntToStr(Ord(CurrentChar.Ch)) +
+      FatalLn(CurrentChar.ch + ' Ch:' + IntToStr(Ord(CurrentChar.Ch)) +
         ' Kind:' + IntToStr(Ord(CurrentChar.Kind)) +
         ' Result:' + Result.TokenString);
       raise Exception.Create(CurrentChar.ch + ' ' + IntToStr(Ord(CurrentChar.Ch)) +
         ' Result:' + Result.TokenString);
     end;
   end;
-end;
 
-{ TProto }
+  Currents.Add(Current);
+ end;
 
-constructor TProto.Create;
+procedure TTokenizer.Rewind(Count: Integer);
 begin
-  inherited;
-
-  Imports := TStringList.Create;
-  Packages := TStringList.Create;
-  Options := specialize TObjectList<TOption>.Create;
-  Messages := specialize TObjectList<TMessage>.Create;
-  Enums := specialize TObjectList<TEnum>.Create;
+  Currents.Count := Currents.Count - Count;
+  Current := Currents.Last;
 
 end;
 
-destructor TProto.Destroy;
+function TTokenizer.ExpectAll(const TokenStrs: array of AnsiString): Boolean;
+var
+  TokenStr: AnsiString;
+
 begin
-  Imports.Free;
-  Packages.Free;
-  Options.Free;
-  Messages.Free;
-  Enums.Free;
+  for TokenStr in TokenStrs do
+    if not Self.Expect(TokenStr) then
+      Exit(False);
+
+  Result := True;
+
+end;
+
+function TTokenizer.ExpectAll(Ts: array of TTokenKind): Boolean;
+var
+  TokenKind: TTokenKind;
+
+begin
+  for TokenKind in Ts do
+    if not Self.Expect(TokenKind) then
+      Exit(False);
+
+  Result := True;
+
+end;
+
+function TTokenizer.Expect(const TokenStr: AnsiString): Boolean;
+var
+  Token: TToken;
+
+begin
+  Token := GetNextToken;
+  Result := Token.TokenString = TokenStr;
+
+  if not Result then
+    raise EExpectFailed.Create(Format('Expected "%s" Visited "%s".',
+      [Token.TokenString, TokenStr]));
+end;
+
+function TTokenizer.ExpectOne(Ts: array of TTokenKind): Boolean;
+var
+  Token: TToken;
+  Kind: TTokenKind;
+
+begin
+  Token := GetNextToken;
+  Result := False;
+  for Kind in Ts do
+    Result := Result or (Token.Kind = Kind);
+
+  if not Result then
+    raise EExpectFailed.Create(Format('Expected "%d" Visited "%d".',
+              [Ord(Token.Kind), Ord(Ts[0])]));
+end;
+
+function TTokenizer.Expect(const TokenKind: TTokenKind): Boolean;
+var
+  Token: TToken;
+
+begin
+  Token := GetNextToken;
+  Result := Token.Kind = TokenKind;
+
+  if not Result then
+    raise EExpectFailed.Create(Format('Expected "%d" Visited "%d".',
+      [Token.Kind, TokenKind]));
+end;
+
+function TTokenizer.NextTokenIsIn(Ts: array of TTokenKind): Boolean;
+var
+  Next: TToken;
+  Kind: TTokenKind;
+
+begin
+  Next := GetNextToken;
+  Rewind;
+
+  for Kind in Ts do
+    if Next.Kind = Kind then
+      Exit(True);
+
+  Result := False;
+end;
+
+function TTokenizer.NextTokenIsIn(Ts: array of AnsiString): Boolean;
+var
+  Next: TToken;
+  S: AnsiString;
+
+begin
+  Next := GetNextToken;
+
+  for S in Ts do
+    if Next.TokenString = S then
+    begin
+      Rewind(1);
+      Exit(True);
+
+    end;
+
+  Rewind(1);
+  Result := False;
+end;
+
+{ TTokenArray }
+
+procedure TTokenArray.AddToken(aToken: TToken);
+begin
+  Self.PushBack(aToken);
+
+end;
+
+destructor TTokenArray.Destroy;
+begin
+  inherited Destroy;
+
+end;
+
+function TProtoParser.ParseType: TType;
+ // type = "double" | "float" | "int32" | "int64" | "uint32" | "uint64"
+ //     | "sint32" | "sint64" | "fixed32" | "fixed64" | "sfixed32" | "sfixed64"
+ //     | "bool" | "string" | "bytes" | messageType | enumType
+
+var
+  Token: TToken;
+
+begin
+  Token := Tokenizer.GetNextToken;
+  Result := Token.TokenString;
+  Token := Tokenizer.GetNextToken;
+
+  while Token.Kind = ttkDot do
+  begin
+    Result += Token.TokenString;
+
+    Token := Tokenizer.GetNextToken;
+    if Token.Kind <> ttkIdentifier then
+      raise EInvalidToken.Create(Token.TokenString, ttkIdentifier);
+    Result += Token.TokenString;
+
+    Token := Tokenizer.GetNextToken;
+  end;
+
+  if Result = 'bytes' then
+  begin
+    raise EParseIntFailed.Create('Bytes fields are not supported yet. Please use string instead.');
+  end;
+  Tokenizer.Rewind();
+end;
+
+function TProtoParser.CollectUntil(EndTokenKind: TTokenKind): TTokenArray;
+var
+  CurToken: TToken;
+
+begin
+  CurToken := Tokenizer.GetNextToken;
+
+  Result := TTokenArray.Create;
+  while CurToken.Kind <> EndTokenKind do
+  begin
+    Result.AddToken(CurToken);
+
+    CurToken := Tokenizer.GetNextToken;
+  end;
+end;
+
+{ EInvalidToken }
+
+constructor EInvalidToken.Create(TokenStr: AnsiString; TokenKind: TTokenKind);
+begin
+  inherited Create(Format('Unexpected Token Visited [%s, %d]', [TokenStr, Ord(TokenKind)]))
+
+end;
+
+function TProto3Parser.ParseImport: AnsiString;
+// import = "import" [ "weak" | "public" ] strLit ";"
+var
+  CurrentToken, Token: TToken;
+  StartTag: TTokenKind;
+  Tokens: TTokenArray;
+
+begin
+  if Tokenizer.NextTokenIsIn(['weak', 'public']) then
+    Tokenizer.GetNextToken;
+  CurrentToken := Tokenizer.GetNextToken;
+  StartTag:= CurrentToken.Kind;
+  if not (StartTag in [ttkDoubleQuote, ttkSingleQuote]) then
+    raise EInvalidToken.Create(CurrentToken.TokenString, StartTag);
+  Result := Tokenizer.GetNextToken.TokenString;
+  Tokens := CollectUntil(StartTag);
+  for Token in Tokens do
+  begin
+    if Token.Kind = StartTag then
+      Break;
+    Result += Token.TokenString;
+
+  end;
+  Tokens.Free;
+  Tokenizer.ExpectAll([ttkSemiColon]);
+
+end;
+
+{ TProtoParser }
+
+function TProtoParser.ParseStrLit: TStrLit;
+var
+  Token: TToken;
+
+begin
+  Result := '';
+  if Tokenizer.NextTokenIsIn([ttkSingleQuote]) then
+  begin
+    Tokenizer.GetNextToken;
+    while Tokenizer.NextTokenIsIn([ttkSingleQuote]) do
+      Result += Tokenizer.GetNextToken.TokenString;
+    Tokenizer.Expect(ttkSingleQuote);
+  end
+  else if Tokenizer.NextTokenIsIn([ttkDoubleQuote]) then
+  begin
+    Tokenizer.GetNextToken;
+    while Tokenizer.NextTokenIsIn([ttkDoubleQuote]) do
+      Result += Tokenizer.GetNextToken.TokenString;
+    Tokenizer.Expect(ttkDoubleQuote);
+  end
+  else
+  begin
+    Token := Tokenizer.GetNextToken;
+    raise EInvalidToken.Create(Token.TokenString, token.Kind);
+  end;
+
+end;
+
+function TProtoParser.ParseIdent: TIdentifier;
+// ident = letter { letter | decimalDigit | "_" }
+var
+  Token: TToken;
+
+begin
+  Token := Tokenizer.GetNextToken;
+  if (Token.TokenString <> '') and (Token.TokenString[1] in ['a'..'z', 'A'..'Z']) then
+    Exit(Token.TokenString);
+  raise EInvalidToken.Create(Token.TokenString, Token.Kind);
+end;
+
+function ParseDecimalLit(TokenStr: AnsiString): Integer;
+// decimalLit = ( "1" … "9" ) { decimalDigit }
+begin
+  Result := StrToInt(TokenStr);
+end;
+
+function ParseOctalLit(TokenStr: AnsiString): Integer;
+var
+  c: Char;
+begin
+  Result := 0;
+  for c in Copy(TokenStr, 2, Length(TokenStr)) do
+  begin
+    if not (c in ['0'..'7']) then
+      raise EInvalidToken.Create(TokenStr, ttkNumber);
+    Result *= 8;
+    Result += Ord(c) - 48;
+  end;
+
+end;
+
+function ParseHexLit(TokenStr: AnsiString): Integer;
+var
+  c: Char;
+
+begin
+  Result := 0;
+  for c in Copy(TokenStr, 3, Length(TokenStr)) do
+  begin
+    Result *= 16;
+    if c in ['0'..'9'] then
+      Result += Ord(c) - 48
+    else if UpCase(c) in ['A'..'F'] then
+      Result += Ord(UpCase(c)) - 55
+    else
+      raise EInvalidToken.Create(TokenStr, ttkNumber);
+  end;
+end;
+
+function TProtoParser.ParseFieldNumber: Integer;
+// fieldNumber = intLit;
+// intLit     = decimalLit | octalLit | hexLit
+// octalLit   = "0" { octalDigit }
+// hexLit     = "0" ( "x" | "X" ) hexDigit { hexDigit }
+var
+  Token: TToken;
+  c: Char;
+
+begin
+  Token := Tokenizer.GetNextToken;
+
+  if Token.TokenString[1] in ['1'..'9'] then
+    Result := ParseDecimalLit(Token.TokenString)
+  else if (2 <= Length(Token.TokenString)) and (Token.TokenString[1] = '0') and (UpCase(Token.TokenString[2]) <> Upcase('x')) then
+    Result := ParseOctalLit(Token.TokenString)
+  else if (2 <= Length(Token.TokenString)) and (Token.TokenString[1] = '0') and (UpCase(Token.TokenString[2]) = Upcase('x')) then
+    Result := ParseHexLit(Token.TokenString)
+  else
+    raise EInvalidToken.Create(Token.TokenString, ttkNumber);
+
+end;
+
+function TProtoParser.ParseFullIdent: TFullIdentifier;
+// fullIdent = ident { "." ident }
+
+begin
+  Result := ParseIdent;
+
+  while Tokenizer.NextTokenIsIn([ttkDot]) do
+  begin
+    Tokenizer.GetNextToken;
+    Result += '.';
+    Result += ParseIdent;
+  end;
+
+end;
+
+constructor TProtoParser.Create(_Tokenizer: TTokenizer);
+begin
+  inherited Create;
+
+  FTokenizer := _Tokenizer;
+end;
+
+destructor TProtoParser.Destroy;
+begin
+  FTokenizer.Free;
 
   inherited Destroy;
 end;
 
-class procedure TProto.GenerateCode(InputFilename: AnsiString);
+class function TBaseProtoParser.GetParser(_InputFilename: AnsiString): TBaseProtoParser;
 var
-  Proto: TProto;
+  TmpTokenizer: TTokenizer;
+  ProtoVersion: AnsiString;
   InputStream: TFileStream;
-  OutputStream: TFileStream;
-  FilePath: AnsiString;
-  OutputUnitName: AnsiString;
 
 begin
-  InputStream := TFileStream.Create(InputFilename, fmOpenRead);
-  Proto := TProto.Parse(InputStream);
-  InputStream.Free;
+  InputStream := TFileStream.Create(_InputFilename, fmOpenRead);
+  TmpTokenizer := TTokenizer.Create(InputStream);
 
-  OutputUnitName := GetUnitName(InputFilename);
-  OutputStream := TFileStream.Create(ExtractFileDir(InputFilename) + '/' +
-    OutputUnitName + '.pp', fmCreate);
+  TmpTokenizer.Expect('syntax');
+  TmpTokenizer.ExpectAll([ttkEqualSign, ttkDoubleQuote]);
+  ProtoVersion := TmpTokenizer.GetNextToken.TokenString;
+  TmpTokenizer.ExpectAll([ttkDoubleQuote, ttkSemiColon]);
 
-  Proto.PrepareForCodeGeneration;
-  Proto.GenerateCode(OutputUnitName, OutputStream);
-
-  OutputStream.Free;
-  Proto.Free;
-
-end;
-
-procedure TProto.PrepareForCodeGeneration;
-var
-  Message: TMessage;
-
-begin
-  for Message in Messages do
-    Message.PrepareForCodeGeneration;
-
-end;
-
-class function TProto.Parse(InputStream: TStream): TProto;
-var
-  Tokenizer: TTokenizer;
-  Token: TToken;
-
-begin
-  Tokenizer := TTokenizer.Create(InputStream);
-
-  Token := Tokenizer.GetNextToken;
-  Expect(Token, 'syntax');
-  if ParseSyntax(Tokenizer) = 3 then
-    Result := TProto3.Create(Tokenizer)
+  if ProtoVersion = 'proto3' then
+  begin
+    Result := TProto3Parser.Create(TmpTokenizer);
+    Result.InputFilename := _InputFilename;
+  end
   else
     raise Exception.Create('This library just works for Protobuf Version 3');
 
-  Tokenizer.Free;
 end;
 
-function TProto.IsSimpleType(AField: TMessageField): Boolean;
+class function TBaseProtoParser.Parse(_InputFilename: AnsiString): TProto;
 var
-  Enum: TEnum;
+  Parser: TBaseProtoParser;
+
 begin
-  Result := True;
-  if IsBasicType(AField) then
-    Exit;
-  for Enum in Self.Enums do
+  Parser := TBaseProtoParser.GetParser(_InputFilename);
+
+  Result := Parser.ParseProto;
+
+  Parser.Free;
+end;
+
+class function TBaseProtoParser.ParseAll(_InputFilename: AnsiString): TProtoMap;
+
+  procedure RecParse(ProtoFile: AnsiString; ProtoMap: TProtoMap);
+  var
+    Proto: TProto;
+    Import: AnsiString;
+
   begin
-    if Enum.Name = AField.FieldType then
-      Exit;
-  end;
-  Result := False;
-end;
+    Proto := TBaseProtoParser.Parse(ProtoFile);
+    ProtoMap[ProtoFile] := Proto;
 
-function TProto.ToString: AnsiString;
-var
-  Message: TMessage;
-  StrList: TStringList;
+    for Import in Proto.Imports do
+      if ProtoMap.IndexOf(Import) = -1 then
+        RecParse(Import, ProtoMap);
+  end;
 
 begin
-  StrList := TStringList.Create;
-  StrList.Add('Imports:' + Imports.Text);
-  StrList.Add('Packages:' + Packages.Text);
-  StrList.Add('Options:' + Options.ToString);
+  Result := TProtoMap.Create;
 
-  for Message in Messages do
-    StrList.Add(Message.ToString);
-
-  Result := StrList.Text;
-  StrList.Free;
+  RecParse(_InputFilename, Result);
 
 end;
 
+destructor TBaseProtoParser.Destroy;
+begin
+  inherited Destroy;
+end;
+
+{ TProto3Parser }
+
+function TProto3Parser.ParseSyntax: Boolean;
+// syntax = "syntax" "=" quote "proto3" quote ";"
+begin
+  Tokenizer.ExpectAll(['syntax']);
+  Tokenizer.ExpectAll([ttkEqualSign, ttkDoubleQuote]);
+  Tokenizer.ExpectAll(['proto3']);
+  Tokenizer.ExpectAll([ttkDoubleQuote, ttkSemiColon]);
+  Result := True;
+
+end;
+
+function TProto3Parser.ParseMessage(Parent: TParent): TMessage;
+var
+  Token: TToken;
+  Name: AnsiString;
+  Enums: TEnums;
+  Messages: TMessages;
+  Fields: TMessageFields;
+  Options: TOptions;
+
+{
+  message = "message" messageName messageBody
+  messageName = ident
+  messageBody = "{" { field | enum | message | option | oneof | mapField |
+  reserved | emptyStatement } "}"
+}
+begin
+  Name := ParseIdent;;
+  Tokenizer.Expect(ttkOpenBrace);
+
+  Token := Tokenizer.GetNextToken;
+
+  Enums := TEnums.Create;
+  Messages := TMessages.Create;
+  Options := TOptions.Create;
+  Fields := TMessageFields.Create;
+
+  Result := TMessage.Create(Name, Fields, Messages, Options, Enums, Parent);
+
+  while Token.Kind <> ttkCloseBrace do
+  begin
+    if Token.TokenString = 'enum' then
+      Enums.Add(ParseEnum(CreateParent(nil, Result, nil)))
+    else if Token.TokenString = 'message' then
+      Messages.Add(Self.ParseMessage(CreateParent(nil, Result, Parent.Proto)))
+    else if Token.TokenString = 'option' then
+      Options.Add(ParseOption(ttkSemiColon))
+    else if Token.TokenString = 'oneof' then
+      Fields.Add(ParseOneOf(Result))
+    else if Token.TokenString = 'map' then
+      Fields.Add(ParseMap(Result))
+    else if Token.TokenString = 'reserved' then
+      raise Exception.Create('NIY reserved')
+    else if Token.Kind = ttkSemiColon then
+    else
+    begin
+      Tokenizer.Rewind;
+      Fields.Add(ParseMessageField(Result));
+    end;
+
+    Token := Tokenizer.GetNextToken;
+  end;
+
+end;
+
+function TProto3Parser.ParseEnum(Parent: TParent): TEnum;
+var
+  Token: TToken;
+  FName: AnsiString;
+  Options: TOptions;
+  EnumFields: TEnumFields;
+
+(*
+  enum = "enum" enumName enumBody
+  enumBody = "{" { option | enumField | emptyStatement } "}"
+  enumField = ident "=" intLit [ "[" enumValueOption { ","  enumValueOption } "]" ]";"
+  enumValueOption = optionName "=" constant
+
+  enumName = Ident
+*)
+begin
+  Token := Tokenizer.GetNextToken;
+  FName := Token.TokenString;
+  Options := TOptions.Create;
+  EnumFields := TEnumFields.Create;
+
+  Tokenizer.Expect(ttkOpenBrace);
+  Token := Tokenizer.GetNextToken;
+  while Token.Kind <> ttkCloseBrace do
+  begin
+    if Token.TokenString = 'option' then
+      Options.Add(ParseOption(ttkSemiColon))
+    else if Token.Kind = ttkSemiColon then
+    else
+    begin
+      Tokenizer.Rewind;
+      EnumFields.Add(ParseEnumField(FName))
+    end;
+
+    Token := Tokenizer.GetNextToken;
+  end;
+
+  Result := TEnum.Create(FName, Options, EnumFields, Parent);
+
+end;
+
+function TProto3Parser.ParseEnumField(EnumName: AnsiString): TEnumField;
+var
+  Token: TToken;
+  Name: AnsiString;
+  Value: Integer;
+  Options: TOptions;
+(*
+  enumField = ident "=" intLit [ "[" enumValueOption { ","  enumValueOption } "]" ]";"
+  enumValueOption = optionName "=" constant
+*)
+begin
+  Token := Tokenizer.GetNextToken;
+  Name := Token.TokenString;
+  Tokenizer.Expect(ttkEqualSign);
+  Token := Tokenizer.GetNextToken;
+  Value:= StrToInt(Token.TokenString);
+
+  Options := MaybeParseOptions;
+
+  Tokenizer.Expect(ttkSemiColon);
+
+  Result := TEnumField.Create(EnumName, Name, Options, Value);
+
+
+end;
+
+function TProto3Parser.ParsePackage: AnsiString;
+  // package = "package" fullIdent ";"
+
+begin
+  Result := ParseFullIdent;
+  Tokenizer.Expect(ttkSemiColon);
+
+end;
+
+function IsTokenIn(AToken: TToken; TokenTypes: array of TTokenKind): Boolean;
+var
+  t: TTokenKind;
+
+begin
+  Result := False;
+
+  for t in TokenTypes do
+    if t = AToken.Kind then
+      Exit(True);
+
+end;
+
+
+function TProto3Parser.ParseOption(EndTokenTypes: array of TTokenKind): TOption;
+  function ParseOptionName: TOptionName;
+  var
+    Token: TToken;
+
+    // optionName = ( ident | "(" fullIdent ")" ) { "." ident }
+  begin
+    if Tokenizer.NextTokenIsIn([ttkOpenPar]) then
+    begin
+      Tokenizer.Expect(ttkOpenPar);
+      Result := '(' + ParseFullIdent + ')';
+      Tokenizer.Expect(ttkClosePar);
+
+    end
+    else
+      Result := ParseIdent;
+
+    while Tokenizer.NextTokenIsIn([ttkDot]) do
+      Result += '.' + ParseIdent;
+  end;
+
+var
+  OptionName: TOptionName;
+  Value: TConstValue;
+  Token: TToken;
+//  option = "option" optionName  "=" constant ";"
+
+begin
+  OptionName := ParseOptionName;
+  Tokenizer.Expect(ttkEqualSign);
+  Value := ParseConstant;
+
+  Tokenizer.ExpectOne(EndTokenTypes);
+  Result := TOption.Create(OptionName, Value);
+end;
+
+function TProto3Parser.MaybeParseOptions: TOptions;
+var
+  Token: TToken;
+  tt: TTokenKind;
+
+begin
+  Result := TOptions.Create;
+  Token := Tokenizer.GetNextToken;
+  if Token.Kind  <> ttkOpenBracket then
+  begin
+    Tokenizer.Rewind;
+    Exit;
+  end;
+
+  Token := Tokenizer.GetNextToken;
+  while not IsTokenIn(Token, [ttkCloseBracket]) do
+  begin
+    Tokenizer.Rewind();
+    Result.Add(ParseOption([ttkComma, ttkCloseBracket]));
+
+    Tokenizer.Rewind(1);
+    Token := Tokenizer.GetNextToken;
+    if Token.Kind <> ttkCloseBracket then
+      Token := Tokenizer.GetNextToken;
+
+  end;
+
+end;
+
+function TProto3Parser.ParseOneOf(ParentMessage: TMessage): TOneOf;
+// oneof = "oneof" oneofName "{" { oneofField | emptyStatement } "}"
+// oneofField = type fieldName "=" fieldNumber [ "[" fieldOptions "]" ] ";"
+var
+  Token: TToken;
+  Name: AnsiString;
+  OneOfFields: TOneOfFields;
+
+
+begin
+  Token := Tokenizer.GetNextToken;
+  Name := Token.TokenString;
+
+  Tokenizer.Expect(ttkOpenBrace);
+  Token := Tokenizer.GetNextToken;
+
+  OneOfFields := TOneOfFields.Create;
+  Result := TOneOf.Create(Name, OneOfFields, ParentMessage);
+
+  while Token.Kind <> ttkCloseBrace do
+  begin
+    Tokenizer.Rewind;
+    OneOfFields.Add(ParseOneOfField(Result));
+    Token := Tokenizer.GetNextToken;
+
+  end;
+
+end;
+
+function TProto3Parser.ParseOneOfField(ParentOneOf: TOneOf): TOneOfField;
+// oneofField = type fieldName "=" fieldNumber [ "[" fieldOptions "]" ] ";"
+var
+  OneOfFieldType: TType;
+  Name: AnsiString;
+  FieldNumber: Integer;
+  Options: TOptions;
+
+begin
+  OneOfFieldType := ParseType;
+  Name := ParseIdent;
+  Tokenizer.Expect(ttkEqualSign);
+  FieldNumber := ParseFieldNumber;
+  Options := MaybeParseOptions;
+  Tokenizer.Expect(ttkSemiColon);
+
+  Result := TOneOfField.Create(Name, OneOfFieldType, False, FieldNumber, options,
+    ParentOneOf);
+
+end;
+
+function TProto3Parser.ParseMap(ParentMessage: TMessage): TMap;
+var
+  KeyType, ValueType: TType;
+  Name: AnsiString;
+  FieldNumber: Integer;
+  Options: TOptions;
+// mapField = "map" "<" keyType "," type ">" mapName "=" fieldNumber [ "[" fieldOptions "]" ] ";"
+// keyType = "int32" | "int64" | "uint32" | "uint64" | "sint32" | "sint64" |
+//          "fixed32" | "fixed64" | "sfixed32" | "sfixed64" | "bool" | "string"
+// mapName = ident
+
+begin
+  Tokenizer.Expect(ttkLessThan);
+  KeyType :=  ParseType;
+  Tokenizer.Expect(ttkComma);
+  ValueType := ParseType;
+  Tokenizer.Expect(ttkGreaterThan);
+  Name := ParseIdent;
+  Tokenizer.Expect(ttkEqualSign);
+  FieldNumber := ParseFieldNumber;
+  Options := MaybeParseOptions;
+  Tokenizer.Expect(ttkSemiColon);
+
+  Result := TMap.Create(Name, FieldNumber, KeyType, ValueType, Options, ParentMessage);
+
+end;
+
+function TProto3Parser.ParseMessageField(ParentMessage: TMessage
+  ): TMessageField;
+var
+  Name: AnsiString;
+  FieldType: TType;
+  IsRepeated: Boolean;
+  FieldNumber: Integer;
+  Options: TOptions;
+
+// field = [ "repeated" ] type fieldName "=" fieldNumber [ "[" fieldOptions "]" ] ";"
+// fieldOptions = fieldOption { ","  fieldOption }
+// fieldOption = optionName "=" constant
+// optionName = ( ident | "(" fullIdent ")" ) { "." ident }
+
+begin
+  IsRepeated := False;
+  if Tokenizer.NextTokenIsIn(['repeated']) then
+  begin
+    Tokenizer.GetNextToken;
+    IsRepeated := True;
+  end;
+
+  FieldType := ParseType;
+  Name := ParseIdent;
+  Tokenizer.Expect(ttkEqualSign);
+  FieldNumber := ParseFieldNumber;
+
+  Options := MaybeParseOptions;
+
+  Tokenizer.Expect(ttkSemiColon);
+
+  Result := TMessageField.Create(Name, FieldType, IsRepeated, FieldNumber,
+    Options, CreateParent(nil, ParentMessage, nil));
+
+end;
+
+function TProto3Parser.ParseConstant: TConstant;
+  function ParseIntLit: TConstant;
+  // intLit     = decimalLit | octalLit | hexLit
+  // decimalLit = ( "1" … "9" ) { decimalDigit }
+  // octalLit   = "0" { octalDigit }
+  // hexLit     = "0" ( "x" | "X" ) hexDigit { hexDigit }
+  var
+    Token: TToken;
+
+  begin
+    Token := Tokenizer.GetNextToken;
+
+    if IsPrefix('+', Token.TokenString) then
+    if Token.TokenString  = '0' then
+      Exit(Token.TokenString);
+
+    if Token.TokenString[1] in ['1'..'9'] then
+      Exit(Token.TokenString);
+    if (Token.TokenString[1] = '0') and (UpCase(Token.TokenString[2]) = 'X') then
+      Exit(Token.TokenString)
+    else
+    Exit(Token.TokenString);
+
+  end;
+
+  // TODO(Amir): This is not implemented yet.
+  function ParseFloatLit: TConstant;
+  // floatLit = ( decimals "." [ decimals ] [ exponent ] | decimals exponent | "."decimals [ exponent ] ) | "inf" | "nan"
+  // decimals  = decimalDigit { decimalDigit }
+  // exponent  = ( "e" | "E" ) [ "+" | "-" ] decimals
+  var
+    Token: TToken;
+
+  begin
+    Token := Tokenizer.GetNextToken;
+    raise ENotImplementedYet.Create('ParseFloatLit');
+  end;
+
+
+  // TODO(Amir): This needs some work yet.
+  function ParseStringLit: TConstant;
+  // strLit = ( "'" { charValue } "'" ) |  ( '"' { charValue } '"' )
+  //charValue = hexEscape | octEscape | charEscape | /[^\0\n\\]/
+  //hexEscape = '\' ( "x" | "X" ) hexDigit hexDigit
+  //octEscape = '\' octalDigit octalDigit octalDigit
+  //charEscape = '\' ( "a" | "b" | "f" | "n" | "r" | "t" | "v" | '\' | "'" | '"' )
+  // quote = "'" | '"
+  var
+    Token: TToken;
+    Start: TToken;
+
+  begin
+    Start := Tokenizer.GetNextToken;
+    if not (Start.Kind in [ttkSingleQuote, ttkDoubleQuote]) then
+      raise EInvalidToken.Create(Start.TokenString, ttkDoubleQuote);
+
+    Result := Start.TokenString;
+
+    Token := Tokenizer.GetNextToken;
+
+    while Token.Kind <> Start.Kind do
+    begin
+      Result += Token.TokenString;
+      Token := Tokenizer.GetNextToken;
+
+    end;
+    Result += Token.TokenString;
+
+  end;
+
+  function ParseBoolLit: TConstant;
+  // boolLit = "true" | "false"
+  var
+    Token: TToken;
+
+  begin
+    Token := Tokenizer.GetNextToken;
+
+    if (Token.TokenString <> 'true') and (Token.TokenString <> 'false') then
+      raise EInvalidToken.Create(Token.TokenString, Token.Kind);
+
+    Result := Token.TokenString;
+  end;
+
+// constant = fullIdent | ( [ "-" | "+" ] intLit ) | ( [ "-" | "+" ] floatLit ) | strLit | boolLit
+var
+  Token: TToken;
+  Pos: Int64;
+
+begin
+  Result := '';
+
+  Token := Tokenizer.GetNextToken;
+  Tokenizer.Rewind;
+
+  if (Token.TokenString = 'true') or (Token.TokenString = 'false') then
+    Exit(ParseBoolLit);
+  if Token.TokenString[1] in ['a'..'z', 'A'..'Z'] then
+    Exit(ParseFullIdent);
+
+  if IsPrefix('-', Token.TokenString) or IsPrefix('+', Token.TokenString) then
+  begin
+    Pos := Tokenizer.Current;
+    try
+      Result := Token.TokenString + ParseIntLit;
+      Exit;
+    except
+      on e: EParseIntFailed do
+      begin
+
+        e.Free;
+      end;
+    end;
+
+    Result := Token.TokenString + ParseFloatLit;
+    Exit;
+  end;
+
+  if Token.TokenString[1] in ['0'..'9'] then
+  begin
+    Pos := Tokenizer.Current;
+    try
+      Result := ParseIntLit;
+      Exit;
+    except
+      on e: EParseIntFailed do
+      begin
+
+        e.Free;
+      end;
+    end;
+
+    Result := ParseFloatLit;
+    Exit;
+  end;
+
+  if IsPrefix('''', Token.TokenString) or IsPrefix('"', Token.TokenString) then
+    Result := ParseStringLit
+  else
+    Result := ParseBoolLit;
+end;
+
+
+constructor TProto3Parser.Create(_Tokenizer: TTokenizer);
+begin
+  inherited Create(_Tokenizer);
+
+end;
+
+destructor TProto3Parser.Destroy;
+begin
+
+  inherited Destroy;
+end;
+
+function TProto3Parser.ParseProto: TProto;
+var
+  Token: TToken;
+  Imports: TImports;
+  OtherParams: TStringList;
+  Options: TOptions;
+  Messages: TMessages;
+  Enums: TEnums;
+
+// syntax { import | package | option | topLevelDef | emptyStatement }
+// topLevelDef = message | enum | service
+begin
+  // syntax is already processed.
+  OtherParams := TStringList.Create;
+
+  Imports := TImports.Create;
+  Options := TOptions.Create;
+  Messages := TMessages.Create;
+  Enums := TEnums.Create;
+
+  Result := TProto3.Create(Imports, Options, Messages, Enums, OtherParams);
+
+  OtherParams.Add('syntax:3');
+  OtherParams.Add('InputProtoFilename:'+ InputFilename);
+
+  Token := Tokenizer.GetNextToken;
+  while Token.Kind <> ttkEOF do
+  begin
+    if Token.TokenString = 'import' then
+      Imports.Add(ParseImport)
+    else if Token.TokenString = 'package' then
+      OtherParams.Add('package:' + ParsePackage)
+    else if Token.TokenString = 'option' then
+      Options.Add(ParseOption(ttkSemiColon))
+    else if Token.TokenString = 'message' then
+      Messages.Add(ParseMessage(CreateParent(nil, nil, Result)))
+    else if Token.TokenString = 'enum' then
+      Enums.Add(ParseEnum(CreateParent(nil, nil, Result)))
+    else if Token.TokenString = 'service' then
+      raise ENotImplementedYet.Create('Service is not supported yet!')
+    else
+      raise Exception.Create(Format('Invalid token: %s', [Token.TokenString]));
+    Token := Tokenizer.GetNextToken;
+  end;
+
+
+
+end;
+
+{ EInvalidCharacter }
+
+constructor EInvalidCharacter.Create(Ch: Char; Code: Integer);
+begin
+  inherited Create(Format('Invalid Character %s (%d)', [Ch, Code]));
+end;
 end.
 
