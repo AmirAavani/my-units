@@ -27,7 +27,7 @@ type
     function GetAsAnsiString: AnsiString; virtual;
     function GetAsBoolean: Boolean;  virtual;
     function GetAsExtended: Extended; virtual;
-    function GetAsInteger: Int64;  virtual;
+    function GetAsInteger: Int64; virtual;
     function GetAsUInteger: uInt64;  virtual;
 
   public

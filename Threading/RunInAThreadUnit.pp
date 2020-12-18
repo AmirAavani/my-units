@@ -14,8 +14,6 @@ procedure RunInThread(F: TThreadFunctionPtr; SysArgs, Args: TPointerArray;
   OutputResult: PBoolean);
 
 implementation
-uses
-  ALoggerUnit, PipelineUnit;
 
 type
   { TRunnerThread }
@@ -43,7 +41,6 @@ begin
   Thread := TRunnerThread.Create(F, SysArgs, Args, OutputResult);
   Thread.FreeOnTerminate := True;
   Thread.Suspended := False;
-  FMTDebugLn('New Thread ID: %d', [Thread.ThreadID]);
 
 end;
 
@@ -70,7 +67,6 @@ end;
 
 destructor TRunnerThread.Destroy;
 begin
-  DebugLn('In TRunnerThread.Destroy');
   SetLength(Arguments, 0);
 
   inherited Destroy;
@@ -78,9 +74,6 @@ end;
 
 procedure TRunnerThread.Execute;
 begin
-  FMTDebugLn('TaskID: %d New Thread ID: %d',
-  [TTask(SysArguments[0]).ID, Self.ThreadID]);
-
   Result^ := F(SysArguments, Arguments);
 
 end;

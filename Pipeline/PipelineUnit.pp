@@ -51,7 +51,7 @@ type
 
     procedure AddNewStep(Handler: TStepHandler; NumTasks: Integer; Args: TPointerArray);
 
-    class function Run(aPipeline: TPipeline): Boolean;
+    class function Run(aPipeline: TPipeline; WaitToFinish: Boolean = True): Boolean;
   end;
 
   { TTask }
@@ -113,21 +113,21 @@ end;
 function RunHandler(SysArgs, Args: TPointerArray): Boolean;
 var
   Task: TTask;
-//   Queue: TDoneTaskQueue;
+  Queue: TDoneTaskQueue;
   wg: TWaitGroup;
 
 begin
   Task := TTask(SysArgs[0]);
-  // Queue := TDoneTaskQueue(SysArgs[1]);
+  Queue := TDoneTaskQueue(SysArgs[1]);
   wg := TWaitGroup(SysArgs[2]);
-  DebugLn(Format('Running Task %d', [Task.ID]));
+  FMTDebugLn('Running Task %d', [Task.ID]);
 
   Result := Task.StepInfo.StepHandler(Task, Args);
 
-  DebugLn(Format('TaskID: %d', [Task.ID]));
-  DebugLn(Format('%d: Inserting %d into Queue', [ThreadID, Task.ID]));
-  // Queue.Insert(PInteger(@Task.ID));
-  DebugLn(Format('%d: %d wg.Done', [ThreadID, Task.ID]));
+  FMTDebugLn('TaskID: %d', [Task.ID]);
+  FMTDebugLn('%d: Inserting %d into Queue', [ThreadID, Task.ID]);
+  Queue.Insert(PInteger(@Task.ID));
+  FMTDebugLn('%d: %d wg.Done', [ThreadID, Task.ID]);
 
   wg.Done(1);
 end;
@@ -170,18 +170,18 @@ begin
 
   FMTDebugLn('Waiting for all jobs of Task %d to Finsih', [Step.FTaskID]);
   Wg.Wait();
-  DebugLn(Format('All are Done', [Step.FTaskID]));
+  FMTDebugLn('All are Done', [Step.FTaskID]);
 
   DebugLn('All jobs are Running');
 
   for i := 1 to Step.NumTasks do
   begin
-    DebugLn(Format('Task %d?', [i]));
-    DebugLn(Format('Before Delete', []));
+    FMTDebugLn('Task %d?', [i]);
+    DebugLn('Before Delete');
     Queue.Delete(TaskID);
 
-    DebugLn(Format('%d Task %d is Done with Status: %s', [i, TaskID^,
-      BoolToStr(Status[TaskID^], 'True', 'False')]));
+    FMTDebugLn('%d Task %d is Done with Status: %s', [i, TaskID^,
+      BoolToStr(Status[TaskID^], True)]);
   end;
 
   for i := 0 to AllTasks.Count - 1 do
@@ -227,53 +227,63 @@ function RunThePipeline(SysArgs, Args: TPointerArray): Boolean;
 var
   ThePipeline: TPipeline;
   PStepID, PFromStepID: PInteger;
+  wg: TWaitGroup;
 
 begin
   ThePipeline := TPipeline(SysArgs[0]);
   PStepID := PInteger(SysArgs[1]);
   PFromStepID := PInteger(SysArgs[2]);
+  wg := TWaitGroup(SysArgs[3]);
+  Result := False;
 
   if PStepID^ <> -1 then
-    ThePipeline.RunStep(PStepID^)
+    Result := ThePipeline.RunStep(PStepID^)
   else
-    ThePipeline.RunFromStep(PFromStepID^);
+    Result := ThePipeline.RunFromStep(PFromStepID^);
+  FMTDebugLn('Result: %s', [BoolToStr(Result, True)]);
+
+  wg.Done(1);
 
 end;
 
-class function TPipeline.Run(aPipeline: TPipeline): Boolean;
+class function TPipeline.Run(aPipeline: TPipeline; WaitToFinish: Boolean
+  ): Boolean;
 var
   SysArgs: TPointerArray;
   StepID, FromStepID: Integer;
+  wg: TWaitGroup;
   Done: Boolean;
 
 begin
-
   SetLength(SysArgs, 4);
   SysArgs[0] := aPipeline;
   StepID := GetRunTimeParameterManager.ValueByName['--Pipeline.StepID'].AsInteger;
   FromStepID := GetRunTimeParameterManager.ValueByName['--Pipeline.FromStepID'].AsIntegerOrDefault(1);
   SysArgs[1] := PInteger(@StepID);
   SysArgs[2] := PInteger(@FromStepID);
-  SysArgs[3] := @Done;
+  wg := TWaitGroup.Create;
+  SysArgs[3] := wg;
 
+  wg.Add(1);
   Done := False;
-  RunInThread(@RunThePipeline, SysArgs, nil, @Result);
+  RunInThread(@RunThePipeline, SysArgs, nil, @Done);
 
-  while not Done do
+  if WaitToFinish then
   begin
-    Sleep(10000);
-    DebugLn('What''s up!');
+    wg.Wait;
   end;
+
+  Result := True;
 
 end;
 
 function TPipeline.RunStep(StepIndex: Integer): Boolean;
 begin
-  DebugLn(Format('%d StepIndex: %d', [ThreadID, StepIndex]));
+  FMTDebugLn('%d StepIndex: %d', [ThreadID, StepIndex]);
 
   Result := RunStep(Steps[StepIndex]);
 
-  DebugLn(Format('%d Result: %s', [ThreadID, BoolToStr(Result, 'True', 'False')]));
+  FMTDebugLn('%d Result: %s', [ThreadID, BoolToStr(Result, True)]);
 
 end;
 
