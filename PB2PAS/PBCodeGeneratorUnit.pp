@@ -81,7 +81,6 @@ type
     Proto: TProto;
     RelatedProtos: TProtos;
     OutputStream: TStream;
-    MapFieldSaveMessageTemplate: TTemplateEngine;
 
   protected
     procedure GenerateCodeForImports(const Imports: TImports; UnitCode: TUnitCode; const Prefix, Indent: AnsiString);
@@ -1237,13 +1236,10 @@ begin
   Proto := _Proto;
   RelatedProtos := _RelatedProtos;
 
-  MapFieldSaveMessageTemplate := TTemplateEngine.Create('Templates/MapFieldSaveMessageTemplate.txt');
-
 end;
 
 destructor TPBCodeGeneratorV1.Destroy;
 begin
-  MapFieldSaveMessageTemplate.Free;
 
   inherited Destroy;
 end;
