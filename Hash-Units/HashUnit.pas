@@ -9,7 +9,7 @@ uses
   
 type
   THashCode= Cardinal;
-  THahfunction= function (Data: TObject): THashCode;
+  THashFunction= function (Data: TObject): THashCode;
   
   { THashEntry }
 

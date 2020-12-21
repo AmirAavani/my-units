@@ -1,4 +1,4 @@
-unit Pipeline.Types;
+unit Pipeline.TypesUnit;
 
 {$mode objfpc}{$H+}
 
