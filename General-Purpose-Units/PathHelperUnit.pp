@@ -19,7 +19,7 @@ begin
   Result := Parent;
   if not IsSuffix(DirSeparator, Parent) and not IsPrefix(DirSeparator, Rest) then
     Result += DirSeparator;
-  Result += Result;
+  Result += Rest;
 
 end;
 

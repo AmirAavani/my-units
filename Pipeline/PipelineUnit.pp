@@ -5,12 +5,13 @@ unit PipelineUnit;
 interface
 
 uses
-  Pipeline.Types, ThreadSafeQueueUnit, fgl, Classes, SysUtils;
+  Pipeline.TypesUnit, Pipeline.Utils, ThreadSafeQueueUnit, fgl, Classes, SysUtils;
 
 type
   TTask = class;
   TDoneTaskQueue = specialize TThreadSafeQueue<PInteger>;
   TStepHandler = function (Task: TTask; Args: TPointerArray): Boolean;
+  TFilenames = TAnsiStringList;
 
   { TPipeline }
 
@@ -68,6 +69,8 @@ type
     property StepInfo: TPipeline.TStepInfo read FStep;
 
     constructor Create(_ID: Integer; _Step: TPipeline.TStepInfo);
+    function ExtractModule(const aPattern: AnsiString): TAnsiStringList;
+    function ExtractDiv(const aPattern: AnsiString): TAnsiStringList;
 
   end;
 
@@ -89,6 +92,38 @@ begin
 
   FID := _ID;
   FStep := _Step;
+
+end;
+
+function TTask.ExtractModule(const aPattern: AnsiString): TAnsiStringList;
+var
+  AllFiles: TAnsiStringList;
+
+begin
+  Result := TAnsiStringList.Create;
+
+  AllFiles := ExpandPattern(aPattern);
+  AllFiles.ComputeModule(Self.Count,
+    specialize IfThen<Integer>(Self.ID = Self.Count, 0, Self.ID),
+    Result);
+
+  FMTDebugLn('AllFiles.Count: %d Result.Count: %d', [AllFiles.Count, Result.Count]);
+  AllFiles.Free;
+
+end;
+
+function TTask.ExtractDiv(const aPattern: AnsiString): TAnsiStringList;
+var
+  AllFiles: TAnsiStringList;
+
+begin
+  Result := TAnsiStringList.Create;
+
+  AllFiles := ExpandPattern(aPattern);
+  AllFiles.ComputeDivide(Self.Count, Self.ID - 1, Result);
+
+  FMTDebugLn('AllFiles.Count: %d Result.Count: %d', [AllFiles.Count, Result.Count]);
+  AllFiles.Free;
 
 end;
 
