@@ -156,7 +156,7 @@ type
     constructor CreateTwoValueAreSet;
   end;
 
-procedure SaveSingle(Stream: TProtoStreamWriter;
+procedure SaveFloat(Stream: TProtoStreamWriter;
     const Data: Single; const TagID: Integer);
 procedure SaveDouble(Stream: TProtoStreamWriter;
     const Data: Double; const TagID: Integer);
@@ -168,21 +168,33 @@ procedure SaveUInt32(Stream: TProtoStreamWriter;
     const Data: UInt32; const TagID: Integer);
 procedure SaveUInt64(Stream: TProtoStreamWriter;
     const Data: UInt64; const TagID: Integer);
-procedure SaveAnsiString(Stream: TProtoStreamWriter; const Data: AnsiString;
+procedure SaveSInt32(Stream: TProtoStreamWriter;
+    const Data: Int32; const TagID: Integer);
+procedure SaveSInt64(Stream: TProtoStreamWriter;
+    const Data: Int64; const TagID: Integer);
+procedure SaveFixed32(Stream: TProtoStreamWriter;
+    const Data: UInt32; const TagID: Integer);
+procedure SaveFixed64(Stream: TProtoStreamWriter;
+    const Data: UInt64; const TagID: Integer);
+procedure SaveSFixed32(Stream: TProtoStreamWriter;
+    const Data: Int32; const TagID: Integer);
+procedure SaveSFixed64(Stream: TProtoStreamWriter;
+    const Data: Int64; const TagID: Integer);
+procedure SaveString(Stream: TProtoStreamWriter; const Data: AnsiString;
   const TagID: Integer);
-procedure SaveBoolean(Stream: TProtoStreamWriter; const Data: Boolean;
+procedure SaveBool(Stream: TProtoStreamWriter; const Data: Boolean;
     const TagID: Integer);
 procedure SaveByte(Stream: TProtoStreamWriter; const Data: Byte;
     const TagID: Integer);
 
-function LoadSingle(Stream: TProtoStreamReader): Single;
+function LoadFloat(Stream: TProtoStreamReader): Single;
 function LoadDouble(Stream: TProtoStreamReader): Double;
 function LoadInt32(Stream: TProtoStreamReader): Int32;
 function LoadInt64(Stream: TProtoStreamReader): Int64;
 function LoadUInt32(Stream: TProtoStreamReader): UInt32;
 function LoadUInt64(Stream: TProtoStreamReader): UInt64;
-function LoadAnsiString(Stream: TProtoStreamReader): AnsiString;
-function LoadBoolean(Stream: TProtoStreamReader): Boolean;
+function LoadString(Stream: TProtoStreamReader): AnsiString;
+function LoadBool(Stream: TProtoStreamReader): Boolean;
 function LoadByte(Stream: TProtoStreamReader): Byte;
 
 procedure SaveRepeatedSingle(Stream: TProtoStreamWriter;
@@ -214,7 +226,7 @@ procedure SaveRepeatedByte(Stream: TProtoStreamWriter;
   const Data: TBytes;
   const TagID: Integer);
 
-function LoadRepeatedSingle(Stream: TProtoStreamReader;
+function LoadRepeatedFloat(Stream: TProtoStreamReader;
     Data: TSingles): Boolean;
 function LoadRepeatedDouble(Stream: TProtoStreamReader;
     Data: TDoubles): Boolean;
@@ -226,9 +238,9 @@ function LoadRepeatedUInt32(Stream: TProtoStreamReader;
     Data: TUInt32s): Boolean;
 function LoadRepeatedUInt64(Stream: TProtoStreamReader;
     Data: TUInt64s): Boolean;
-function LoadRepeatedAnsiString(Stream: TProtoStreamReader;
+function LoadRepeatedString(Stream: TProtoStreamReader;
      Data: TAnsiStrings): Boolean;
-function LoadRepeatedBoolean(Stream: TProtoStreamReader;
+function LoadRepeatedBool(Stream: TProtoStreamReader;
     Data: TBooleans): Boolean;
 function LoadRepeatedByte(Stream: TProtoStreamReader;
     Data: TBytes): Boolean;
@@ -503,7 +515,7 @@ begin
 
 end;
 
-function LoadRepeatedSingle(Stream: TProtoStreamReader;
+function LoadRepeatedFloat(Stream: TProtoStreamReader;
   Data: TSingles): Boolean;
 var
   Len: uInt32;
@@ -511,12 +523,12 @@ var
   StartPos: Integer;
 
 begin
-  Len := Stream.ReadUInt32;
+  Len := Stream.ReadVarUInt32;
   StartPos := Stream.Position;
 
   while Stream.Position < StartPos + Len do
   begin
-    NewDatum := Stream.ReadSingle;
+    NewDatum := Stream.ReadFloat;
     Data.Add(NewDatum);
 
   end;
@@ -533,7 +545,7 @@ var
   StartPos: Integer;
 
 begin
-  Len := Stream.ReadUInt32;
+  Len := Stream.ReadVarUInt32;
   StartPos := Stream.Position;
 
   while Stream.Position < StartPos + Len do
@@ -554,12 +566,12 @@ var
   StartPos: Integer;
 
 begin
-  Len := Stream.ReadUInt32;
+  Len := Stream.ReadVarUInt32;
   StartPos := Stream.Position;
 
   while Stream.Position < StartPos + Len do
   begin
-    NewDatum := Stream.ReadInt32;
+    NewDatum := Stream.ReadVarInt32;
     Data.Add(NewDatum);
 
   end;
@@ -575,12 +587,12 @@ var
   StartPos: Integer;
 
 begin
-  Len := Stream.ReadUInt32;
+  Len := Stream.ReadVarUInt32;
   StartPos := Stream.Position;
 
   while Stream.Position < StartPos + Len do
   begin
-    NewDatum := Stream.ReadInt64;
+    NewDatum := Stream.ReadVarInt64;
     Data.Add(NewDatum);
 
   end;
@@ -596,12 +608,12 @@ var
   StartPos: Integer;
 
 begin
-  Len := Stream.ReadUInt32;
+  Len := Stream.ReadVarUInt32;
   StartPos := Stream.Position;
 
   while Stream.Position < StartPos + Len do
   begin
-    NewDatum := Stream.ReadUInt32;
+    NewDatum := Stream.ReadVarUInt32;
     Data.Add(NewDatum);
 
   end;
@@ -617,12 +629,12 @@ var
   StartPos: Integer;
 
 begin
-  Len := Stream.ReadUInt32;
+  Len := Stream.ReadVarUInt32;
   StartPos := Stream.Position;
 
   while Stream.Position < StartPos + Len do
   begin
-    NewDatum := Stream.ReadUInt64;
+    NewDatum := Stream.ReadVarUInt64;
     Data.Add(NewDatum);
 
   end;
@@ -630,7 +642,7 @@ begin
   Result := StartPos + Len = Stream.Position;
 end;
 
-function LoadRepeatedAnsiString(Stream: TProtoStreamReader;
+function LoadRepeatedString(Stream: TProtoStreamReader;
   Data: TAnsiStrings): Boolean;
 var
   Len: uInt32;
@@ -638,12 +650,12 @@ var
   StartPos: Integer;
 
 begin
-  Len := Stream.ReadUInt32;
+  Len := Stream.ReadVarUInt32;
   StartPos := Stream.Position;
 
   while Stream.Position < StartPos + Len do
   begin
-    NewDatum := Stream.ReadAnsiString;
+    NewDatum := Stream.ReadString;
     Data.Add(NewDatum);
 
   end;
@@ -651,7 +663,7 @@ begin
   Result := StartPos + Len = Stream.Position;
 end;
 
-function LoadRepeatedBoolean(Stream: TProtoStreamReader;
+function LoadRepeatedBool(Stream: TProtoStreamReader;
   Data: TBooleans): Boolean;
 var
   Len: uInt32;
@@ -659,12 +671,12 @@ var
   StartPos: Integer;
 
 begin
-  Len := Stream.ReadUInt32;
+  Len := Stream.ReadVarUInt32;
   StartPos := Stream.Position;
 
   while Stream.Position < StartPos + Len do
   begin
-    NewDatum := Stream.ReadBoolean;
+    NewDatum := Stream.ReadBool;
     Data.Add(NewDatum);
 
   end;
@@ -679,7 +691,7 @@ var
   StartPos: Integer;
 
 begin
-  Len := Stream.ReadUInt32;
+  Len := Stream.ReadVarUInt32;
   StartPos := Stream.Position;
 
   while Stream.Position < StartPos + Len do
@@ -716,7 +728,7 @@ var
   Len: Integer;
 
 begin
-  Len := Stream.ReadUInt32;
+  Len := Stream.ReadVarUInt32;
 
   Result := Data.LoadFromStream(Stream, Len);
 
@@ -749,7 +761,7 @@ var
   StartPos: Integer;
 
 begin
-  Len := Stream.ReadUInt32;
+  Len := Stream.ReadVarUInt32;
   StartPos := Stream.Position;
 
   while Stream.Position < StartPos + Len do
@@ -956,11 +968,11 @@ end;
 
 function TBaseMessage.ReadRepeatedLength(Stream: TProtoStreamReader): UInt32;
 begin
-  Result := Stream.ReadUInt32;
+  Result := Stream.ReadVarUInt32;
 
 end;
 
-procedure SaveSingle(Stream: TProtoStreamWriter;
+procedure SaveFloat(Stream: TProtoStreamWriter;
   const Data: Single; const TagID: Integer);
 const
   AlmostZero: Double = 1e-10;
@@ -986,7 +998,7 @@ procedure SaveInt32(Stream: TProtoStreamWriter; const Data: Int32;
   const TagID: Integer);
 begin
   if Data <> 0 then
-    Stream.WriteInt32(TagID, Data);
+    Stream.WriteVarInt32(TagID, Data);
 
 end;
 
@@ -994,7 +1006,7 @@ procedure SaveInt64(Stream: TProtoStreamWriter; const Data: Int64;
   const TagID: Integer);
 begin
   if Data <> 0 then
-    Stream.WriteInt64(TagID, Data);
+    Stream.WriteVarInt64(TagID, Data);
 
 end;
 
@@ -1002,7 +1014,7 @@ procedure SaveUInt32(Stream: TProtoStreamWriter;
   const Data: UInt32; const TagID: Integer);
 begin
   if Data <> 0 then
-    Stream.WriteUInt32(TagID, Data);
+    Stream.WriteVarUInt32(TagID, Data);
 
 end;
 
@@ -1010,11 +1022,59 @@ procedure SaveUInt64(Stream: TProtoStreamWriter;
   const Data: UInt64; const TagID: Integer);
 begin
   if Data <> 0 then
-    Stream.WriteUInt64(TagID, Data);
+    Stream.WriteVarUInt64(TagID, Data);
 
 end;
 
-procedure SaveAnsiString(Stream: TProtoStreamWriter;
+procedure SaveSInt32(Stream: TProtoStreamWriter; const Data: Int32;
+  const TagID: Integer);
+begin
+  if Data <> 0 then
+    Stream.WriteSInt32(TagID, (Data shl 1) xor (Data shr 31));
+
+end;
+
+procedure SaveSInt64(Stream: TProtoStreamWriter; const Data: Int64;
+  const TagID: Integer);
+begin
+  if Data <> 0 then
+    Stream.WriteSInt64(TagID, (Data shl 1) xor (Data shr 63));
+
+end;
+
+procedure SaveFixed32(Stream: TProtoStreamWriter; const Data: uInt32;
+  const TagID: Integer);
+begin
+  if Data <> 0 then
+    Stream.WriteFixed32(TagID, Data);
+
+end;
+
+procedure SaveFixed64(Stream: TProtoStreamWriter; const Data: UInt64;
+  const TagID: Integer);
+begin
+  if Data <> 0 then
+    Stream.WriteFixed64(TagID, Data);
+
+end;
+
+procedure SaveSFixed32(Stream: TProtoStreamWriter; const Data: Int32;
+  const TagID: Integer);
+begin
+  if Data <> 0 then
+    Stream.WriteSFixed32(TagID, Data);
+
+end;
+
+procedure SaveSFixed64(Stream: TProtoStreamWriter; const Data: Int64;
+  const TagID: Integer);
+begin
+  if Data <> 0 then
+    Stream.WriteSFixed64(TagID, Data);
+
+end;
+
+procedure SaveString(Stream: TProtoStreamWriter;
   const Data: AnsiString; const TagID: Integer);
 begin
   if Data <> '' then
@@ -1022,7 +1082,7 @@ begin
 
 end;
 
-procedure SaveBoolean(Stream: TProtoStreamWriter;
+procedure SaveBool(Stream: TProtoStreamWriter;
   const Data: Boolean; const TagID: Integer);
 begin
   if Data then
@@ -1038,9 +1098,9 @@ begin
 
 end;
 
-function LoadSingle(Stream: TProtoStreamReader): Single;
+function LoadFloat(Stream: TProtoStreamReader): Single;
 begin
-  Result := Stream.ReadSingle;
+  Result := Stream.ReadFloat;
 
 end;
 
@@ -1051,37 +1111,37 @@ end;
 
 function LoadInt32(Stream: TProtoStreamReader): Int32;
 begin
-  Result := Stream.ReadInt32;
+  Result := Stream.ReadVarInt32;
 
 end;
 
 function LoadInt64(Stream: TProtoStreamReader): Int64;
 begin
-  Result := Stream.ReadInt64;
+  Result := Stream.ReadVarInt64;
 
 end;
 
 function LoadUInt32(Stream: TProtoStreamReader): UInt32;
 begin
-  Result := Stream.ReadUInt32
+  Result := Stream.ReadVarUInt32
 
 end;
 
 function LoadUInt64(Stream: TProtoStreamReader): UInt64;
 begin
-  Result := Stream.ReadUInt64
+  Result := Stream.ReadVarUInt64
   ;
 end;
 
-function LoadAnsiString(Stream: TProtoStreamReader): AnsiString;
+function LoadString(Stream: TProtoStreamReader): AnsiString;
 begin
-  Result := Stream.ReadAnsiString;
+  Result := Stream.ReadString;
 
 end;
 
-function LoadBoolean(Stream: TProtoStreamReader): Boolean;
+function LoadBool(Stream: TProtoStreamReader): Boolean;
 begin
-  Result := Stream.ReadBoolean;
+  Result := Stream.ReadBool;
 
 end;
 

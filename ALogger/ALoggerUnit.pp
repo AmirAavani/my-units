@@ -182,33 +182,34 @@ begin
 
 end;
 
-procedure _FatalLn(Msg: AnsiString; Depth: Integer);
-var
-  Filename: AnsiString;
-  LineNumber: Integer;
-
+procedure _FatalLn(FileName: AnsiString; LineNumber: Integer; Msg: AnsiString);
 begin
-  Filename := 'UNKNOWN';
-  LineNumber := -1;
-  GetParentLineInfo(Filename, LineNumber);
-  if (Filename <> 'UNKNOWN') and (LineNumber <> -1) then
-    _Writeln(Format('%d-%s-%s:%d] %s', [ThreadID, DateTimeToStr(Now), Filename, LineNumber, Msg]))
-  else
-    _Writeln(Format('%d-%s] %s', [ThreadID, DateTimeToStr(Now), Msg]));
+  _Writeln(Format('%d-%s-%s:%d] %s', [ThreadID, DateTimeToStr(Now), Filename, LineNumber, Msg]));
 
   Halt(1);
 
 end;
 
 procedure FatalLn(Msg: AnsiString);
+var
+  Filename: AnsiString;
+  LineNumber: Integer;
+
 begin
-  _FatalLn(Msg, 2);
+  GetParentLineInfo(Filename, LineNumber);
+  _FatalLn(Filename, LineNumber, Msg);
+
 end;
 
 
 procedure FmtFatalLn(Fmt: AnsiString; const Args: array of const);
+var
+  Filename: AnsiString;
+  LineNumber: Integer;
+
 begin
-  _FatalLn(Format(Fmt, Args), 2);
+  GetParentLineInfo(Filename, LineNumber);
+  _FatalLn(Filename, LineNumber, Format(Fmt, Args));
 
 end;
 

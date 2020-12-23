@@ -102,21 +102,25 @@ type
     (* Write a single field, including tag. *)
     procedure WriteFloat(FieldNumber: Integer; Value: Single);
     (* Write a int64 field, including tag. *)
-    procedure WriteInt64(FieldNumber: Integer; Value: Int64);
+    procedure WriteVarInt64(FieldNumber: Integer; Value: Int64);
     (* Write a sint64 field, including tag. *)
     procedure WriteSInt64(FieldNumber: Integer; Value: Integer);
-    (* Write a int32 field, including tag. *)
-    procedure WriteInt32(FieldNumber: Integer; Value: Integer);
+    (* Write a varint32 field, including tag. *)
+    procedure WriteVarInt32(FieldNumber: Integer; Value: Integer);
     (* Write a sint32 field, including tag. *)
     procedure WriteSInt32(FieldNumber: Integer; Value: Integer);
     (* Write a UInt64 field, including tag. *)
-    procedure WriteUInt64(FieldNumber: Integer; Value: UInt64);
+    procedure WriteVarUInt64(FieldNumber: Integer; Value: UInt64);
     (* Write a UInt32 field, including tag. *)
-    procedure WriteUInt32(FieldNumber: Integer; Value: UInt32);
-    (* Write a fixed64 field, including tag. *)
-    procedure WriteFixed64(FieldNumber: Integer; Value: Int64);
+    procedure WriteVarUInt32(FieldNumber: Integer; Value: UInt32);
     (* Write a fixed32 field, including tag. *)
-    procedure WriteFixed32(FieldNumber: Integer; Value: Integer);
+    procedure WriteFixed32(FieldNumber: Integer; Value: UInt32);
+    (* Write a fixed64 field, including tag. *)
+    procedure WriteFixed64(FieldNumber: Integer; Value: UInt64);
+    (* Write a sfixed32 field, including tag. *)
+    procedure WriteSFixed32(FieldNumber: Integer; Value: Int32);
+    (* Write a fixed64 field, including tag. *)
+    procedure WriteSFixed64(FieldNumber: Integer; Value: Int64);
     (* Write a Boolean field, including tag. *)
     procedure WriteBoolean(FieldNumber: Integer; Value: Boolean);
     (* Write a byte field, including tag. *)
@@ -155,17 +159,17 @@ type
     constructor Create(AnStream: TStream);
     destructor Destroy; override;
 
-    function ReadAnsiString: AnsiString;
-    function ReadBoolean: Boolean;
+    function ReadString: AnsiString;
+    function ReadBool: Boolean;
     function ReadByte: Byte;
     function ReadDouble: Double;
     function ReadRawVarint64: Int64;
     function ReadRawVarint32: Int32;
-    function ReadSingle: Single;
-    function ReadInt64: Int64;
-    function ReadInt32: Integer;
-    function ReadUInt64: UInt64;
-    function ReadUInt32: UInt32;
+    function ReadFloat: Single;
+    function ReadVarInt64: Int64;
+    function ReadVarInt32: Integer;
+    function ReadVarUInt64: UInt64;
+    function ReadVarUInt32: UInt32;
 
     (* Read and decode tag. *)
     procedure ReadTag(var FieldNumber, WireType: Integer);
@@ -281,18 +285,18 @@ begin
   inherited Destroy;
 end;
 
-function TProtoStreamReader.ReadAnsiString: AnsiString;
+function TProtoStreamReader.ReadString: AnsiString;
 var
   l: Integer;
 
 begin
-  l := self.ReadRawVarint32;
+  l := ReadRawVarint32;
   SetLength(Result, l);
   ReadRawData(PChar(Result), l);
 
 end;
 
-function TProtoStreamReader.ReadBoolean: Boolean;
+function TProtoStreamReader.ReadBool: Boolean;
 var
   b: Byte;
 
@@ -350,30 +354,30 @@ begin
   end;
 end;
 
-function TProtoStreamReader.ReadSingle: Single;
+function TProtoStreamReader.ReadFloat: Single;
 begin
   Self.ReadRawData(@Result, SizeOf(Single));
 end;
 
-function TProtoStreamReader.ReadInt64: Int64;
+function TProtoStreamReader.ReadVarInt64: Int64;
 begin
   Result := Self.ReadRawVarint64;
 
 end;
 
-function TProtoStreamReader.ReadInt32: Integer;
+function TProtoStreamReader.ReadVarInt32: Integer;
 begin
   Result := Self.ReadRawVarint32;
 
 end;
 
-function TProtoStreamReader.ReadUInt64: UInt64;
+function TProtoStreamReader.ReadVarUInt64: UInt64;
 begin
   Result := Self.ReadRawVarint64;
 
 end;
 
-function TProtoStreamReader.ReadUInt32: UInt32;
+function TProtoStreamReader.ReadVarUInt32: UInt32;
 begin
   Result := Self.ReadRawVarint32;
 
@@ -607,7 +611,7 @@ begin
 
 end;
 
-procedure TProtoStreamWriter.WriteInt64(FieldNumber: Integer; Value: Int64);
+procedure TProtoStreamWriter.WriteVarInt64(FieldNumber: Integer; Value: Int64);
 begin
   WriteTag(FieldNumber, WIRETYPE_VARINT);
   WriteRawVarint64((Value shl 1) xor (Value shr 63));
@@ -624,7 +628,7 @@ begin
 
 end;
 
-procedure TProtoStreamWriter.WriteInt32(FieldNumber: Integer; Value: Integer);
+procedure TProtoStreamWriter.WriteVarInt32(FieldNumber: Integer; Value: Integer);
 begin
   WriteTag(FieldNumber, WIRETYPE_VARINT);
   WriteRawVarint32(Value);
@@ -640,26 +644,40 @@ begin
 
 end;
 
-procedure TProtoStreamWriter.WriteUInt64(FieldNumber: Integer; Value: UInt64);
+procedure TProtoStreamWriter.WriteVarUInt64(FieldNumber: Integer; Value: UInt64);
 begin
-  WriteInt64(FieldNumber, Value);
+  WriteVarInt64(FieldNumber, Value);
 
 end;
 
-procedure TProtoStreamWriter.WriteUInt32(FieldNumber: Integer; Value: UInt32);
+procedure TProtoStreamWriter.WriteVarUInt32(FieldNumber: Integer; Value: UInt32);
 begin
-  Self.WriteInt32(FieldNumber, Value);
+  WriteVarInt32(FieldNumber, Value);
 
 end;
 
-procedure TProtoStreamWriter.WriteFixed64(FieldNumber: Integer; Value: Int64);
+procedure TProtoStreamWriter.WriteFixed64(FieldNumber: Integer; Value: UInt64);
 begin
   WriteTag(fieldNumber, WIRETYPE_FIXED64);
   WriteRawData(@value, SizeOf(value));
 
 end;
 
-procedure TProtoStreamWriter.WriteFixed32(FieldNumber: Integer; Value: Integer);
+procedure TProtoStreamWriter.WriteSFixed32(FieldNumber: Integer; Value: Int32);
+begin
+  WriteTag(fieldNumber, WIRETYPE_FIXED32);
+  WriteRawData(@value, SizeOf(value));
+
+end;
+
+procedure TProtoStreamWriter.WriteSFixed64(FieldNumber: Integer; Value: Int64);
+begin
+  WriteTag(fieldNumber, WIRETYPE_FIXED64);
+  WriteRawData(@value, SizeOf(value));
+
+end;
+
+procedure TProtoStreamWriter.WriteFixed32(FieldNumber: Integer; Value: UInt32);
 begin
   WriteTag(fieldNumber, WIRETYPE_FIXED32);
   WriteRawData(@value, SizeOf(value));
@@ -688,25 +706,6 @@ begin
   WriteRawData(PChar(Value), Length(Value));
 
 end;
-
-{
-procedure TProtoStreamWriter.WriteUInt32(FieldNumber: Integer; value: cardinal);
-begin
-  writeTag(FieldNumber, WIRETYPE_VARINT);
-  WriteRawVarint32(Value);
-
-end;
-}
-
-{
-procedure TProtoBufOutput.writeMessage(fieldNumber: integer;
-  const value: IpbMessage);
-begin
-  writeTag(fieldNumber, WIRETYPE_LENGTH_DELIMITED);
-  writeRawVarint32(value.getSerializedSize());
-  value.writeTo(self);
-end;
-}
 
 function TBitStreamReader.GetPosition: Integer;
 begin
