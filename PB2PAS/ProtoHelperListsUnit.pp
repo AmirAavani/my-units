@@ -5,17 +5,13 @@ unit ProtoHelperListsUnit;
 interface
 
 uses
-  Classes, SysUtils, fgl;
+  Classes, SysUtils, Generics.Collections;
 
 type
   { TObjectList }
 
-  generic TObjectList<TMyObject> = class(specialize TFPGList<TMyObject>)
-  private
-    function GetCount: Integer;
+  generic TObjectList<TMyObject> = class(specialize TList<TMyObject>)
   public
-    property Count: Integer read GetCount write SetCount;
-
     destructor Destroy; override;
 
     function ToString: AnsiString; override;
@@ -25,14 +21,11 @@ type
 
   { TSimpleTypeList }
 
-  generic TSimpleTypeList<TSimpleObject> = class(specialize TFPGList<TSimpleObject>)
-  private
-    function GetCount: Integer;
+  generic TSimpleTypeList<TSimpleObject> = class(specialize TList<TSimpleObject>)
   protected
     function SimpleObjectToString(Obj: TSimpleObject): AnsiString; virtual; abstract;
 
   public
-    property Count: Integer read GetCount write SetCount;
 
     constructor Create;
     destructor Destroy; override;
@@ -70,13 +63,6 @@ begin
 end;
 
 { TSimpleTypeList }
-
-function TSimpleTypeList.GetCount: Integer;
-begin
-  if Self = nil then
-    Exit(0);
-  Result := FCount;
-end;
 
 constructor TSimpleTypeList.Create;
 begin
@@ -116,13 +102,6 @@ begin
 end;
 
 { TObjectList }
-
-function TObjectList.GetCount: Integer;
-begin
-  if Self = nil then
-    Exit(0);
-  Result := FCount;
-end;
 
 destructor TObjectList.Destroy;
 var

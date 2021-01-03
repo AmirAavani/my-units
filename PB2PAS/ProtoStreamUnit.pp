@@ -103,12 +103,8 @@ type
     procedure WriteFloat(FieldNumber: Integer; Value: Single);
     (* Write a int64 field, including tag. *)
     procedure WriteVarInt64(FieldNumber: Integer; Value: Int64);
-    (* Write a sint64 field, including tag. *)
-    procedure WriteSInt64(FieldNumber: Integer; Value: Integer);
     (* Write a varint32 field, including tag. *)
     procedure WriteVarInt32(FieldNumber: Integer; Value: Integer);
-    (* Write a sint32 field, including tag. *)
-    procedure WriteSInt32(FieldNumber: Integer; Value: Integer);
     (* Write a UInt64 field, including tag. *)
     procedure WriteVarUInt64(FieldNumber: Integer; Value: UInt64);
     (* Write a UInt32 field, including tag. *)
@@ -166,10 +162,14 @@ type
     function ReadRawVarint64: Int64;
     function ReadRawVarint32: Int32;
     function ReadFloat: Single;
-    function ReadVarInt64: Int64;
     function ReadVarInt32: Integer;
-    function ReadVarUInt64: UInt64;
+    function ReadVarInt64: Int64;
     function ReadVarUInt32: UInt32;
+    function ReadVarUInt64: UInt64;
+    function ReadFixed32: UInt32;
+    function ReadFixed64: UInt64;
+    function ReadSFixed32: Int32;
+    function ReadSFixed64: Int64;
 
     (* Read and decode tag. *)
     procedure ReadTag(var FieldNumber, WireType: Integer);
@@ -377,6 +377,30 @@ begin
 
 end;
 
+function TProtoStreamReader.ReadFixed32: UInt32;
+begin
+  ReadRawData(@Result, SizeOf(UInt32));
+
+end;
+
+function TProtoStreamReader.ReadFixed64: UInt64;
+begin
+  ReadRawData(@Result, SizeOf(UInt64));
+
+end;
+
+function TProtoStreamReader.ReadSFixed32: Int32;
+begin
+  ReadRawData(@Result, SizeOf(Int32));
+
+end;
+
+function TProtoStreamReader.ReadSFixed64: Int64;
+begin
+  ReadRawData(@Result, SizeOf(Int64));
+
+end;
+
 function TProtoStreamReader.ReadVarUInt32: UInt32;
 begin
   Result := Self.ReadRawVarint32;
@@ -485,6 +509,7 @@ begin
       b := b + $80;
     WriteRawData(@b, 1);
   until n = 0;
+
 end;
 
 
@@ -563,6 +588,7 @@ begin
       b := b + $80;
     WriteRawByte(b);
   until Value = 0;
+
 end;
 
 procedure TProtoStreamWriter.WriteRawVarint64(Value: Int64);
@@ -581,6 +607,8 @@ end;
 
 procedure TProtoStreamWriter.WriteTag(FieldNumber: Integer; WireType: Integer);
 begin
+  if FieldNumber = -1 then
+    Exit;
   WriteRawVarint32(MakeTag(FieldNumber, WireType));
 
 end;
@@ -614,17 +642,7 @@ end;
 procedure TProtoStreamWriter.WriteVarInt64(FieldNumber: Integer; Value: Int64);
 begin
   WriteTag(FieldNumber, WIRETYPE_VARINT);
-  WriteRawVarint64((Value shl 1) xor (Value shr 63));
-
-end;
-
-procedure TProtoStreamWriter.WriteSInt64(FieldNumber: Integer; Value: Integer);
-begin
-  WriteLn('NIY WriteSInt32');
-  Halt(2);
-
-  WriteTag(FieldNumber, WIRETYPE_VARINT);
-  WriteRawVarint32(Value);
+  WriteRawVarint64(Value);
 
 end;
 
@@ -632,15 +650,6 @@ procedure TProtoStreamWriter.WriteVarInt32(FieldNumber: Integer; Value: Integer)
 begin
   WriteTag(FieldNumber, WIRETYPE_VARINT);
   WriteRawVarint32(Value);
-
-end;
-
-procedure TProtoStreamWriter.WriteSInt32(FieldNumber: Integer; Value: Integer);
-begin
-  WriteLn('NIY WriteSInt32');
-  Halt(2);
-  WriteTag(FieldNumber, WIRETYPE_VARINT);
-  WriteRawVarint32((Value shl 1) xor (Value shr 31));
 
 end;
 
