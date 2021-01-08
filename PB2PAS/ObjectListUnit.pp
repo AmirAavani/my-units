@@ -56,8 +56,10 @@ var
   NodeName: AnsiString;
 
 begin
+  if Self = nil then
+    Exit('');
   if Self.Count = 0 then
-    Exit;
+    Exit('');
 
   // ClassName is in form of TObjectList<PBDefinitionUnit.ClassName>
   NodeName := Copy(ClassName, Pos('.', ClassName) + 1, Length(ClassName) - Pos('.', ClassName) - 1) + 's';
