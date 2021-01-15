@@ -5,7 +5,7 @@ unit PBOptionUnit;
 interface
 
 uses
-  ObjectListUnit, Classes, SysUtils;
+  NamedObjectListUnit, Classes, SysUtils;
 
 type
   TOptionName = AnsiString;
@@ -28,7 +28,7 @@ type
     function ToXML: AnsiString;
   end;
 
-  TOptions = specialize TObjectList<TOption>;
+  TOptions = specialize TNamedObjectList<TOption>;
 
 
 implementation
