@@ -76,7 +76,7 @@ type
 
 implementation
 uses
-  SyncUnit, ALoggerUnit, RunInAThreadUnit, ParameterManagerUnit;
+  SyncUnit, StringUnit, ALoggerUnit, RunInAThreadUnit, ParameterManagerUnit;
 
 { TTask }
 
@@ -103,11 +103,11 @@ begin
   Result := TAnsiStringList.Create;
 
   AllFiles := ExpandPattern(aPattern);
-  AllFiles.ComputeModule(Self.Count,
-    specialize IfThen<Integer>(Self.ID = Self.Count, 0, Self.ID),
-    Result);
+  AllFiles.ComputeModule(Self.Count, Self.ID, Result);
 
-  FMTDebugLn('AllFiles.Count: %d Result.Count: %d', [AllFiles.Count, Result.Count]);
+  FMTDebugLn('AllFiles.Count: %d Result.Count: %d(%s)', [AllFiles.Count,
+    Result.Count,
+    JoinStrings(Result.ToArray, ', ')]);
   AllFiles.Free;
 
 end;
@@ -183,6 +183,9 @@ var
   Wg: TWaitGroup;
 
 begin
+  if Step = nil then
+    FmtFatalLn('Invalid Step', []);
+
   Queue := TDoneTaskQueue.Create;
   AllTasks := TTasks.Create;
   SetLength(Status, Step.NumTasks + 1);

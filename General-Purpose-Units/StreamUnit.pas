@@ -112,7 +112,6 @@ type
     procedure WriteInt(const n: Integer);
     procedure WriteInt32(const n: Int32);
     procedure WriteInt64(const n: Int64);
-    // procedure WriteUInt(const n: UInteger);
     procedure WriteUInt32(const n: uInt32);
     procedure WriteUInt64(const n: uInt64);
     procedure WriteStr(const S: AnsiString);
@@ -474,8 +473,13 @@ begin
 end;
 
 function TMyBinStream.ReadStr: AnsiString;
+var
+  Len: Integer;
+
 begin
-  Result := '';
+  Len := ReadUInt32;
+  SetLength(Result, Len);
+  FTargerStream.Read(Result[1], Len);
   raise Exception.Create('Not Implemented Yet!');
 
 end;
@@ -518,7 +522,8 @@ end;
 
 procedure TMyBinStream.WriteStr(const S: AnsiString);
 begin
-  raise Exception.Create('Not Implemented Yet!');
+  WriteUInt32(Length(S));
+  FTargerStream.Write(S[1], Length(S));
 
 end;
 
