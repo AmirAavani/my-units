@@ -28,19 +28,60 @@ type
     function Delete(Index: Integer): TData;
   end;
 
-  generic TMap<Key, Value> = class(specialize TAVLTreeMap<Key, Value>)
+  { TMap }
+
+  generic TMap<TKey, TValue> = class(specialize TAVLTreeMap<TKey, TValue>)
   public
+    function Find(const aKey: TKey): TValue;
+    function TryGetData(const AKey: TKey; out AData: TValue): Boolean;
+
   end;
 
   { TMapSimpleKeyObjectValue }
 
-  generic TMapSimpleKeyObjectValue<Key, Value> = class(specialize TMap<Key, Value>)
+  generic TMapSimpleKeyObjectValue<TKey, TValue> = class(specialize TMap<TKey, TValue>)
   public
     destructor Destroy; override;
 
   end;
 
 implementation
+
+uses
+  Generics.Defaults;
+
+{ TMap }
+
+function TMap.Find(const aKey: TKey): TValue;
+var
+  pn: PNode;
+
+begin
+  Result := Default(TValue);
+
+  pn := inherited Find(aKey);
+  if pn <> nil then
+    Result := pn^.Value;
+
+end;
+
+function TMap.TryGetData(const AKey: TKey; out AData: TValue): Boolean;
+var
+  pn: PNode;
+
+begin
+  pn := inherited Find(AKey);
+
+  if pn = nil then
+  begin
+    AData := Default(TValue);
+    Exit(False);
+
+  end;
+  Result := True;
+  AData := pn^.Value;
+
+end;
 
 { TMapSimpleKeyObjectValue }
 

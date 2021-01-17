@@ -5,7 +5,7 @@ unit PipelineUnit;
 interface
 
 uses
-  Pipeline.TypesUnit, Pipeline.Utils, ThreadSafeQueueUnit, fgl, Classes, SysUtils;
+  Pipeline.TypesUnit, Pipeline.Utils, ThreadSafeQueueUnit, GenericCollectionUnit, Classes, SysUtils;
 
 type
   TTask = class;
@@ -33,7 +33,7 @@ type
 
     end;
 
-    TStepInfoList = specialize TFPGList<TStepInfo>;
+    TStepInfoList = specialize TObjectCollection<TStepInfo>;
 
   private
     FName: AnsiString;
@@ -171,7 +171,7 @@ end;
 
 function TPipeline.RunStep(Step: TStepInfo): Boolean;
 type
-  TTasks = specialize TFPGList<TTask>;
+  TTasks = specialize TObjectCollection<TTask>;
 
 var
   i: Integer;

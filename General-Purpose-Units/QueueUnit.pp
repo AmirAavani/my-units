@@ -5,7 +5,7 @@ unit QueueUnit;
 interface
 
 uses
-  Classes, SysUtils, HeapUnit, cthreads, fgl, SyncUnit;
+  Classes, SysUtils, HeapUnit, cthreads, SyncUnit;
   
 type
 
