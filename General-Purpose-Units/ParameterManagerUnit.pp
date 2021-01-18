@@ -209,7 +209,7 @@ begin
       Continue;
 
     V := ParamStr(i);
-    Values[UpperCase(Name)] := GetValueObject(GetArgumentTypeByName(Name), V);
+    Values.Add(UpperCase(Name), GetValueObject(GetArgumentTypeByName(Name), V));
 
     Inc(i);
 
@@ -221,9 +221,9 @@ begin
     aVal := Values.Find(UpperCase(GetNameFromArgInfo(ArgInfo)));
     if aVal = nil then
     begin
-      Values[UpperCase(GetNameFromArgInfo(ArgInfo))] :=
+      Values.Add(UpperCase(GetNameFromArgInfo(ArgInfo)),
          GetValueObject(GetArgumentTypeByName(GetNameFromArgInfo(ArgInfo)),
-           ValidArgumentsValues[i]);
+           ValidArgumentsValues[i]));
     end;
   end;
 
