@@ -5,7 +5,7 @@ unit PipelineUnit;
 interface
 
 uses
-  Pipeline.TypesUnit, Pipeline.Utils, ThreadSafeQueueUnit, fgl, Classes, SysUtils;
+  Pipeline.TypesUnit, Pipeline.Utils, ThreadSafeQueueUnit, GenericCollectionUnit, Classes, SysUtils;
 
 type
   TTask = class;
@@ -33,7 +33,7 @@ type
 
     end;
 
-    TStepInfoList = specialize TFPGList<TStepInfo>;
+    TStepInfoList = specialize TObjectCollection<TStepInfo>;
 
   private
     FName: AnsiString;
@@ -76,7 +76,7 @@ type
 
 implementation
 uses
-  SyncUnit, ALoggerUnit, RunInAThreadUnit, ParameterManagerUnit;
+  SyncUnit, StringUnit, ALoggerUnit, RunInAThreadUnit, ParameterManagerUnit;
 
 { TTask }
 
@@ -103,11 +103,11 @@ begin
   Result := TAnsiStringList.Create;
 
   AllFiles := ExpandPattern(aPattern);
-  AllFiles.ComputeModule(Self.Count,
-    specialize IfThen<Integer>(Self.ID = Self.Count, 0, Self.ID),
-    Result);
+  AllFiles.ComputeModule(Self.Count, Self.ID, Result);
 
-  FMTDebugLn('AllFiles.Count: %d Result.Count: %d', [AllFiles.Count, Result.Count]);
+  FMTDebugLn('AllFiles.Count: %d Result.Count: %d(%s)', [AllFiles.Count,
+    Result.Count,
+    JoinStrings(Result.ToArray, ', ')]);
   AllFiles.Free;
 
 end;
@@ -171,7 +171,7 @@ end;
 
 function TPipeline.RunStep(Step: TStepInfo): Boolean;
 type
-  TTasks = specialize TFPGList<TTask>;
+  TTasks = specialize TObjectCollection<TTask>;
 
 var
   i: Integer;
@@ -183,6 +183,9 @@ var
   Wg: TWaitGroup;
 
 begin
+  if Step = nil then
+    FmtFatalLn('Invalid Step', []);
+
   Queue := TDoneTaskQueue.Create;
   AllTasks := TTasks.Create;
   SetLength(Status, Step.NumTasks + 1);

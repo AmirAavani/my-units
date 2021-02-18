@@ -5,7 +5,7 @@ unit RunInAThreadUnit;
 interface
 
 uses
-  Pipeline.Types, Classes, SysUtils;
+  Pipeline.TypesUnit, Classes, SysUtils;
 
 type
   TThreadFunctionPtr = function (SysArgs, Args: TPointerArray): Boolean;

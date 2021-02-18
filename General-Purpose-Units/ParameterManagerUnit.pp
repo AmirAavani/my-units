@@ -5,7 +5,7 @@ unit ParameterManagerUnit;
 interface
 
 uses
-  ValueUnit, Classes, SysUtils, fgl;
+  ValueUnit, Classes, SysUtils, GenericCollectionUnit;
 
 type
 
@@ -21,7 +21,7 @@ type
 
     end;
   private type
-    TNameValueMap = specialize TFPGMap<AnsiString, TValue>;
+    TNameValueMap = specialize TMapSimpleKeyObjectValue<AnsiString, TValue>;
 
   private
     Values: TNameValueMap;
@@ -190,12 +190,12 @@ var
   i: Integer;
   ArgInfo: AnsiString;
   Name, V: AnsiString;
+  aVal: TValue;
 
 begin
   inherited;
 
   Values := TNameValueMap.Create;
-  Values.Sorted := True;
 
   i := 1;
   while i <= Paramcount do
@@ -209,7 +209,7 @@ begin
       Continue;
 
     V := ParamStr(i);
-    Values[UpperCase(Name)] := GetValueObject(GetArgumentTypeByName(Name), V);
+    Values.Add(UpperCase(Name), GetValueObject(GetArgumentTypeByName(Name), V));
 
     Inc(i);
 
@@ -218,25 +218,21 @@ begin
   for i := Low(ValidArgumentsInfo) to High(ValidArgumentsInfo) do
   begin
     ArgInfo := ValidArgumentsInfo[i];
-    if Values.IndexOf(UpperCase(GetNameFromArgInfo(ArgInfo))) < 0 then
+    aVal := Values.Find(UpperCase(GetNameFromArgInfo(ArgInfo)));
+    if aVal = nil then
     begin
-      Values[UpperCase(GetNameFromArgInfo(ArgInfo))] :=
+      Values.Add(UpperCase(GetNameFromArgInfo(ArgInfo)),
          GetValueObject(GetArgumentTypeByName(GetNameFromArgInfo(ArgInfo)),
-           ValidArgumentsValues[i]);
+           ValidArgumentsValues[i]));
     end;
   end;
 
 end;
 
 destructor TRunTimeParameterManager.Destroy;
-var
-  i: Integer;
-
 begin
-  for i := 0 to Values.Count - 1 do
-    Values.Data[i].Free;
-
   Values.Free;
+
   inherited Destroy;
 
 end;
