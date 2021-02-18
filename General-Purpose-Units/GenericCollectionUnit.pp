@@ -29,7 +29,6 @@ type
   end;
 
   generic TMap<Key, Value> = class(specialize TAVLTreeMap<Key, Value>)
-  public
   end;
 
   { TMapSimpleKeyObjectValue }
@@ -52,7 +51,12 @@ begin
   it := Self.GetEnumerator;
 
   while it.MoveNext do
+  begin
     it.Current.Value.Free;
+
+  end;
+
+  it.Free;
 
   inherited Destroy;
 end;
