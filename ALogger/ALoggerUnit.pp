@@ -28,15 +28,14 @@ procedure FmtFatalLn(Fmt: AnsiString; const Args: array of const);
 implementation
 
 uses
-  ParameterManagerUnit, StringUnit, WideStringUnit, SyncUnit, lnfodwrf, fgl;
+  ParameterManagerUnit, StringUnit, WideStringUnit, SyncUnit, OnceUnit, lnfodwrf, fgl;
 
 var
   Mutex4LineInfo: TMutex;
+  PrintOnce: TOnce;
 
 procedure GetParentLineInfo(var Filename: AnsiString; var LineNumber: Integer);
 var
-  i: Integer;
-  prevbp: Pointer;
   CallerFrame,
   CallerAddress,
   bp: CodePointer;
@@ -59,15 +58,22 @@ begin
   CallerAddress := get_caller_addr(bp);
   CallerFrame := get_caller_frame(bp);
   if (CallerAddress = nil) or (CallerFrame = nil) then
+  begin
     Halt(1);
+  end;
+
   Func := ''; Source := '';
   if not GetLineInfo(CodePtrUInt(CallerAddress), Func, Source, LineNumber) then
-    Halt(2);
+  begin
+    PrintOnce.Run;
+    Exit;
+
+  end;
 
   Parts := Split(Source, '/');
-   if Parts.Count <> 0 then
-     Filename := Parts[Parts.Count - 1];
-   Parts.Free;
+  if Parts.Count <> 0 then
+    Filename := Parts[Parts.Count - 1];
+  Parts.Free;
   Mutex4LineInfo.Unlock();
 
 end;
@@ -79,7 +85,7 @@ procedure _WriteLn(Message: AnsiString);
 begin
   MutexWriteLn.Lock;
 
-  System.Writeln(Message);
+  System.Writeln(StdErr, Message);
   Flush(Output);
 
   MutexWriteLn.Unlock;
@@ -224,6 +230,13 @@ end;
 destructor TALogger.Destroy;
 begin
   inherited Destroy;
+
+end;
+
+procedure PrintError(Arguments: TPtrArray);
+begin
+  WriteLn(StdErr, 'Please make sure the code is compiled with -g');
+
 end;
 
 initialization
@@ -232,6 +245,7 @@ initialization
   MutexWriteLn := TMutex.Create;
   Counters := TLineInfoIntegerMap.Create;
   Counters.Sorted := True;
+  PrintOnce := TOnce.Create(@PrintError, nil);
 
 finalization
   Counters.Free;

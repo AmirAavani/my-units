@@ -445,6 +445,9 @@ end;
 
 function TBaseOneOf.GetPointerByIndex(Index: Integer): Pointer;
 begin
+  if Self = nil then
+    Exit(nil);
+
   if Index = _ObjectIndex then
     Exit(_Data);
 
@@ -454,6 +457,9 @@ end;
 
 procedure TBaseOneOf.SetPointerByIndex(Index: Integer; AValue: Pointer);
 begin
+  if Self = nil then
+    Exit;
+
   if _ObjectIndex = -1 then
   begin
     _Data := AValue;
