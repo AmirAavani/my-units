@@ -114,9 +114,6 @@ type
   { TBaseMessage }
 
   TBaseMessage = class(TObject)
-  private
-    function ReadRepeatedLength(Stream: TProtoStreamReader): UInt32;
-
   protected
 
     procedure SaveToStream(Stream: TProtoStreamWriter);  virtual; abstract;
@@ -125,6 +122,7 @@ type
   public
     constructor Create;
     destructor Destroy; override;
+    procedure Clear; virtual;
 
     function LoadFromString(Str: AnsiString): Boolean; virtual;
     function LoadFromStream(Stream: TStream): Boolean; virtual;
@@ -147,6 +145,8 @@ type
 
     constructor Create;
     destructor Destroy; override;
+    procedure Clear; virtual;
+
   end;
 
   { EBaseOneOf }
@@ -445,6 +445,9 @@ end;
 
 function TBaseOneOf.GetPointerByIndex(Index: Integer): Pointer;
 begin
+  if Self = nil then
+    Exit(nil);
+
   if Index = _ObjectIndex then
     Exit(_Data);
 
@@ -454,6 +457,9 @@ end;
 
 procedure TBaseOneOf.SetPointerByIndex(Index: Integer; AValue: Pointer);
 begin
+  if Self = nil then
+    Exit;
+
   if _ObjectIndex = -1 then
   begin
     _Data := AValue;
@@ -464,16 +470,8 @@ begin
 
   end;
 
-  if AValue = nil then
-  begin
-    _ObjectIndex := -1;
-    _Data := AValue;
-    Exit;
-
-  end;
-
-  if Index <> _ObjectIndex then
-    raise EBaseOneOf.CreateTwoValueAreSet;
+  Clear;
+  Self.SetPointerByIndex(Index, AValue);
 end;
 
 constructor TBaseOneOf.Create;
@@ -487,6 +485,12 @@ destructor TBaseOneOf.Destroy;
 begin
 
   inherited Destroy;
+end;
+
+procedure TBaseOneOf.Clear;
+begin
+
+  _ObjectIndex := -1;
 end;
 
 { TBaseMessage }
@@ -1229,12 +1233,6 @@ begin
 
 end;
 
-function TBaseMessage.ReadRepeatedLength(Stream: TProtoStreamReader): UInt32;
-begin
-  Result := Stream.ReadVarUInt32;
-
-end;
-
 procedure SaveFloat(Stream: TProtoStreamWriter; const Data: Single;
   const TagID: Integer);
 const
@@ -1511,8 +1509,15 @@ begin
   inherited Destroy;
 end;
 
+procedure TBaseMessage.Clear;
+begin
+
+end;
+
 function TBaseMessage.LoadFromString(Str: AnsiString): Boolean;
 begin
+  Self.Clear;
+
   Result := Self.LoadFromStream(TStringStream.Create(Str));
 
 end;
@@ -1522,6 +1527,7 @@ var
   ProtoStream: TProtoStreamReader;
 
 begin
+  Self.Clear;
   ProtoStream := TProtoStreamReader.Create(Stream);
 
   Result := Self.LoadFromStream(ProtoStream, Stream.Size);

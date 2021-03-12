@@ -63,6 +63,7 @@ begin
   end;
 
   FOnceProc(FObj);
+  FBeenCalled := True;
   LeaveCriticalsection(CS);
 
   Result := True;
