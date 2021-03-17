@@ -7,18 +7,18 @@ interface
 uses
   Classes;
 
-function IsPrefix(const Prefix, Str: AnsiString): Boolean;
-function IsSuffix(const Suffix, Str: AnsiString): Boolean;
-function Split(const Str: AnsiString; Delimiter: Char): TStringList;
+function IsPrefix(constref Prefix, Str: AnsiString): Boolean;
+function IsSuffix(constref Suffix, Str: AnsiString): Boolean;
+function Split(constref Str: AnsiString; Delimiter: Char): TStringList;
 function JoinStrings(const Strings: TStringList; Separator: AnsiString): AnsiString;
 function JoinStrings(const Strings: array of AnsiString; Separator: AnsiString;
    SkipEmptyString: Boolean = True): AnsiString;
 
 implementation
 uses
-  sysutils;
+  sysutils, StrUtils;
 
-function IsPrefix(const Prefix, Str: AnsiString): Boolean;
+function IsPrefix(constref Prefix, Str: AnsiString): Boolean;
 var
   i: Integer;
 
@@ -35,7 +35,7 @@ begin
 
 end;
 
-function IsSuffix(const Suffix, Str: AnsiString): Boolean;
+function IsSuffix(constref Suffix, Str: AnsiString): Boolean;
 var
   i: Integer;
   StrPtr, SuffixPtr: PChar;
@@ -60,11 +60,18 @@ begin
 
 end;
 
-function Split(const Str: AnsiString; Delimiter: Char): TStringList;
+function Split(constref Str: AnsiString; Delimiter: Char): TStringList;
+var
+  StrArray: array of AnsiString;
+  S: AnsiString;
+
 begin
+  StrArray := SplitString(Str, Delimiter);
+
   Result := TStringList.Create;
-  Result.Delimiter := Delimiter;
-  Result.DelimitedText := Str;
+  for S in StrArray do
+    Result.Add(S);
+  SetLength(StrArray, 0);
 
 end;
 
