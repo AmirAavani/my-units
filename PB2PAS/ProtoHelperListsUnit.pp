@@ -5,7 +5,8 @@ unit ProtoHelperListsUnit;
 interface
 
 uses
-  Classes, SysUtils, Generics.Collections;
+  GenericCollectionUnit, ProtoStreamUnit, Classes, SysUtils,
+  Generics.Collections;
 
 type
   { TObjectList }
@@ -42,8 +43,22 @@ type
     function ToString: AnsiString; override;
   end;
 
-implementation
+  { TProtoMap }
 
+  generic TProtoMap<TKey, TValue> = class(specialize TMap<TKey, TValue>)
+  public
+
+  end;
+
+  { TProtoMapSimpleKeyObjectValue }
+
+  generic TProtoMapSimpleKeyObjectValue<TKey, TValue> = class(specialize TMapSimpleKeyObjectValue<TKey, TValue>)
+  public
+
+  end;
+
+
+implementation
 { TBooleanList }
 
 function TBooleanList.ToString: AnsiString;
