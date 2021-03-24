@@ -8,105 +8,15 @@ uses
   Classes, SysUtils, ProtoHelperListsUnit, ProtoStreamUnit;
 
 type
-
-  { TBytes }
-
-  TBytes = class(specialize TSimpleTypeList<Byte>)
-  public
-    constructor Create;
-
-  protected
-    function SimpleObjectToString(Obj: Byte): AnsiString; override;
-
-  end;
-
-  { TSingles }
-
-  TSingles = class(specialize TSimpleTypeList<Single>)
-  public
-    constructor Create;
-
-  protected
-    function SimpleObjectToString(Obj: Single): AnsiString; override;
-
-  end;
-
-  { TDoubles }
-
-  TDoubles = class(specialize TSimpleTypeList<Double>)
-  public
-    constructor Create;
-
-  protected
-    function SimpleObjectToString(Obj: Double): AnsiString; override;
-
-  end;
-
-  { TInt32s }
-
-  TInt32s = class(specialize TSimpleTypeList<Int32>)
-  public
-    constructor Create;
-
-  protected
-    function SimpleObjectToString(Obj: Int32): AnsiString; override;
-
-  end;
-
-  { TInt64s }
-
-  TInt64s = class(specialize TSimpleTypeList<Int64>)
-  public
-    constructor Create;
-
-  protected
-    function SimpleObjectToString(Obj: Int64): AnsiString; override;
-
-  end;
-
-  { TUInt32s }
-
-  TUInt32s = class(specialize TSimpleTypeList<UInt32>)
-  public
-    constructor Create;
-
-  protected
-    function SimpleObjectToString(Obj: UInt32): AnsiString; override;
-
-  end;
-
-  { TUInt64s }
-
-  TUInt64s = class(specialize TSimpleTypeList<UInt64>)
-  public
-    constructor Create;
-
-  protected
-    function SimpleObjectToString(Obj: UInt64): AnsiString; override;
-
-  end;
-
-  { TBooleans }
-
-  TBooleans = class(specialize TSimpleTypeList<Boolean>)
-  public
-    constructor Create;
-
-  protected
-    function SimpleObjectToString(Obj: Boolean): AnsiString; override;
-
-  end;
-
-  { TAnsiStrings }
-
-  TAnsiStrings = class(specialize TSimpleTypeList<AnsiString>)
-  public
-    constructor Create;
-
-  protected
-    function SimpleObjectToString(Obj: AnsiString): AnsiString; override;
-
-  end;
+  TBytes = specialize TSimpleTypeList<Byte>;
+  TSingles = specialize TSimpleTypeList<Single>;
+  TDoubles = specialize TSimpleTypeList<Double>;
+  TInt32s = specialize TSimpleTypeList<Int32>;
+  TInt64s = specialize TSimpleTypeList<Int64>;
+  TUInt32s = specialize TSimpleTypeList<UInt32>;
+  TUInt64s = specialize TSimpleTypeList<UInt64>;
+  TBooleans = specialize TSimpleTypeList<Boolean>;
+  TAnsiStrings = specialize TSimpleTypeList<AnsiString>;
 
   TBaseMessage = class;
   TBaseOneOf = class;
@@ -127,6 +37,8 @@ type
     function LoadFromString(Str: AnsiString): Boolean; virtual;
     function LoadFromStream(Stream: TStream): Boolean; virtual;
     procedure SaveToStream(Stream: TStream);  virtual;
+
+    class function ToJson(const aMessage: TBaseMessage): AnsiString;
 
   end;
 
@@ -306,132 +218,8 @@ procedure MaybeDispose(P: PAnsiString);
 procedure MaybeDispose(P: PByte);
 
 implementation
-
-{ TBytes }
-
-constructor TBytes.Create;
-begin
-  inherited Create;
-
-end;
-
-function TBytes.SimpleObjectToString(Obj: Byte): AnsiString;
-begin
-  Result := IntToStr(Obj);
-
-end;
-
-{ TSingles }
-
-constructor TSingles.Create;
-begin
-  inherited Create;
-
-end;
-
-function TSingles.SimpleObjectToString(Obj: Single): AnsiString;
-begin
-  Result := FloatToStr(Obj);
-
-end;
-
-{ TDoubles }
-
-constructor TDoubles.Create;
-begin
-  inherited Create;
-
-end;
-
-function TDoubles.SimpleObjectToString(Obj: Double): AnsiString;
-begin
-  Result := FloatToStr(Obj);
-
-end;
-
-{ TInt32s }
-
-constructor TInt32s.Create;
-begin
-  inherited Create;
-
-end;
-
-function TInt32s.SimpleObjectToString(Obj: Int32): AnsiString;
-begin
-  Result := IntToStr(Obj);
-
-end;
-
-{ TInt64s }
-
-constructor TInt64s.Create;
-begin
-  inherited Create;
-
-end;
-
-function TInt64s.SimpleObjectToString(Obj: Int64): AnsiString;
-begin
-  Result := IntToStr(Obj);
-
-end;
-
-{ TUInt32s }
-
-constructor TUInt32s.Create;
-begin
-  inherited Create;
-
-end;
-
-function TUInt32s.SimpleObjectToString(Obj: UInt32): AnsiString;
-begin
-  Result := UIntToStr(Obj);
-
-end;
-
-{ TUInt64s }
-
-constructor TUInt64s.Create;
-begin
-  inherited Create;
-
-end;
-
-function TUInt64s.SimpleObjectToString(Obj: UInt64): AnsiString;
-begin
-  Result := UIntToStr(Obj);
-
-end;
-
-{ TBooleans }
-
-constructor TBooleans.Create;
-begin
-  inherited Create;
-
-end;
-
-function TBooleans.SimpleObjectToString(Obj: Boolean): AnsiString;
-begin
-  Result := BoolToStr(Obj, 'True', 'False');
-
-end;
-
-{ TAnsiStrings }
-
-constructor TAnsiStrings.Create;
-begin
-  inherited Create;
-
-end;
-
-function TAnsiStrings.SimpleObjectToString(Obj: AnsiString): AnsiString;
-begin
-  Result := Obj;
-
-end;
+uses
+  fpjsonrtti;
 
 { EBaseOneOf }
 
@@ -1545,6 +1333,20 @@ begin
   Self.SaveToStream(ProtoStream);
 
   ProtoStream.Free;
+end;
+
+class function TBaseMessage.ToJson(const aMessage: TBaseMessage): AnsiString;
+var
+  Streamer: TJSONStreamer;
+
+begin
+  Streamer := TJSONStreamer.Create(nil);
+  Streamer.Options := Streamer.Options + [jsoTStringsAsArray];
+
+  Result := Streamer.ObjectToJSONString(aMessage);
+
+  Streamer.Free;
+
 end;
 
 end.

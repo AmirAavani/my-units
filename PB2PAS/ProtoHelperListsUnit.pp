@@ -12,72 +12,48 @@ type
   { TObjectList }
 
   generic TObjectList<TMyObject> = class(specialize TList<TMyObject>)
+  private type
+    _TObjectList = specialize TObjectList<TMyObject>;
+
   public
     destructor Destroy; override;
 
-    function ToString: AnsiString; override;
-    function LoadFromStream(Stream: TStream): Boolean;
-    procedure SaveToStream(Stream: TStream);
+    function DeepCopy: _TObjectList;
   end;
 
   { TSimpleTypeList }
 
   generic TSimpleTypeList<TSimpleObject> = class(specialize TList<TSimpleObject>)
+  private type
+    TSimpleList = specialize TSimpleTypeList<TSimpleObject>;
   protected
-    function SimpleObjectToString(Obj: TSimpleObject): AnsiString; virtual; abstract;
 
   public
-
     constructor Create;
     destructor Destroy; override;
 
-    function ToString: AnsiString; override;
-    function LoadFromStream(Stream: TStream): Boolean;
-    procedure SaveToStream(Stream: TStream);
+    function DeepCopy: TSimpleList;
   end;
-
-  { TBooleanList }
-
-  TBooleanList = class(specialize TSimpleTypeList<Boolean>)
-  public
-    function ToString: AnsiString; override;
-  end;
-
-  { TProtoMap }
-
-  generic TProtoMap<TKey, TValue> = class(specialize TMap<TKey, TValue>)
-  public
-
-  end;
-
-  { TProtoMapSimpleKeyObjectValue }
-
-  generic TProtoMapSimpleKeyObjectValue<TKey, TValue> = class(specialize TMapSimpleKeyObjectValue<TKey, TValue>)
-  public
-
-  end;
-
 
 implementation
-{ TBooleanList }
-
-function TBooleanList.ToString: AnsiString;
-var
-  Data: Boolean;
-
-begin
-  Result := '[';
-  for data in Self do
-  begin
-    if Length(Result) <> 1 then
-      Result += ', ';
-    Result += BoolToStr(data)
-  end;
-  Result += ']';
-
-end;
 
 { TSimpleTypeList }
+
+function TSimpleTypeList.DeepCopy: TSimpleList;
+var
+  i: Integer;
+
+begin
+  if Self = nil then
+    Exit(nil);
+
+  Result := TSimpleList.Create;
+  Result.Count := Self.Count;
+
+  for i := 0 to Self.Count - 1 do
+    Result[i] := Self[i];
+
+end;
 
 constructor TSimpleTypeList.Create;
 begin
@@ -87,33 +63,8 @@ end;
 
 destructor TSimpleTypeList.Destroy;
 begin
+
   inherited Destroy;
-end;
-
-function TSimpleTypeList.ToString: AnsiString;
-var
-  Data: TSimpleObject;
-
-begin
-  Result := '[';
-  for data in Self do
-  begin
-    if Length(Result) <> 1 then
-      Result += ', ';
-    Result += SimpleObjectToString(data);
-  end;
-  Result += ']';
-
-end;
-
-function TSimpleTypeList.LoadFromStream(Stream: TStream): Boolean;
-begin
-  raise Exception.Create('NIY');
-end;
-
-procedure TSimpleTypeList.SaveToStream(Stream: TStream);
-begin
-  raise Exception.Create('NIY');
 end;
 
 { TObjectList }
@@ -130,24 +81,19 @@ begin
 
 end;
 
-function TObjectList.ToString: AnsiString;
+function TObjectList.DeepCopy: _TObjectList;
 var
-  Obj: TObject;
+  i: Integer;
 
 begin
-  Result := '';
-  for Obj in Self do
-    Result += Obj.ToString;
-end;
+  if Self = nil then
+    Exit(nil);
 
-function TObjectList.LoadFromStream(Stream: TStream): Boolean;
-begin
-  Halt(1);
-end;
+  Result := _TObjectList.Create;
+  Result.Count := Self.Count;
+  for i := 0 to Self.Count - 1 do
+    Result[i] := Self[i];
 
-procedure TObjectList.SaveToStream(Stream: TStream);
-begin
-  Halt(2);
 end;
 
 end.
