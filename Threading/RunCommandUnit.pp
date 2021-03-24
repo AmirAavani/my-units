@@ -23,25 +23,28 @@ uses
 type
 { TProcessTimeout }
   TProcessTimeout = class(TProcess)
-                           private
-                           timeoutperiod: TTime;
-                           timedout : boolean;
-                           started : TDateTime;
-                           procedure LocalnIdleSleep(Sender,Context : TObject;status:TRunCommandEventCode;const message:string);
-                         end;
+  private
+    TimeoutPeriod: TTime;
+    TimedOut : Boolean;
+    Started : TDateTime;
+     procedure LocalnIdleSleep(Sender, Context : TObject;status:TRunCommandEventCode;
+         const Message:string);
+  end;
 
 
-procedure TProcessTimeout.LocalnIdleSleep(Sender,Context : TObject;status:TRunCommandEventCode;const message:string);
+procedure TProcessTimeout.LocalnIdleSleep(Sender, Context: TObject;
+    Status: TRunCommandEventCode; const Message:string);
 begin
-  if status=RunCommandIdle then
+  if Status = RunCommandIdle then
    begin
-     if (now-started)>timeoutperiod then
+     if (Now - Started) > TimeoutPeriod then
         begin
-          timedout:=true;
+          TimedOut := True;
           Terminate(255);
-          exit;
+          Exit;
         end;
-     sleep(RunCommandSleepTime);
+
+     Sleep(RunCommandSleepTime);
    end;
 end;
 

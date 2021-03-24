@@ -8,6 +8,9 @@ uses
   Classes, SysUtils, Generics.Collections;
 
 type
+  generic TCollection<TData> = class(specialize TList<TData>)
+  end;
+
   { TGenericCollection }
 
   generic TObjectCollection<TData>= class(specialize TList<TData>)

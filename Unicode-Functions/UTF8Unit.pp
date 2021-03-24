@@ -5,10 +5,10 @@ unit UTF8Unit;
 interface
 
 uses
-  Classes, SysUtils, fgl;
+  Classes, SysUtils, GenericCollectionUnit;
 type
   TRune = UInt64;
-  TRuneList = specialize TFPGList<TRune>;
+  TRuneList = specialize TCollection<TRune>;
 
   function GetAllRunes(const Text: AnsiString): TRuneList;
   procedure GetAllRunes(const Text: AnsiString; out Output: TRuneList);
@@ -40,8 +40,8 @@ end;
 
 function GetNextRune(var PText: PChar; Width: PInteger): TRune;
 var
-  Len: Integer;
   b1, b2, b3, b4, w: Byte;
+
 begin
   b1 := Ord(PText^);
   Inc(PText);

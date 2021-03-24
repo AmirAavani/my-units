@@ -48,7 +48,7 @@ function Copy(Main: PChar; Len: Integer): AnsiString;
 begin
   Result := '';
 
-  while Len <> 0 do
+  while (0 < Len) and (Main^ <> #0) do
   begin
     Result += Main^;
     Inc(Main);
@@ -74,6 +74,14 @@ end;
 
 function IsPrefix(Prefix, Main: PChar): Boolean;
 begin
+  while Main^ = #32 do
+  begin
+    Inc(Main);
+    if Main = #0 then
+      Break;
+
+  end;
+
   while (Prefix^ <> #0) and (Main^ <> #0) do
   begin
     if Prefix^ <> Main^ then
