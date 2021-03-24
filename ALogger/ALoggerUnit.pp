@@ -252,6 +252,7 @@ finalization
   Mutex4LineInfo.Free;
   Mutex4Counters.Free;
   MutexWriteLn.Free;
+  PrintOnce.Free;
 
 end.
 
