@@ -5,40 +5,43 @@ unit RunInAThreadUnit;
 interface
 
 uses
-  Pipeline.TypesUnit, Classes, SysUtils;
+  Classes, SysUtils, Pipeline.TypesUnit;
 
 type
-  TThreadFunctionPtr = function (SysArgs, Args: TPointerArray): Boolean;
+  TThreadFunctionPtr = function (SysArgs: TPointerList): Boolean;
 
-procedure RunInThread(F: TThreadFunctionPtr; SysArgs, Args: TPointerArray;
+procedure RunInThread(F: TThreadFunctionPtr; SysArgs: TPointerList;
   OutputResult: PBoolean);
 
 implementation
+uses
+  ALoggerUnit;
 
 type
   { TRunnerThread }
 
   TRunnerThread = class(TThread)
   private
-    SysArguments, Arguments: array of Pointer;
+    SysArguments: TPointerList;
     F: TThreadFunctionPtr;
     Result: PBoolean;
 
   public
-    constructor Create(FToRun: TThreadFunctionPtr; SysArgs, Args: TPointerArray;
+    // Caller is responsibe for freeing the memory for SysArgs and Args.
+    constructor Create(FToRun: TThreadFunctionPtr; SysArgs: TPointerList;
        Res: PBoolean);
     destructor Destroy; override;
 
     procedure Execute; override;
   end;
 
-procedure RunInThread(F: TThreadFunctionPtr; SysArgs, Args: TPointerArray;
+procedure RunInThread(F: TThreadFunctionPtr; SysArgs: TPointerList;
   OutputResult: PBoolean);
 var
   Thread: TThread;
 
 begin
-  Thread := TRunnerThread.Create(F, SysArgs, Args, OutputResult);
+  Thread := TRunnerThread.Create(F, SysArgs, OutputResult);
   Thread.FreeOnTerminate := True;
   Thread.Suspended := False;
 
@@ -46,35 +49,32 @@ end;
 
 { TRunnerThread }
 
-constructor TRunnerThread.Create(FToRun: TThreadFunctionPtr; SysArgs,
-  Args: TPointerArray; Res: PBoolean);
-var
-  i: Integer;
-
+constructor TRunnerThread.Create(FToRun: TThreadFunctionPtr;
+  SysArgs: TPointerList; Res: PBoolean);
 begin
   inherited Create(True);
 
   F := FToRun;
-  SetLength(Arguments, Length(Args));
-  for i := 0 to High(Args) do
-    Arguments[i] := Args[i];
-  SetLength(SysArguments, Length(SysArgs));
-  for i := 0 to High(SysArgs) do
-    SysArguments[i] := SysArgs[i];
+  SysArguments := SysArgs;
   Result := Res;
 
 end;
 
 destructor TRunnerThread.Destroy;
 begin
-  SetLength(Arguments, 0);
 
   inherited Destroy;
 end;
 
 procedure TRunnerThread.Execute;
+var
+  _Result: Boolean;
+
 begin
-  Result^ := F(SysArguments, Arguments);
+  _Result := F(SysArguments);
+
+  if Self.Result <> nil then
+    Self.Result^ := _Result;
 
 end;
 

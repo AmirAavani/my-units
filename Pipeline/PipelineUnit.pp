@@ -5,13 +5,12 @@ unit PipelineUnit;
 interface
 
 uses
-  Pipeline.TypesUnit, Pipeline.Utils, ThreadSafeQueueUnit, GenericCollectionUnit, Classes, SysUtils;
+  Classes, SysUtils, Pipeline.TypesUnit, Pipeline.Utils, ThreadSafeQueueUnit, GenericCollectionUnit;
 
 type
   TTask = class;
-  TDoneTaskQueue = specialize TThreadSafeQueue<PInteger>;
-  TStepHandler = function (Task: TTask; Args: TPointerArray): Boolean;
-  TFilenames = TAnsiStringList;
+  TStepHandler = function (Task: TTask): Boolean;
+  TFilenames = TStringList;
 
   { TPipeline }
 
@@ -22,13 +21,12 @@ type
     TStepInfo = class(TObject)
     private
       NumTasks: Integer;
-      FTaskID: Integer;
+      ID: Integer;
       StepHandler: TStepHandler;
-      FArgs: TPointerArray;
 
     public
-      constructor Create(_TaskID: Integer; _NumTasks: Integer;
-          Handler: TStepHandler; _Args: TPointerArray);
+      constructor Create(_StepID: Integer; _NumTasks: Integer;
+        Handler: TStepHandler);
       destructor Destroy; override;
 
     end;
@@ -50,9 +48,9 @@ type
     constructor Create(_Name: AnsiString);
     destructor Destroy; override;
 
-    procedure AddNewStep(Handler: TStepHandler; NumTasks: Integer; Args: TPointerArray);
+    procedure AddNewStep(Handler: TStepHandler; NumTasks: Integer);
 
-    class function Run(aPipeline: TPipeline; WaitToFinish: Boolean = True): Boolean;
+    function Run(WaitToFinish: Boolean = True): Boolean;
   end;
 
   { TTask }
@@ -69,8 +67,6 @@ type
     property StepInfo: TPipeline.TStepInfo read FStep;
 
     constructor Create(_ID: Integer; _Step: TPipeline.TStepInfo);
-    function ExtractModule(const aPattern: AnsiString): TAnsiStringList;
-    function ExtractDiv(const aPattern: AnsiString): TAnsiStringList;
 
   end;
 
@@ -95,48 +91,17 @@ begin
 
 end;
 
-function TTask.ExtractModule(const aPattern: AnsiString): TAnsiStringList;
-var
-  AllFiles: TAnsiStringList;
-
-begin
-  Result := TAnsiStringList.Create;
-
-  AllFiles := ExpandPattern(aPattern);
-  AllFiles.ComputeModule(Self.Count, Self.ID, Result);
-
-  FMTDebugLn('AllFiles.Count: %d Result.Count: %d(%s)', [AllFiles.Count,
-    Result.Count,
-    JoinStrings(Result.ToArray, ', ')]);
-  AllFiles.Free;
-
-end;
-
-function TTask.ExtractDiv(const aPattern: AnsiString): TAnsiStringList;
-var
-  AllFiles: TAnsiStringList;
-
-begin
-  Result := TAnsiStringList.Create;
-
-  AllFiles := ExpandPattern(aPattern);
-  AllFiles.ComputeDivide(Self.Count, Self.ID - 1, Result);
-
-  FMTDebugLn('AllFiles.Count: %d Result.Count: %d', [AllFiles.Count, Result.Count]);
-  AllFiles.Free;
-
-end;
-
 { TPipeline.TStepInfo }
 
-constructor TPipeline.TStepInfo.Create(_TaskID: Integer; _NumTasks: Integer;
-  Handler: TStepHandler; _Args: TPointerArray);
+constructor TPipeline.TStepInfo.Create(_StepID: Integer; _NumTasks: Integer;
+  Handler: TStepHandler);
 begin
   inherited Create;
 
+  ID := _StepID;
   NumTasks := _NumTasks;
   StepHandler := Handler;
-  FArgs := _Args;
+
 end;
 
 destructor TPipeline.TStepInfo.Destroy;
@@ -145,26 +110,29 @@ begin
 
 end;
 
-function RunHandler(SysArgs, Args: TPointerArray): Boolean;
+function RunHandler(SysArgs: TPointerList): Boolean;
 var
   Task: TTask;
-  Queue: TDoneTaskQueue;
   wg: TWaitGroup;
+  Step: TPipeline.TStepInfo;
 
 begin
   Task := TTask(SysArgs[0]);
-  Queue := TDoneTaskQueue(SysArgs[1]);
-  wg := TWaitGroup(SysArgs[2]);
+  wg := TWaitGroup(SysArgs[1]);
+  Step := TPipeline.TStepInfo(SysArgs[2]);
   FMTDebugLn('Running Task %d', [Task.ID]);
 
-  Result := Task.StepInfo.StepHandler(Task, Args);
+  FMTDebugLn('StepID: %d TaskID: %d', [Step.ID, Task.ID]);
 
-  FMTDebugLn('TaskID: %d', [Task.ID]);
-  FMTDebugLn('%d: Inserting %d into Queue', [ThreadID, Task.ID]);
-  Queue.Insert(PInteger(@Task.ID));
-  FMTDebugLn('%d: %d wg.Done', [ThreadID, Task.ID]);
+  Result := Task.StepInfo.StepHandler(Task);
+
+  FMTDebugLn('wg.Done Task: %d Result: %s', [Task.ID, BoolToStr(Result, True)]);
 
   wg.Done(1);
+
+  SysArgs.Clear;
+  SysArgs.Free;
+
 end;
 
 { TPipeline }
@@ -175,10 +143,8 @@ type
 
 var
   i: Integer;
-  Queue: TDoneTaskQueue;
-  TaskID: PInteger;
   AllTasks: TTasks;
-  SysArgs: TPointerArray;
+  SysArgs: TPointerList;
   Status: array of Boolean;
   Wg: TWaitGroup;
 
@@ -186,48 +152,40 @@ begin
   if Step = nil then
     FmtFatalLn('Invalid Step', []);
 
-  Queue := TDoneTaskQueue.Create;
   AllTasks := TTasks.Create;
   SetLength(Status, Step.NumTasks + 1);
 
   Wg := TWaitGroup.Create;
   Wg.Add(Step.NumTasks);
 
-  SysArgs := nil;
-  SetLength(SysArgs, 3);
   for i := 1 to Step.NumTasks do
   begin
     AllTasks.Add(TTask.Create(i, Step));
-    SysArgs[0] := AllTasks.Last;
-    SysArgs[1] := Queue;
-    SysArgs[2] := wg;
 
-    RunInThread(@RunHandler, SysArgs, Step.FArgs, @Status[i]);
+    SysArgs := TPointerList.Create;
+    SysArgs.Count := 3;
+    SysArgs[0] := AllTasks.Last;
+    SysArgs[1] := wg;
+    SysArgs[2] := Step;
+
+    RunInThread(@RunHandler, SysArgs, @Status[i]);
 
   end;
 
-  FMTDebugLn('Waiting for all jobs of Task %d to Finsih', [Step.FTaskID]);
+  FMTDebugLn('Waiting for all jobs of Step %d to Finish', [Step.ID]);
   Wg.Wait();
-  FMTDebugLn('All are Done', [Step.FTaskID]);
+  FMTDebugLn('Step: %d All are Done', [Step.ID]);
 
   DebugLn('All jobs are Running');
 
   for i := 1 to Step.NumTasks do
   begin
-    FMTDebugLn('Task %d?', [i]);
-    DebugLn('Before Delete');
-    Queue.Delete(TaskID);
-
-    FMTDebugLn('%d Task %d is Done with Status: %s', [i, TaskID^,
-      BoolToStr(Status[TaskID^], True)]);
+    FMTDebugLn('Task %d is Done with Status: %s', [i, BoolToStr(Status[i], True)]);
   end;
 
-  for i := 0 to AllTasks.Count - 1 do
-    AllTasks[i].Free;
+  SetLength(Status, 0);
   AllTasks.Free;
-  Queue.Free;
-  wg.Free;
-
+  Wg.Free;
   Result := True;
 end;
 
@@ -246,72 +204,66 @@ var
   Step: TStepInfo;
 
 begin
-  for Step in Steps do
-    Step.Free;
-
   Steps.Free;
 
   inherited Destroy;
 end;
 
-procedure TPipeline.AddNewStep(Handler: TStepHandler; NumTasks: Integer;
-  Args: TPointerArray);
+procedure TPipeline.AddNewStep(Handler: TStepHandler; NumTasks: Integer);
 begin
-  Steps.Add(TStepInfo.Create(Steps.Count, NumTasks, Handler, Args));
+  Steps.Add(TStepInfo.Create(Steps.Count, NumTasks, Handler));
 
 end;
 
-function RunThePipeline(SysArgs, Args: TPointerArray): Boolean;
+function RunThePipeline(SysArgs: TPointerList): Boolean;
 var
   ThePipeline: TPipeline;
-  PStepID, PFromStepID: PInteger;
+  StepID, FromStepID: Integer;
   wg: TWaitGroup;
 
 begin
   ThePipeline := TPipeline(SysArgs[0]);
-  PStepID := PInteger(SysArgs[1]);
-  PFromStepID := PInteger(SysArgs[2]);
-  wg := TWaitGroup(SysArgs[3]);
-  Result := False;
+  wg := TWaitGroup(SysArgs[1]);
 
-  if PStepID^ <> -1 then
-    Result := ThePipeline.RunStep(PStepID^)
+  Result := False;
+  StepID := GetRunTimeParameterManager.ValueByName['Pipeline.StepID'].AsIntegerOrDefault(-1);
+  FromStepID := GetRunTimeParameterManager.ValueByName['Pipeline.FromStepID'].AsIntegerOrDefault(1);
+
+  if StepID <> -1 then
+    Result := ThePipeline.RunStep(StepID)
   else
-    Result := ThePipeline.RunFromStep(PFromStepID^);
+    Result := ThePipeline.RunFromStep(FromStepID);
+
   FMTDebugLn('Result: %s', [BoolToStr(Result, True)]);
 
   wg.Done(1);
 
 end;
 
-class function TPipeline.Run(aPipeline: TPipeline; WaitToFinish: Boolean
-  ): Boolean;
+function TPipeline.Run(WaitToFinish: Boolean): Boolean;
 var
-  SysArgs: TPointerArray;
-  StepID, FromStepID: Integer;
+  SysArgs: TPointerList;
   wg: TWaitGroup;
   Done: Boolean;
 
 begin
-  SetLength(SysArgs, 4);
-  SysArgs[0] := aPipeline;
-  StepID := GetRunTimeParameterManager.ValueByName['--Pipeline.StepID'].AsInteger;
-  FromStepID := GetRunTimeParameterManager.ValueByName['--Pipeline.FromStepID'].AsIntegerOrDefault(1);
-  SysArgs[1] := PInteger(@StepID);
-  SysArgs[2] := PInteger(@FromStepID);
+  SysArgs := TPointerList.Create;
+  SysArgs.Add(Self);
   wg := TWaitGroup.Create;
-  SysArgs[3] := wg;
+  SysArgs.Add(wg);
 
   wg.Add(1);
-  Done := False;
-  RunInThread(@RunThePipeline, SysArgs, nil, @Done);
+  if WaitToFinish then
+    RunInThread(@RunThePipeline, SysArgs, @Done)
+  else
+    RunInThread(@RunThePipeline, SysArgs, nil);
 
   if WaitToFinish then
-  begin
     wg.Wait;
-  end;
 
-  Result := True;
+  Result := Done;
+  wg.Free;
+  SysArgs.Free;
 
 end;
 
