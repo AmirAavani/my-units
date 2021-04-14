@@ -20,8 +20,8 @@ type
 
   protected
 
-    procedure SaveAnElement(const AnElement: TKeyValuePair; OutputStream: TMyBinStream); virtual; abstract;
-    function LoadAnElement(InputStream: TMyBinStream): TKeyValuePair; virtual; abstract;
+    procedure SaveAnElement(const AnElement: TKeyValuePair; OutputStream: TMyBinStream); virtual;
+    function LoadAnElement(InputStream: TMyBinStream): TKeyValuePair; virtual;
 
     function SaveToStream(OutputStream: TMyBinStream): Boolean; virtual;
     function LoadFromStream(InputStream: TMyBinStream): Boolean; virtual;
@@ -36,6 +36,24 @@ type
 implementation
 
 { TPipelineKV }
+
+procedure TPipelineKV.SaveAnElement(const AnElement: TKeyValuePair;
+  OutputStream: TMyBinStream);
+var
+  Data: TBytesStream;
+
+begin
+  Data := TBytesStream.Create;
+  AnElement.Value.SaveToStream(Data);
+
+  OutputStream.WriteStr(AnElement.Key);
+  OutputStream.TargetStream.WriteBuffer(Data.Bytes, Data.Size);
+end;
+
+function TPipelineKV.LoadAnElement(InputStream: TMyBinStream): TKeyValuePair;
+begin
+
+end;
 
 function TPipelineKV.SaveToStream(OutputStream: TMyBinStream): Boolean;
 var
