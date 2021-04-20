@@ -9,14 +9,27 @@ uses
 type
   TSharder = function (constref Key: AnsiString): UInt64;
 
-  TMappingOptions = record
-    NumShards: Integer;
-    Sharder: TSharder;
-    ThreadCount: Integer;
+  { TMappingOptions }
 
+  TMappingOptions = class(TObject)
+  private
+    FNumShards: Integer;
+    FSharder: TSharder;
+    FThreadCount: Integer;
+  public
+    property NumShards: Integer read FNumShards;
+    property Sharder: TSharder read FSharder;
+    property ThreadCount: Integer read FThreadCount;
+
+  public
+    constructor _Create;
+    class function Create: TMappingOptions;
+
+    function SetNumShards(_NumShards: Integer): TMappingOptions;
+    function SetSharder(_Sharder: TSharder): TMappingOptions;
+    function SetThreadCount(_ThreadCount: Integer): TMappingOptions;
   end;
 
-function DefaultMappingOptions: TMappingOptions;
 
 implementation
 uses
@@ -31,11 +44,43 @@ begin
 
 end;
 
-function DefaultMappingOptions: TMappingOptions;
+{ TMappingOptions }
+
+constructor TMappingOptions._Create;
 begin
-  Result.NumShards := 1;
-  Result.Sharder := @DefaultSharder;
-  Result.ThreadCount := 1;
+  inherited Create;
+
+  FNumShards := 1;
+  FSharder := @DefaultSharder;
+  FThreadCount := 1;
+
+end;
+
+class function TMappingOptions.Create: TMappingOptions;
+begin
+  Result := TMappingOptions._Create;
+
+end;
+
+function TMappingOptions.SetNumShards(_NumShards: Integer): TMappingOptions;
+begin
+  Result := Self;
+  Result.FNumShards := _NumShards;
+
+end;
+
+function TMappingOptions.SetSharder(_Sharder: TSharder): TMappingOptions;
+begin
+  Result := Self;
+  Result.FSharder := _Sharder;
+
+
+end;
+
+function TMappingOptions.SetThreadCount(_ThreadCount: Integer): TMappingOptions;
+begin
+  Result := Self;
+  Result.FThreadCount := _ThreadCount;
 
 end;
 

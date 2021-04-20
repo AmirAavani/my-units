@@ -95,9 +95,11 @@ type
   private
     FDeleteInputStream: Boolean;
     FTargerStream: TStream;
+    function GetEndOfStream: Boolean;
 
   public
     property TargetStream: TStream read FTargerStream;
+    property EndOfStream: Boolean read GetEndOfStream;
 
     function ReadCh: Char;
     function ReadInt: Integer;
@@ -430,6 +432,12 @@ end;
 
 { TMyBinStream }
 
+function TMyBinStream.GetEndOfStream: Boolean;
+begin
+  Result := FTargerStream.Position = FTargerStream.Size;
+
+end;
+
 function TMyBinStream.ReadCh: Char;
 begin
   FTargerStream.Read(Result, 1);
@@ -480,7 +488,6 @@ begin
   Len := ReadUInt32;
   SetLength(Result, Len);
   FTargerStream.Read(Result[1], Len);
-  raise Exception.Create('Not Implemented Yet!');
 
 end;
 
