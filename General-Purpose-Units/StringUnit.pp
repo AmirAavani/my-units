@@ -9,7 +9,7 @@ uses
 
 function IsPrefix(constref Prefix, Str: AnsiString): Boolean;
 function IsSuffix(constref Suffix, Str: AnsiString): Boolean;
-function Split(constref Str: AnsiString; Delimiter: Char): TStringList;
+function Split(constref Str: AnsiString; Delimiter: AnsiString): TStringList;
 function JoinStrings(const Strings: TStringList; Separator: AnsiString): AnsiString;
 function JoinStrings(const Strings: array of AnsiString; Separator: AnsiString;
    SkipEmptyString: Boolean = True): AnsiString;
@@ -60,7 +60,7 @@ begin
 
 end;
 
-function Split(constref Str: AnsiString; Delimiter: Char): TStringList;
+function Split(constref Str: AnsiString; Delimiter: AnsiString): TStringList;
 var
   StrArray: array of AnsiString;
   S: AnsiString;
