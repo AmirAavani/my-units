@@ -61,6 +61,7 @@ end;
 function TrimLeft(Main: PChar; aSetToSkip: TCharSet): PChar;
 begin
   Result := Main;
+
   while Result^ <> #0 do
   begin
     if not (Result^ in aSetToSkip) then
@@ -74,14 +75,6 @@ end;
 
 function IsPrefix(Prefix, Main: PChar): Boolean;
 begin
-  while Main^ = #32 do
-  begin
-    Inc(Main);
-    if Main = #0 then
-      Break;
-
-  end;
-
   while (Prefix^ <> #0) and (Main^ <> #0) do
   begin
     if Prefix^ <> Main^ then
