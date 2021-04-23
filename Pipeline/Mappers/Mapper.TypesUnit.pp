@@ -8,7 +8,7 @@ uses
   Classes, SysUtils, PairUnit;
 
 type
-  TKeyValue = specialize TPair<AnsiString, AnsiString>;
+  TKeyValue = specialize TPair<AnsiString, Pointer>;
 
 
 implementation
