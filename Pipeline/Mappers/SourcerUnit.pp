@@ -13,12 +13,10 @@ type
 
   TBaseSourcer = class(TObject)
   protected
-    function GetCurrent: TKeyValue; virtual; abstract;
     function GetNext: Boolean; virtual; abstract;
+    function GetCurrent: TKeyValue; virtual; abstract;
 
   public
-    property Current: TKeyValue read GetCurrent;
-    property Next: Boolean read GetNext;
 
     constructor Create;
 
@@ -47,8 +45,7 @@ type
   TNewLineReader = class(TBaseSourcer)
   private
     WholeFile: AnsiString;
-    Position: Integer;
-    CurrentLine: AnsiString;
+    CurrentStart, CurrentEnd: PChar;
     FSeparator: AnsiString;
 
   protected
@@ -64,34 +61,26 @@ type
 implementation
 
 uses
-  StringUnit;
+  StringUnit, PCharUnit;
 
 { TNewLineReader }
 
 function TNewLineReader.GetNext: Boolean;
-var
-  Ch: PChar;
-  i: Integer;
-
 begin
-  Result := Position <= Length(WholeFile);
+  Result := CurrentEnd^ <> #0;
 
-  Ch := PChar(WholeFile);
-  Inc(Ch, Position);
-  CurrentLine := '';
-  for i := Position to Length(WholeFile) do
-    if IsPrefix(FSeparator, AnsiString(Ch)) then
-    begin
-      CurrentLine += Ch^;
-      Inc(Ch);
+  CurrentStart := CurrentEnd + Length(FSeparator);
+  CurrentEnd := CurrentStart;
 
-    end;
+  while (not IsPrefix(@FSeparator[1], CurrentEnd)) and (CurrentEnd^ <> #0) do
+    Inc(CurrentEnd);
 end;
 
 function TNewLineReader.GetCurrent: TKeyValue;
 begin
   Result.First := '';
-  Result.Second := CurrentLine;
+  raise Exception.Create('');
+//  Result.Second := CurrentLine;
 
 end;
 
@@ -106,8 +95,7 @@ begin
   FSeparator := Separator;
   WholeFile := Stream.ReadAll;
   Stream.Free;
-  CurrentLine := '';
-  Position := 0;
+  raise Exception.Create('');
 
 end;
 
