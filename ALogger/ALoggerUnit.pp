@@ -19,7 +19,7 @@ type
   end;
 
 procedure DebugLn(Msg: AnsiString; Verbosity: Integer = 0);
-procedure FMTDebugLn(Fmt: AnsiString; const Args : array of const; Verbosity: Integer = 0);
+procedure FMTDebugLn(Fmt: AnsiString; const Args: array of const ; Verbosity: Integer = 0);
 procedure DebugLnEveryN(N: Integer; Msg: AnsiString; Verbosity: Integer = 0);
 procedure FMTDebugLnEveryN(N: Integer; Fmt: AnsiString; const Args : array of const; Verbosity: Integer = 0);
 procedure FatalLn(Msg: AnsiString);

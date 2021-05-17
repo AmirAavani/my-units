@@ -5,12 +5,39 @@ unit RunInAThreadUnit;
 interface
 
 uses
-  Classes, SysUtils, Pipeline.TypesUnit;
+  Classes, SysUtils, Generics.Collections;
 
 type
-  TThreadFunctionPtr = function (SysArgs: TPointerList): Boolean;
+  TPointerList = specialize TList<TObject>;
+  TThreadFunctionPtr = function (Args: TPointerList): Boolean;
 
-procedure RunInThread(F: TThreadFunctionPtr; SysArgs: TPointerList;
+  { TData }
+
+  TData = class(TObject)
+  type
+    TDataType = (dtString = 1, dtInt64, dtUint64, dtExtended, dtPointer);
+  var
+    DataPtr: Pointer;
+    DataType: TDataType;
+
+  private
+    function GetDataAsPointer: Pointer;
+    function GetDataAsString: AnsiString;
+  public
+    property DataAsString: AnsiString read GetDataAsString;
+    property DataAsPointer: Pointer read GetDataAsPointer;
+
+    constructor CreatePointer(Ptr: Pointer);
+    constructor CreateString(Str: AnsiString);
+    constructor CreateInt64(i64: Int64);
+    constructor CreateUInt64(u64: UInt64);
+    constructor CreateExtended(e: Extended);
+    constructor Create(D: Pointer; dt: TDataType);
+
+  destructor Destroy; override;
+  end;
+
+procedure RunInThread(F: TThreadFunctionPtr; Args: TPointerList;
   OutputResult: PBoolean);
 
 implementation
@@ -22,40 +49,102 @@ type
 
   TRunnerThread = class(TThread)
   private
-    SysArguments: TPointerList;
+    Arguments: TPointerList;
     F: TThreadFunctionPtr;
     Result: PBoolean;
 
   public
     // Caller is responsibe for freeing the memory for SysArgs and Args.
-    constructor Create(FToRun: TThreadFunctionPtr; SysArgs: TPointerList;
+    constructor Create(FToRun: TThreadFunctionPtr; Args: TPointerList;
        Res: PBoolean);
     destructor Destroy; override;
 
     procedure Execute; override;
   end;
 
-procedure RunInThread(F: TThreadFunctionPtr; SysArgs: TPointerList;
+procedure RunInThread(F: TThreadFunctionPtr; Args: TPointerList;
   OutputResult: PBoolean);
 var
   Thread: TThread;
 
 begin
-  Thread := TRunnerThread.Create(F, SysArgs, OutputResult);
+  Thread := TRunnerThread.Create(F, Args, OutputResult);
   Thread.FreeOnTerminate := True;
   Thread.Suspended := False;
 
 end;
 
+{ TData }
+
+function TData.GetDataAsPointer: Pointer;
+begin
+  Result := DataPtr;
+end;
+
+function TData.GetDataAsString: AnsiString;
+begin
+  Result := PAnsiString(DataPtr)^;
+
+end;
+
+constructor TData.CreatePointer(Ptr: Pointer);
+begin
+  Create(Ptr, dtPointer);
+
+end;
+
+constructor TData.CreateString(Str: AnsiString);
+begin
+  Create(Pointer(@Str), dtString);
+
+end;
+
+constructor TData.CreateInt64(i64: Int64);
+begin
+  Create(Pointer(@i64), dtInt64);
+
+end;
+
+constructor TData.CreateUInt64(u64: UInt64);
+begin
+  Create(Pointer(@u64), dtUint64);
+
+end;
+
+constructor TData.CreateExtended(e: Extended);
+begin
+  Create(Pointer(@e), dtExtended);
+
+end;
+
+constructor TData.Create(D: Pointer; dt: TDataType);
+begin
+  inherited Create;
+
+  case dt of
+  dtString:
+  begin
+    DataPtr := New(PAnsiString);
+    PAnsiString(DataPtr)^ := (PAnsiString(D))^;
+
+  end;
+  end;
+end;
+
+destructor TData.Destroy;
+begin
+  inherited Destroy;
+end;
+
 { TRunnerThread }
 
 constructor TRunnerThread.Create(FToRun: TThreadFunctionPtr;
-  SysArgs: TPointerList; Res: PBoolean);
+  Args: TPointerList; Res: PBoolean);
 begin
   inherited Create(True);
 
   F := FToRun;
-  SysArguments := SysArgs;
+  Arguments := Args;
   Result := Res;
 
 end;
@@ -71,7 +160,7 @@ var
   _Result: Boolean;
 
 begin
-  _Result := F(SysArguments);
+  _Result := F(Arguments);
 
   if Self.Result <> nil then
     Self.Result^ := _Result;

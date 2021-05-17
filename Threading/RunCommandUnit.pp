@@ -10,10 +10,15 @@ uses
   process;
 
 function RunCommandTimeout(const ExeName: AnsiString;
-    const Commands: array of TProcessString; out Outputstring: AnsiString;
+    const Commands: array of TProcessString;
+    out Outputstring: AnsiString;
+    out ErrorString: AnsiString;
     Options: TProcessOptions = [];
     SWOptions: TShowWindowOptions = swoNone;
     Timeout: Integer = 60): Boolean;
+function RunCommand(const ExeName: AnsiString;
+    const Commands: array of TProcessString;
+    out Outputstring: AnsiString): Boolean;
 
 implementation
 
@@ -49,16 +54,18 @@ begin
 end;
 
 function RunCommandTimeout(const ExeName: AnsiString;
-  const Commands: array of TProcessString; out Outputstring: AnsiString;
+  const Commands: array of TProcessString;
+  out Outputstring: AnsiString;
+  out ErrorString: AnsiString;
   Options: TProcessOptions; SWOptions: TShowWindowOptions; Timeout: Integer
   ): Boolean;
 Var
    p : TProcessTimeout;
    i,
    exitstatus : integer;
-   ErrorString : String;
+
 begin
- p:=TProcessTimeout.create(nil);
+ p := TProcessTimeout.create(nil);
  p.OnRunCommandEvent:= p.LocalnIdleSleep;
  p.timeoutperiod:=timeout/SecsPerDay;
  if Options<>[] then
@@ -74,13 +81,26 @@ begin
  p.started:=now;
  try
    // the core loop of runcommand() variants, originally based on the "large output" scenario in the wiki, but continously expanded over 5 years.
-   result:=p.RunCommandLoop(outputstring,errorstring,exitstatus)=0;
-   if p.timedout then
-     result:=false;
+   Result:= p.RunCommandLoop(Outputstring, ErrorString, exitstatus)=0;
+   if p.TimedOut then
+     Result := False;
+
  finally
    p.free;
+
  end;
- Result := exitstatus<>0;
+
+ WriteLn('ErrorString: ', ErrorString);
+ WriteLn('Outputstring): ', Outputstring);
+ Result := exitstatus <> 0;
+end;
+
+function RunCommand(const ExeName: AnsiString;
+  const Commands: array of TProcessString; out Outputstring: AnsiString
+  ): Boolean;
+begin
+  Result := process.RunCommand(ExeName, Commands, Outputstring, [], swoNone);
+
 end;
 
 {
