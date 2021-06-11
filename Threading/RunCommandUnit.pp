@@ -90,8 +90,6 @@ begin
 
  end;
 
- WriteLn('ErrorString: ', ErrorString);
- WriteLn('Outputstring): ', Outputstring);
  Result := exitstatus <> 0;
 end;
 
