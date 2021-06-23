@@ -220,9 +220,35 @@ begin
 
 end;
 
+const
+  PostLineBreak = #$0D#$0A;
+
 { THTTPServerRequest }
 
 constructor THTTPServerRequest.Create(const ARequest: TFPHTTPConnectionRequest);
+
+  function MaybeSkip(var SourcePtr: PChar; Pattern: PChar): Boolean;
+  var
+    Count: Integer;
+
+  begin
+    Count := 0;
+
+    while Pattern^ <> #0 do
+    begin
+      if SourcePtr^ <> Pattern^ then
+        Break;
+      Inc(Count);
+      Inc(Pattern);
+      Inc(SourcePtr);
+
+    end;
+
+    Result := Pattern^ = #0;
+    if not Result then
+      Dec(SourcePtr, Count);
+
+  end;
 
   procedure FillGetRequest;
   var
@@ -254,28 +280,132 @@ constructor THTTPServerRequest.Create(const ARequest: TFPHTTPConnectionRequest);
   end;
 
   procedure FillPostRequest;
-  var
-    StrList: TStringList;
-    NameValue: AnsiString;
-    i: Integer;
 
-  begin
+    procedure FillURLEncodedRequest(constref Content: AnsiString);
+    var
+      StrList: TStringList;
+      NameValue: AnsiString;
+      i: Integer;
 
-    StrList := TStringList.Create;
-    StrList.Delimiter := '&';
-    StrList.DelimitedText := ARequest.Content;
-
-    for i := 0 to StrList.Count - 1 do
     begin
-      NameValue := StrList[i];
-      if Pos('=', NameValue) <> 0 then
-        FParams[NormalizePostString(Copy(NameValue, 1, Pos('=', NameValue) - 1))] :=
-          NormalizePostString(Copy(NameValue, Pos('=', NameValue) + 1, Length(NameValue)))
-      else
-        FParams[NormalizePostString(NameValue)] := '';
+      StrList := TStringList.Create;
+      StrList.Delimiter := '&';
+      StrList.DelimitedText := ARequest.Content;
+
+      for i := 0 to StrList.Count - 1 do
+      begin
+        NameValue := StrList[i];
+        if Pos('=', NameValue) <> 0 then
+          FParams[NormalizePostString(Copy(NameValue, 1, Pos('=', NameValue) - 1))] :=
+            NormalizePostString(Copy(NameValue, Pos('=', NameValue) + 1, Length(NameValue)))
+        else
+          FParams[NormalizePostString(NameValue)] := '';
+      end;
+
+      StrList.Free;
+
     end;
 
-    StrList.Free;
+    function MaybeFillFormDataRequest(constref Content: AnsiString): Boolean;
+    const
+      ContentDisposition = 'Content-Disposition: form-data; name="';
+
+    var
+      ContentPtr: PChar;
+      BoundaryString: AnsiString;
+      Name, Value, Data: AnsiString;
+      Names, Values: TStringList;
+      StrList: TStringList;
+      i: Integer;
+
+    begin
+      FMTDebugLn('Content: %s', [Content]);
+      ContentPtr := PChar(Content);
+
+      BoundaryString := '';
+      while not IsPrefix(PostLineBreak, ContentPtr) and (ContentPtr^ <> #0) do
+      begin
+        BoundaryString += ContentPtr^;
+        Inc(ContentPtr);
+
+      end;
+      if ContentPtr^ = #0 then
+        Exit(False);
+      if not IsPrefix('--', BoundaryString) then
+        Exit(False);
+      if not MaybeSkip(ContentPtr, PostLineBreak) then
+        Exit(False);
+
+      StrList := Split(Content, BoundaryString);
+      if (StrList.Count = 0) or (StrList[0] <> '') then
+      begin
+        StrList.Free;
+        Exit(False);
+
+      end;
+
+      Result := StrList[StrList.Count - 1] = '--' + PostLineBreak;
+      Names := TStringList.Create; Values := TStringList.Create;
+
+      for i := 1 to StrList.Count - 2 do
+      begin
+        Data := StrList[i];
+
+        ContentPtr := PChar(Data);
+        if not MaybeSkip(ContentPtr, PostLineBreak) or not MaybeSkip(ContentPtr, PChar(ContentDisposition)) then
+        begin
+          Result := False;
+          Break;
+
+        end;
+
+        Name := '';
+        while not IsPrefix(PChar('"' + PostLineBreak), ContentPtr) and (ContentPtr^<> #0) do
+        begin
+          Name += ContentPtr^;
+          Inc(ContentPtr);
+
+        end;
+        if not MaybeSkip(ContentPtr, '"') then
+        begin
+          Result := False;
+          Break;
+
+        end;
+        if not MaybeSkip(ContentPtr, PostLineBreak + PostLineBreak) then
+        begin
+          Result := False;
+          Break;
+
+        end;
+        Value := AnsiString(ContentPtr);
+        Value := Copy(Value, 1, Length(Value) - Length(PostLineBreak));
+
+        Names.Add(Name);
+        Values.Add(Value);
+
+      end;
+
+      StrList.Free;
+      if not Result then
+      begin
+        Names.Free;
+        Values.Free;
+        Exit;
+
+      end;
+
+      for i := 0 to Names.Count - 1 do
+      begin
+        FParams[Names[i]] := Values[i];
+
+      end;
+
+    end;
+
+  begin
+    if not MaybeFillFormDataRequest(ARequest.Content) then
+      FillURLEncodedRequest(ARequest.Content);
   end;
 
 begin
