@@ -38,47 +38,6 @@ function GetUniqID64: Int64;
 
 implementation
 
-function GetWhereAllOptions(MaxCount: Integer;
-  OrderByColumns: array of AnsiString; OrderDesc: array of Boolean
-  ): TGetWhereAllOptions;
-var
-  i: Integer;
-
-begin
-          {
-  Result.FMaxCount := MaxCount;
-
-  SetLength(Result.OrderByColumns, Length(OrderByColumns));
-  SetLength(Result.OrderDesc, Length(OrderDesc));
-  for i := 0 to High(OrderByColumns) do
-    Result.OrderByColumns[i] := OrderByColumns[i];
-  SetLength(Result.OrderDesc, Length(OrderDesc));
-  for i := 0 to High(OrderDesc) do
-    Result.OrderDesc[i] := OrderDesc[i];
-          }
-end;
-
-function GetWhereAllOptions(MaxCount: Integer;
-  OrderByColumns: array of AnsiString): TGetWhereAllOptions;
-var
-  i: Integer;
-
-begin
-  {
-  Result.MaxCount := MaxCount;
-
-  SetLength(Result.OrderByColumns, Length(OrderByColumns));
-  for i := 0 to High(OrderByColumns) do
-    Result.OrderByColumns[i] := OrderByColumns[i];
-    }
-end;
-
-function GetWhereAllOptions(MaxCount: Integer): TGetWhereAllOptions;
-begin
-  // Result.MaxCount := MaxCount;
-
-end;
-
 function GetDefaultWhereAllOptions: TGetWhereAllOptions;
 begin
   Result := TGetWhereAllOptions.Create.AddLimit(1, 2);

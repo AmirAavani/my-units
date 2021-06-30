@@ -54,13 +54,26 @@ type
 
 implementation
 uses
-  sysutils;
+  ALoggerUnit, sysutils;
 
 function EscapeForJavascript(const InputString: AnsiString): AnsiString;
+const
+  Str: array [0..4] of AnsiString = ('"', #13#10, #10, '"', Chr(34));
+  RepStr: array [0..4] of AnsiString = ('\"', '\n', '\n',
+  '\"', '\' + Chr(34));
+
+var
+  i: Integer;
+
 begin
-  Result := StringReplace(StringReplace(
-     AnsiString(InputString), '''', '\''', [rfReplaceAll]),
-     '"', '\"', [rfReplaceAll]);
+  Result := InputString;
+
+  for i := 0 to High(Str) do
+    if Pos(Str[i], Result) <> 0 then
+    begin
+      FMTDebugLn('%d:%s', [Pos(Str[i], Result), Result]);
+      Result := StringReplace(Result, Str[i], RepStr[i], [rfReplaceAll]);
+    end;
 
 end;
 
