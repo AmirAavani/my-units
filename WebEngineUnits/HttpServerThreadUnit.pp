@@ -5,7 +5,7 @@ unit HttpServerThreadUnit;
 interface
 
 uses
-  Classes, SysUtils, fphttpapp, fphttpserver, fgl;
+  Classes, SysUtils, fphttpapp, fphttpserver, GenericCollectionUnit;
 
 type
 
@@ -15,12 +15,12 @@ type
   public
   type
     TMethodEnum = (meGet = 1, mePost);
-
+    TParams = specialize TMap<AnsiString, AnsiString>;
   private
     FMethod: TMethodEnum;
     FOriginalRequest: TFPHTTPConnectionRequest;
     FUserAgent: AnsiString;
-    FParams: specialize TFPGMap<AnsiString, AnsiString>;
+    FParams: TParams;
 
 
     constructor Create(const ARequest: TFPHTTPConnectionRequest);
@@ -51,7 +51,7 @@ type
     property FieldNames[Index: Integer]: AnsiString read GetFieldNames;
     property FieldValues[Index: Integer]: AnsiString read GetFieldValues;
     property ParamsCount: Integer read GetParamsCount;
-    property Params: specialize TFPGMap<AnsiString, AnsiString> read FParams;
+    property Params: specialize TMap<AnsiString, AnsiString> read FParams;
     property ParamNameByIndex[Index: Integer]: AnsiString read GetParamNameByIndex;
     property ParamValueByIndex[Index: Integer]: AnsiString read GetParamValueByIndex;
     property ParamValueByName[Name: AnsiString]: AnsiString read GetParamValueByName;
@@ -92,7 +92,7 @@ type
 
   THTTPServerThread = class(TObject)
   private type
-    TPageHandlers = specialize TFPGList<TBasePageHandler>;
+    TPageHandlers = specialize TObjectCollection<TBasePageHandler>;
 
   private
     FPageNotFoundHandler: TBasePageHandler;
@@ -254,7 +254,8 @@ constructor THTTPServerRequest.Create(const ARequest: TFPHTTPConnectionRequest);
   var
     StrList: TStringList;
     NameValue: AnsiString;
-    i: Integer;
+    i, Index: Integer;
+    Name, Value: AnsiString;
 
   begin
     StrList := TStringList.Create;
@@ -265,17 +266,27 @@ constructor THTTPServerRequest.Create(const ARequest: TFPHTTPConnectionRequest);
     begin
       NameValue := StrList[i];
 
-      if Pos('=', NameValue) <> 0 then
-        FParams[Copy(NameValue, 1, Pos('=', NameValue) - 1)] :=
-          Copy(NameValue, Pos('=', NameValue) + 1, Length(NameValue))
+      Index := Pos('=', NameValue);
+      if Index <> 0 then
+      begin
+        Name :=  Copy(NameValue, 1, Index - 1);
+        Value := Copy(NameValue, Index + 1, Length(NameValue));
+
+      end
       else
-        FParams[NameValue] := '';
+      begin
+        Name := NameValue;;
+        Value := '';
+
+      end;
+      Name := NormalizeGetString(Name);
+      Value := NormalizeGetString(Value);
+
+      FParams.Add(Name, Value);
+
     end;
 
     StrList.Free;
-
-    for i := 0 to FParams.Count - 1 do
-      FParams.Data[i] := NormalizeGetString(FParams.Data[i]);
 
   end;
 
@@ -397,9 +408,11 @@ constructor THTTPServerRequest.Create(const ARequest: TFPHTTPConnectionRequest);
 
       for i := 0 to Names.Count - 1 do
       begin
-        FParams[Names[i]] := Values[i];
+        FParams.Add(Names[i], Values[i]);
 
       end;
+      Names.Free;
+      Values.Free;
 
     end;
 
@@ -412,8 +425,7 @@ begin
   inherited Create;
 
   FOriginalRequest := ARequest;
-  FParams := (specialize TFPGMap<AnsiString, AnsiString>).Create;
-  FParams.Sorted := True;
+  FParams := TParams.Create;
 
   if OriginalRequest.Method = 'GET' then
   begin
@@ -492,31 +504,43 @@ begin
 end;
 
 function THTTPServerRequest.GetParamNameByIndex(Index: Integer): AnsiString;
+var
+  it: TParams.TPairEnumerator;
+
 begin
-  Result := FParams.Keys[Index];
+  it := FParams.GetEnumerator;
+  while 0 <= Index do
+    if not it.MoveNext then
+      Exit;
+  Result := it.Current.Key;
 
 end;
 
 function THTTPServerRequest.GetParamValueByIndex(Index: Integer): AnsiString;
+var
+  it: TParams.TPairEnumerator;
+
 begin
-  Result := FParams.Data[Index];
+  it := FParams.GetEnumerator;
+  while 0 <= Index do
+    if not it.MoveNext then
+      Exit;
+  Result := it.Current.Value;
 
 end;
 
 function THTTPServerRequest.GetParamValueByName(Name: AnsiString): AnsiString;
 begin
-  if FParams.IndexOf(Name) < 0 then
-    Exit('');
-  Result := FParams[Name];
+  Result := FParams.Find(Name);
 
 end;
 
 function THTTPServerRequest.GetParamValueOrDefaultByName(Name, DefaultValue: AnsiString
   ): AnsiString;
 begin
-  if FParams.IndexOf(Name) < 0 then
+  if not FParams.TryGetData(Name, Result) then
     Exit(DefaultValue);
-  Result := FParams[Name];
+
 end;
 
 function THTTPServerRequest.GetPathInfo: AnsiString;

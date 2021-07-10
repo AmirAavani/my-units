@@ -49,8 +49,9 @@ type
 
   end;
 
-    function EscapeForJavascript(const InputString: AnsiString): AnsiString;
-    function EscapeForHTML(const InputString: AnsiString): AnsiString;
+  function EscapeForJavascript(const InputString: AnsiString): AnsiString;
+  function EscapeForHTML(const InputString: AnsiString): AnsiString;
+  function EscapeForIframeSrcDoc(const InputString: AnsiString): AnsiString;
 
 implementation
 uses
@@ -79,10 +80,25 @@ end;
 
 function EscapeForHTML(const InputString: AnsiString): AnsiString;
 const
-  Str: array [0..11] of AnsiString = ('&', ' ', '<', '>', '"', Chr(34), '¢', '£',
+  Str: array of AnsiString = ('&', ' ', '<', '>', '"', Chr(34), '¢', '£',
   '¥', '€', '©', '®');
-  RepStr: array [0..11] of AnsiString = ('&amp;', '&nbsp;', '&lt;', '&gt;',
+  RepStr: array of AnsiString = ('&amp;', '&nbsp;', '&lt;', '&gt;',
   '&quot;', '&apos;', '&cent;', '&pound;', '&yen;', '&euro;', '&copy;', '@reg;');
+
+var
+  i: Integer;
+
+begin
+  Result := InputString;
+  for i := Low(Str) to High(Str) do
+    Result := StringReplace(Result, Str[i], RepStr[i], [rfReplaceAll]);
+
+end;
+
+function EscapeForIframeSrcDoc(const InputString: AnsiString): AnsiString;
+const
+  Str: array of AnsiString = ('&', '"', #13#10, #10);
+  RepStr: array of AnsiString = ('&amp;amp;', '&quot;', '', '');
 
 var
   i: Integer;
