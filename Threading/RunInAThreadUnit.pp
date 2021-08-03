@@ -5,76 +5,165 @@ unit RunInAThreadUnit;
 interface
 
 uses
-  Pipeline.TypesUnit, Classes, SysUtils;
+  Classes, SysUtils, Generics.Collections;
 
 type
-  TThreadFunctionPtr = function (SysArgs, Args: TPointerArray): Boolean;
+  TPointerList = specialize TList<TObject>;
+  TThreadFunctionPtr = function (Args: TPointerList): Boolean;
 
-procedure RunInThread(F: TThreadFunctionPtr; SysArgs, Args: TPointerArray;
+  { TData }
+
+  TData = class(TObject)
+  type
+    TDataType = (dtString = 1, dtInt64, dtUint64, dtExtended, dtPointer);
+  var
+    DataPtr: Pointer;
+    DataType: TDataType;
+
+  private
+    function GetDataAsPointer: Pointer;
+    function GetDataAsString: AnsiString;
+  public
+    property DataAsString: AnsiString read GetDataAsString;
+    property DataAsPointer: Pointer read GetDataAsPointer;
+
+    constructor CreatePointer(Ptr: Pointer);
+    constructor CreateString(Str: AnsiString);
+    constructor CreateInt64(i64: Int64);
+    constructor CreateUInt64(u64: UInt64);
+    constructor CreateExtended(e: Extended);
+    constructor Create(D: Pointer; dt: TDataType);
+
+  destructor Destroy; override;
+  end;
+
+procedure RunInThread(F: TThreadFunctionPtr; Args: TPointerList;
   OutputResult: PBoolean);
 
 implementation
+uses
+  ALoggerUnit;
 
 type
   { TRunnerThread }
 
   TRunnerThread = class(TThread)
   private
-    SysArguments, Arguments: array of Pointer;
+    Arguments: TPointerList;
     F: TThreadFunctionPtr;
     Result: PBoolean;
 
   public
-    constructor Create(FToRun: TThreadFunctionPtr; SysArgs, Args: TPointerArray;
+    // Caller is responsibe for freeing the memory for SysArgs and Args.
+    constructor Create(FToRun: TThreadFunctionPtr; Args: TPointerList;
        Res: PBoolean);
     destructor Destroy; override;
 
     procedure Execute; override;
   end;
 
-procedure RunInThread(F: TThreadFunctionPtr; SysArgs, Args: TPointerArray;
+procedure RunInThread(F: TThreadFunctionPtr; Args: TPointerList;
   OutputResult: PBoolean);
 var
   Thread: TThread;
 
 begin
-  Thread := TRunnerThread.Create(F, SysArgs, Args, OutputResult);
+  Thread := TRunnerThread.Create(F, Args, OutputResult);
   Thread.FreeOnTerminate := True;
   Thread.Suspended := False;
 
 end;
 
+{ TData }
+
+function TData.GetDataAsPointer: Pointer;
+begin
+  Result := DataPtr;
+end;
+
+function TData.GetDataAsString: AnsiString;
+begin
+  Result := PAnsiString(DataPtr)^;
+
+end;
+
+constructor TData.CreatePointer(Ptr: Pointer);
+begin
+  Create(Ptr, dtPointer);
+
+end;
+
+constructor TData.CreateString(Str: AnsiString);
+begin
+  Create(Pointer(@Str), dtString);
+
+end;
+
+constructor TData.CreateInt64(i64: Int64);
+begin
+  Create(Pointer(@i64), dtInt64);
+
+end;
+
+constructor TData.CreateUInt64(u64: UInt64);
+begin
+  Create(Pointer(@u64), dtUint64);
+
+end;
+
+constructor TData.CreateExtended(e: Extended);
+begin
+  Create(Pointer(@e), dtExtended);
+
+end;
+
+constructor TData.Create(D: Pointer; dt: TDataType);
+begin
+  inherited Create;
+
+  case dt of
+  dtString:
+  begin
+    DataPtr := New(PAnsiString);
+    PAnsiString(DataPtr)^ := (PAnsiString(D))^;
+
+  end;
+  end;
+end;
+
+destructor TData.Destroy;
+begin
+  inherited Destroy;
+end;
+
 { TRunnerThread }
 
-constructor TRunnerThread.Create(FToRun: TThreadFunctionPtr; SysArgs,
-  Args: TPointerArray; Res: PBoolean);
-var
-  i: Integer;
-
+constructor TRunnerThread.Create(FToRun: TThreadFunctionPtr;
+  Args: TPointerList; Res: PBoolean);
 begin
   inherited Create(True);
 
   F := FToRun;
-  SetLength(Arguments, Length(Args));
-  for i := 0 to High(Args) do
-    Arguments[i] := Args[i];
-  SetLength(SysArguments, Length(SysArgs));
-  for i := 0 to High(SysArgs) do
-    SysArguments[i] := SysArgs[i];
+  Arguments := Args;
   Result := Res;
 
 end;
 
 destructor TRunnerThread.Destroy;
 begin
-  SetLength(Arguments, 0);
 
   inherited Destroy;
 end;
 
 procedure TRunnerThread.Execute;
+var
+  _Result: Boolean;
+
 begin
-  Result^ := F(SysArguments, Arguments);
+  _Result := F(Arguments);
+
+  if Self.Result <> nil then
+    Self.Result^ := _Result;
 
 end;
 

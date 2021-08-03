@@ -5,7 +5,7 @@ unit HttpServerThreadUnit;
 interface
 
 uses
-  Classes, SysUtils, fphttpapp, fphttpserver, fgl;
+  Classes, SysUtils, fphttpapp, fphttpserver, GenericCollectionUnit;
 
 type
 
@@ -15,17 +15,17 @@ type
   public
   type
     TMethodEnum = (meGet = 1, mePost);
-
+    TParams = specialize TMap<AnsiString, AnsiString>;
   private
     FMethod: TMethodEnum;
     FOriginalRequest: TFPHTTPConnectionRequest;
     FUserAgent: AnsiString;
-    FParams: specialize TFPGMap<AnsiString, AnsiString>;
+    FParams: TParams;
 
 
     constructor Create(const ARequest: TFPHTTPConnectionRequest);
     function GetContent: AnsiString;
-    function GetCookieByName(const aName: AnsiString): AnsiString;
+    function GetCookieByName(constref aName: AnsiString): AnsiString;
     function GetFieldCount: Integer;
     function GetFieldNames(Index: Integer): AnsiString;
     function GetFieldValues(Index: Integer): AnsiString;
@@ -34,8 +34,8 @@ type
     function GetParamsCount: Integer;
     function GetParamNameByIndex(Index: Integer): AnsiString;
     function GetParamValueByIndex(Index: Integer): AnsiString;
-    function GetParamValueByName(Name: AnsiString): AnsiString;
-    function GetParamValueOrDefaultByName(Name, DefaultValue: AnsiString): AnsiString;
+    function GetParamValueByName(constref Name: AnsiString): AnsiString;
+    function GetParamValueOrDefaultByName(constref Name, DefaultValue: AnsiString): AnsiString;
     function GetPathInfo: AnsiString;
     function GetQueryString: AnsiString;
 
@@ -51,13 +51,13 @@ type
     property FieldNames[Index: Integer]: AnsiString read GetFieldNames;
     property FieldValues[Index: Integer]: AnsiString read GetFieldValues;
     property ParamsCount: Integer read GetParamsCount;
-    property Params: specialize TFPGMap<AnsiString, AnsiString> read FParams;
+    property Params: specialize TMap<AnsiString, AnsiString> read FParams;
     property ParamNameByIndex[Index: Integer]: AnsiString read GetParamNameByIndex;
     property ParamValueByIndex[Index: Integer]: AnsiString read GetParamValueByIndex;
-    property ParamValueByName[Name: AnsiString]: AnsiString read GetParamValueByName;
-    property ParamValueOrDefaultByName[Name, DefaultValue: AnsiString]: AnsiString read GetParamValueOrDefaultByName;
+    property ParamValueByName[constref Name: AnsiString]: AnsiString read GetParamValueByName;
+    property ParamValueOrDefaultByName[constref Name, DefaultValue: AnsiString]: AnsiString read GetParamValueOrDefaultByName;
     property OriginalRequest: TFPHTTPConnectionRequest read FOriginalRequest;
-    property CookieByName[const aName: AnsiString]: AnsiString read GetCookieByName;
+    property CookieByName[constref aName: AnsiString]: AnsiString read GetCookieByName;
 
     destructor Destroy; override;
 
@@ -76,14 +76,16 @@ type
     property OriginalResponse: TFPHTTPConnectionResponse read FOriginalResponse;
     property OutputStream: TStringStream read FOutputStream;
 
-    procedure WriteLn(Lines: array of AnsiString);
-    procedure WriteLn(Line: AnsiString);
+    procedure WriteLn(constref Lines: array of AnsiString);
+    procedure WriteLn(constref Line: AnsiString);
 
     destructor Destroy; override;
 
-    procedure Redirect(TargetPage: AnsiString);
-    procedure AddCookie(Name, Value, Path: AnsiString; Domain: AnsiString = '';
+    procedure Redirect(constref TargetPage: AnsiString);
+    procedure AddCookie(constref Name, Value, Path: AnsiString;
+      constref Domain: AnsiString = '';
       MaxAge: Integer = 46800);
+    procedure DeleteCookie(constref Name, Path: AnsiString; constref Domain: AnsiString = '');
   end;
 
   TBasePageHandler = class;
@@ -92,7 +94,7 @@ type
 
   THTTPServerThread = class(TObject)
   private type
-    TPageHandlers = specialize TFPGList<TBasePageHandler>;
+    TPageHandlers = specialize TObjectCollection<TBasePageHandler>;
 
   private
     FPageNotFoundHandler: TBasePageHandler;
@@ -129,7 +131,7 @@ type
     property Name: AnsiString read FName;
     property ServingPath: AnsiString read FServingPath;
 
-    constructor Create(aName: AnsiString; aServingPath: AnsiString);
+    constructor Create(constref aName: AnsiString; constref aServingPath: AnsiString);
 
     function WouldHandleRequest(ARequest: THTTPServerRequest): Boolean; virtual;
     function Execute(Sender: THTTPServerThread; TheRequest: THTTPServerRequest;
@@ -144,8 +146,8 @@ uses
 
 { TBasePageHandler }
 
-constructor TBasePageHandler.Create(aName: AnsiString; aServingPath: AnsiString
-  );
+constructor TBasePageHandler.Create(constref aName: AnsiString;
+  constref aServingPath: AnsiString);
 begin
   inherited Create;
 
@@ -174,7 +176,7 @@ begin
 
 end;
 
-procedure THTTPServerResponse.WriteLn(Lines: array of AnsiString);
+procedure THTTPServerResponse.WriteLn(constref Lines: array of AnsiString);
 var
   Line: AnsiString;
 
@@ -183,7 +185,7 @@ begin
     Self.WriteLn(Line);
 end;
 
-procedure THTTPServerResponse.WriteLn(Line: AnsiString);
+procedure THTTPServerResponse.WriteLn(constref Line: AnsiString);
 begin
   OutputStream.WriteString(Line);
   OutputStream.WriteString(sLineBreak);
@@ -198,14 +200,14 @@ begin
   inherited Destroy;
 end;
 
-procedure THTTPServerResponse.Redirect(TargetPage: AnsiString);
+procedure THTTPServerResponse.Redirect(constref TargetPage: AnsiString);
 begin
   OriginalResponse.SendRedirect(TargetPage);
 
 end;
 
-procedure THTTPServerResponse.AddCookie(Name, Value, Path: AnsiString;
-  Domain: AnsiString; MaxAge: Integer);
+procedure THTTPServerResponse.AddCookie(constref Name, Value, Path: AnsiString;
+  constref Domain: AnsiString; MaxAge: Integer);
 var
   Cookie: HTTPDefs.TCookie;
 
@@ -220,15 +222,57 @@ begin
 
 end;
 
+procedure THTTPServerResponse.DeleteCookie(constref Name, Path: AnsiString;
+  constref Domain: AnsiString);
+var
+  Cookie: HTTPDefs.TCookie;
+
+begin
+  Cookie := Self.OriginalResponse.Cookies.Add;
+  Cookie.Name := Name;
+  Cookie.Path := Domain;
+  Cookie.Domain := Domain;
+  Cookie.Expire;
+
+
+end;
+
+const
+  PostLineBreak = #$0D#$0A;
+
 { THTTPServerRequest }
 
 constructor THTTPServerRequest.Create(const ARequest: TFPHTTPConnectionRequest);
+
+  function MaybeSkip(var SourcePtr: PChar; Pattern: PChar): Boolean;
+  var
+    Count: Integer;
+
+  begin
+    Count := 0;
+
+    while Pattern^ <> #0 do
+    begin
+      if SourcePtr^ <> Pattern^ then
+        Break;
+      Inc(Count);
+      Inc(Pattern);
+      Inc(SourcePtr);
+
+    end;
+
+    Result := Pattern^ = #0;
+    if not Result then
+      Dec(SourcePtr, Count);
+
+  end;
 
   procedure FillGetRequest;
   var
     StrList: TStringList;
     NameValue: AnsiString;
-    i: Integer;
+    i, Index: Integer;
+    Name, Value: AnsiString;
 
   begin
     StrList := TStringList.Create;
@@ -239,51 +283,180 @@ constructor THTTPServerRequest.Create(const ARequest: TFPHTTPConnectionRequest);
     begin
       NameValue := StrList[i];
 
-      if Pos('=', NameValue) <> 0 then
-        FParams[Copy(NameValue, 1, Pos('=', NameValue) - 1)] :=
-          Copy(NameValue, Pos('=', NameValue) + 1, Length(NameValue))
+      Index := Pos('=', NameValue);
+      if Index <> 0 then
+      begin
+        Name :=  Copy(NameValue, 1, Index - 1);
+        Value := Copy(NameValue, Index + 1, Length(NameValue));
+
+      end
       else
-        FParams[NameValue] := '';
+      begin
+        Name := NameValue;;
+        Value := '';
+
+      end;
+      Name := NormalizeGetString(Name);
+      Value := NormalizeGetString(Value);
+
+      FParams.Add(Name, Value);
+
     end;
 
     StrList.Free;
-
-    for i := 0 to FParams.Count - 1 do
-      FParams.Data[i] := NormalizeGetString(FParams.Data[i]);
 
   end;
 
   procedure FillPostRequest;
-  var
-    StrList: TStringList;
-    NameValue: AnsiString;
-    i: Integer;
 
-  begin
+    procedure FillURLEncodedRequest(constref Content: AnsiString);
+    var
+      StrList: TStringList;
+      NameValue: AnsiString;
+      Name, Value: AnsiString;
+      i: Integer;
 
-    StrList := TStringList.Create;
-    StrList.Delimiter := '&';
-    StrList.DelimitedText := ARequest.Content;
-
-    for i := 0 to StrList.Count - 1 do
     begin
-      NameValue := StrList[i];
-      if Pos('=', NameValue) <> 0 then
-        FParams[NormalizePostString(Copy(NameValue, 1, Pos('=', NameValue) - 1))] :=
-          NormalizePostString(Copy(NameValue, Pos('=', NameValue) + 1, Length(NameValue)))
-      else
-        FParams[NormalizePostString(NameValue)] := '';
+      StrList := TStringList.Create;
+      StrList.Delimiter := '&';
+      StrList.DelimitedText := ARequest.Content;
+
+      for i := 0 to StrList.Count - 1 do
+      begin
+        NameValue := StrList[i];
+        if Pos('=', NameValue) <> 0 then
+        begin
+          Name := NormalizePostString(Copy(NameValue, 1, Pos('=', NameValue) - 1));
+          Value := NormalizePostString(Copy(NameValue, Length(Name) + 2, Length(NameValue)));
+
+        end
+        else
+        begin
+          Name := NormalizePostString(NameValue);
+          Value := '';
+
+        end;
+
+        if FParams.ContainsKey(Name) then
+          FParams[Name] := Value
+        else
+          FParams.Add(Name, Value);
+
+      end;
+
+      StrList.Free;
+
     end;
 
-    StrList.Free;
+    function MaybeFillFormDataRequest(constref Content: AnsiString): Boolean;
+    const
+      ContentDisposition = 'Content-Disposition: form-data; name="';
+
+    var
+      ContentPtr: PChar;
+      BoundaryString: AnsiString;
+      Name, Value, Data: AnsiString;
+      Names, Values: TStringList;
+      StrList: TStringList;
+      i: Integer;
+
+    begin
+      FMTDebugLn('Content: %s', [Content]);
+      ContentPtr := PChar(Content);
+
+      BoundaryString := '';
+      while not IsPrefix(PostLineBreak, ContentPtr) and (ContentPtr^ <> #0) do
+      begin
+        BoundaryString += ContentPtr^;
+        Inc(ContentPtr);
+
+      end;
+      if ContentPtr^ = #0 then
+        Exit(False);
+      if not IsPrefix('--', BoundaryString) then
+        Exit(False);
+      if not MaybeSkip(ContentPtr, PostLineBreak) then
+        Exit(False);
+
+      StrList := Split(Content, BoundaryString);
+      if (StrList.Count = 0) or (StrList[0] <> '') then
+      begin
+        StrList.Free;
+        Exit(False);
+
+      end;
+
+      Result := StrList[StrList.Count - 1] = '--' + PostLineBreak;
+      Names := TStringList.Create; Values := TStringList.Create;
+
+      for i := 1 to StrList.Count - 2 do
+      begin
+        Data := StrList[i];
+
+        ContentPtr := PChar(Data);
+        if not MaybeSkip(ContentPtr, PostLineBreak) or not MaybeSkip(ContentPtr, PChar(ContentDisposition)) then
+        begin
+          Result := False;
+          Break;
+
+        end;
+
+        Name := '';
+        while not IsPrefix(PChar('"' + PostLineBreak), ContentPtr) and (ContentPtr^<> #0) do
+        begin
+          Name += ContentPtr^;
+          Inc(ContentPtr);
+
+        end;
+        if not MaybeSkip(ContentPtr, '"') then
+        begin
+          Result := False;
+          Break;
+
+        end;
+        if not MaybeSkip(ContentPtr, PostLineBreak + PostLineBreak) then
+        begin
+          Result := False;
+          Break;
+
+        end;
+        Value := AnsiString(ContentPtr);
+        Value := Copy(Value, 1, Length(Value) - Length(PostLineBreak));
+
+        Names.Add(Name);
+        Values.Add(Value);
+
+      end;
+
+      StrList.Free;
+      if not Result then
+      begin
+        Names.Free;
+        Values.Free;
+        Exit;
+
+      end;
+
+      for i := 0 to Names.Count - 1 do
+      begin
+        FParams.Add(Names[i], Values[i]);
+
+      end;
+      Names.Free;
+      Values.Free;
+
+    end;
+
+  begin
+    if not MaybeFillFormDataRequest(ARequest.Content) then
+      FillURLEncodedRequest(ARequest.Content);
   end;
 
 begin
   inherited Create;
 
   FOriginalRequest := ARequest;
-  FParams := (specialize TFPGMap<AnsiString, AnsiString>).Create;
-  FParams.Sorted := True;
+  FParams := TParams.Create;
 
   if OriginalRequest.Method = 'GET' then
   begin
@@ -307,7 +480,7 @@ begin
   Result := OriginalRequest.Content;
 end;
 
-function THTTPServerRequest.GetCookieByName(const aName: AnsiString
+function THTTPServerRequest.GetCookieByName(constref aName: AnsiString
   ): AnsiString;
 var
   Lines: TStringList;
@@ -323,7 +496,7 @@ begin
     p := Pos('=', Line);
     if p = 0 then
       Continue;
-    if Copy(Line, 1, p - 1) = aName then
+    if TrimLeft(Copy(Line, 1, p - 1)) = aName then
     begin
       Result := Copy(Line, p + 1, Length(Line));
       Break;
@@ -362,31 +535,43 @@ begin
 end;
 
 function THTTPServerRequest.GetParamNameByIndex(Index: Integer): AnsiString;
+var
+  it: TParams.TPairEnumerator;
+
 begin
-  Result := FParams.Keys[Index];
+  it := FParams.GetEnumerator;
+  while 0 <= Index do
+    if not it.MoveNext then
+      Exit;
+  Result := it.Current.Key;
 
 end;
 
 function THTTPServerRequest.GetParamValueByIndex(Index: Integer): AnsiString;
+var
+  it: TParams.TPairEnumerator;
+
 begin
-  Result := FParams.Data[Index];
+  it := FParams.GetEnumerator;
+  while 0 <= Index do
+    if not it.MoveNext then
+      Exit;
+  Result := it.Current.Value;
 
 end;
 
-function THTTPServerRequest.GetParamValueByName(Name: AnsiString): AnsiString;
+function THTTPServerRequest.GetParamValueByName(constref Name: AnsiString): AnsiString;
 begin
-  if FParams.IndexOf(Name) < 0 then
-    Exit('');
-  Result := FParams[Name];
+  Result := FParams.Find(Name);
 
 end;
 
-function THTTPServerRequest.GetParamValueOrDefaultByName(Name, DefaultValue: AnsiString
+function THTTPServerRequest.GetParamValueOrDefaultByName(constref Name, DefaultValue: AnsiString
   ): AnsiString;
 begin
-  if FParams.IndexOf(Name) < 0 then
+  if not FParams.TryGetData(Name, Result) then
     Exit(DefaultValue);
-  Result := FParams[Name];
+
 end;
 
 function THTTPServerRequest.GetPathInfo: AnsiString;

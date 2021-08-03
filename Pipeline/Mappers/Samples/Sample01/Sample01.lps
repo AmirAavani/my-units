@@ -1,0 +1,270 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CONFIG>
+  <ProjectSession>
+    <Version Value="12"/>
+    <BuildModes Active="Default"/>
+    <Units>
+      <Unit>
+        <Filename Value="Sample01.lpr"/>
+        <IsPartOfProject Value="True"/>
+        <CursorPos X="26" Y="10"/>
+        <UsageCount Value="49"/>
+        <Loaded Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="../../BaseMapperUnit.pp"/>
+        <IsPartOfProject Value="True"/>
+        <EditorIndex Value="-1"/>
+        <UsageCount Value="49"/>
+      </Unit>
+      <Unit>
+        <Filename Value="../../../../General-Purpose-Units/PairUnit.pp"/>
+        <IsPartOfProject Value="True"/>
+        <EditorIndex Value="3"/>
+        <CursorPos X="11" Y="11"/>
+        <UsageCount Value="49"/>
+        <Loaded Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="../../../../Unicode-Functions/WideStringUnit.pas"/>
+        <IsPartOfProject Value="True"/>
+        <EditorIndex Value="-1"/>
+        <UsageCount Value="49"/>
+      </Unit>
+      <Unit>
+        <Filename Value="../../../../ALogger/ALoggerUnit.pp"/>
+        <IsPartOfProject Value="True"/>
+        <EditorIndex Value="-1"/>
+        <UsageCount Value="49"/>
+      </Unit>
+      <Unit>
+        <Filename Value="ValidArguments.inc"/>
+        <IsPartOfProject Value="True"/>
+        <EditorIndex Value="-1"/>
+        <CursorPos X="21" Y="3"/>
+        <UsageCount Value="49"/>
+      </Unit>
+      <Unit>
+        <Filename Value="../../../../Threading/SyncUnit.pp"/>
+        <IsPartOfProject Value="True"/>
+        <EditorIndex Value="-1"/>
+        <UsageCount Value="49"/>
+      </Unit>
+      <Unit>
+        <Filename Value="../../DataLineUnit.pp"/>
+        <IsPartOfProject Value="True"/>
+        <EditorIndex Value="1"/>
+        <TopLine Value="225"/>
+        <CursorPos X="67" Y="228"/>
+        <UsageCount Value="49"/>
+        <Bookmarks Count="2">
+          <Item0 X="3" Y="25" ID="2"/>
+          <Item1 Y="105" ID="1"/>
+        </Bookmarks>
+        <Loaded Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="../../../../Hash-Units/ElfHashUnit.pp"/>
+        <IsPartOfProject Value="True"/>
+        <EditorIndex Value="-1"/>
+        <CursorPos X="10" Y="10"/>
+        <UsageCount Value="49"/>
+      </Unit>
+      <Unit>
+        <Filename Value="../../Mapper.TypesUnit.pp"/>
+        <EditorIndex Value="-1"/>
+        <CursorPos X="22" Y="8"/>
+        <UsageCount Value="13"/>
+      </Unit>
+      <Unit>
+        <Filename Value="../../../../General-Purpose-Units/StreamUnit.pas"/>
+        <EditorIndex Value="-1"/>
+        <TopLine Value="99"/>
+        <CursorPos X="31" Y="130"/>
+        <UsageCount Value="13"/>
+      </Unit>
+      <Unit>
+        <Filename Value="../../../../General-Purpose-Units/ParameterManagerUnit.pp"/>
+        <EditorIndex Value="-1"/>
+        <TopLine Value="117"/>
+        <CursorPos X="18" Y="147"/>
+        <UsageCount Value="13"/>
+      </Unit>
+      <Unit>
+        <Filename Value="../../Mapper.OptionUnit.pp"/>
+        <IsVisibleTab Value="True"/>
+        <EditorIndex Value="2"/>
+        <TopLine Value="78"/>
+        <CursorPos X="3" Y="80"/>
+        <UsageCount Value="14"/>
+        <Loaded Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="../../../../Hash-Units/HashUnit.pas"/>
+        <EditorIndex Value="-1"/>
+        <CursorPos X="20"/>
+        <UsageCount Value="7"/>
+      </Unit>
+      <Unit>
+        <Filename Value="../../../../Algortihmic-Unit/HashUnit.pas"/>
+        <EditorIndex Value="-1"/>
+        <CursorPos X="32" Y="8"/>
+        <UsageCount Value="7"/>
+      </Unit>
+      <Unit>
+        <Filename Value="../../../../General-Purpose-Units/GenericCollectionUnit.pp"/>
+        <EditorIndex Value="-1"/>
+        <UsageCount Value="8"/>
+      </Unit>
+      <Unit>
+        <Filename Value="../../../../General-Purpose-Units/CollectionUnit.pp"/>
+        <EditorIndex Value="-1"/>
+        <UsageCount Value="8"/>
+      </Unit>
+    </Units>
+    <JumpHistory HistoryIndex="29">
+      <Position>
+        <Filename Value="../../DataLineUnit.pp"/>
+        <Caret Line="42" Column="5" TopLine="26"/>
+      </Position>
+      <Position>
+        <Filename Value="../../Mapper.OptionUnit.pp"/>
+        <Caret Line="33" Column="66" TopLine="2"/>
+      </Position>
+      <Position>
+        <Filename Value="../../DataLineUnit.pp"/>
+        <Caret Line="8" Column="10" TopLine="3"/>
+      </Position>
+      <Position>
+        <Filename Value="../../Mapper.OptionUnit.pp"/>
+        <Caret Line="43" Column="47" TopLine="28"/>
+      </Position>
+      <Position>
+        <Filename Value="../../Mapper.OptionUnit.pp"/>
+        <Caret Line="103" Column="44" TopLine="84"/>
+      </Position>
+      <Position>
+        <Filename Value="../../Mapper.OptionUnit.pp"/>
+        <Caret Line="66" Column="18" TopLine="50"/>
+      </Position>
+      <Position>
+        <Filename Value="../../DataLineUnit.pp"/>
+        <Caret Line="19" Column="30" TopLine="3"/>
+      </Position>
+      <Position>
+        <Filename Value="../../DataLineUnit.pp"/>
+        <Caret Line="23" Column="48" TopLine="7"/>
+      </Position>
+      <Position>
+        <Filename Value="../../DataLineUnit.pp"/>
+        <Caret Line="96" Column="48" TopLine="80"/>
+      </Position>
+      <Position>
+        <Filename Value="../../DataLineUnit.pp"/>
+        <Caret Line="104" Column="57" TopLine="88"/>
+      </Position>
+      <Position>
+        <Filename Value="../../DataLineUnit.pp"/>
+        <Caret Line="129" Column="36" TopLine="113"/>
+      </Position>
+      <Position>
+        <Filename Value="../../Mapper.OptionUnit.pp"/>
+        <Caret Line="33" Column="14" TopLine="17"/>
+      </Position>
+      <Position>
+        <Filename Value="../../Mapper.OptionUnit.pp"/>
+        <Caret Line="24" Column="5"/>
+      </Position>
+      <Position>
+        <Filename Value="../../Mapper.OptionUnit.pp"/>
+        <Caret Line="73" Column="3" TopLine="68"/>
+      </Position>
+      <Position>
+        <Filename Value="../../Mapper.OptionUnit.pp"/>
+        <Caret Line="19"/>
+      </Position>
+      <Position>
+        <Filename Value="../../DataLineUnit.pp"/>
+        <Caret Line="129" Column="32" TopLine="116"/>
+      </Position>
+      <Position>
+        <Filename Value="../../DataLineUnit.pp"/>
+        <Caret Line="27" Column="73"/>
+      </Position>
+      <Position>
+        <Filename Value="../../DataLineUnit.pp"/>
+        <Caret Line="93" TopLine="80"/>
+      </Position>
+      <Position>
+        <Filename Value="../../DataLineUnit.pp"/>
+        <Caret Line="122" Column="70" TopLine="106"/>
+      </Position>
+      <Position>
+        <Filename Value="../../DataLineUnit.pp"/>
+        <Caret Line="144" Column="69" TopLine="128"/>
+      </Position>
+      <Position>
+        <Filename Value="../../DataLineUnit.pp"/>
+        <Caret Line="208" Column="48" TopLine="192"/>
+      </Position>
+      <Position>
+        <Filename Value="../../DataLineUnit.pp"/>
+        <Caret Line="100" Column="14" TopLine="81"/>
+      </Position>
+      <Position>
+        <Filename Value="../../DataLineUnit.pp"/>
+        <Caret Line="113" Column="3" TopLine="111"/>
+      </Position>
+      <Position>
+        <Filename Value="Sample01.lpr"/>
+        <Caret Line="10" Column="26"/>
+      </Position>
+      <Position>
+        <Filename Value="../../DataLineUnit.pp"/>
+        <Caret Line="159" TopLine="146"/>
+      </Position>
+      <Position>
+        <Filename Value="../../DataLineUnit.pp"/>
+        <Caret Line="160" TopLine="146"/>
+      </Position>
+      <Position>
+        <Filename Value="../../DataLineUnit.pp"/>
+        <Caret Line="162" Column="31" TopLine="146"/>
+      </Position>
+      <Position>
+        <Filename Value="../../DataLineUnit.pp"/>
+        <Caret Line="57" Column="17" TopLine="34"/>
+      </Position>
+      <Position>
+        <Filename Value="../../DataLineUnit.pp"/>
+        <Caret Line="228" Column="67" TopLine="225"/>
+      </Position>
+      <Position>
+        <Filename Value="../../Mapper.OptionUnit.pp"/>
+        <Caret Line="46" Column="17" TopLine="30"/>
+      </Position>
+    </JumpHistory>
+    <RunParams>
+      <FormatVersion Value="2"/>
+      <Modes ActiveMode=""/>
+    </RunParams>
+  </ProjectSession>
+  <Debugging>
+    <BreakPoints>
+      <Item>
+        <Kind Value="bpkSource"/>
+        <WatchScope Value="wpsLocal"/>
+        <WatchKind Value="wpkWrite"/>
+        <Source Value="../../DataLineUnit.pp"/>
+        <Line Value="294"/>
+      </Item>
+      <Item>
+        <Kind Value="bpkSource"/>
+        <WatchScope Value="wpsLocal"/>
+        <WatchKind Value="wpkWrite"/>
+        <Source Value="../../DataLineUnit.pp"/>
+        <Line Value="159"/>
+      </Item>
+    </BreakPoints>
+  </Debugging>
+</CONFIG>

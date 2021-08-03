@@ -13,7 +13,7 @@ type
   
   { THashEntry }
 
-  THashEntry= class (TData)
+  THashEntry= class(TData)
   public
     function GetHashCode: THashCode; virtual; abstract;
 

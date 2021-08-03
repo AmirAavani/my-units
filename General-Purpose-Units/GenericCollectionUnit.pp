@@ -5,10 +5,20 @@ unit GenericCollectionUnit;
 interface
 
 uses
-  Classes, SysUtils, Generics.Collections;
+  Classes, SysUtils, Generics.Collections, GenericCollection.UtilsUnit;
 
 type
+
+  { TCollection }
+
   generic TCollection<TData> = class(specialize TList<TData>)
+  public type
+    TDumpFunc = function (d: TData): TBytes;
+
+  public
+    procedure AddAnotherCollection(AnotherCollection: TCollection);
+    procedure SaveToStream(Stream: TStream; DumpFunc: TDumpFunc);
+
   end;
 
   { TGenericCollection }
@@ -22,8 +32,6 @@ type
     constructor Create(aList: TListData);
     constructor Create;
     destructor Destroy; override;
-
-    procedure AddAnotherCollection(AnotherCollection: TObjectCollection);
 
     {
       Deletes the Index-th item from the list and return it.
@@ -52,6 +60,37 @@ implementation
 
 uses
   Generics.Defaults;
+
+{ TCollection }
+
+procedure TCollection.AddAnotherCollection(AnotherCollection: TCollection);
+var
+  i: Integer;
+
+begin
+  for i := 0 to AnotherCollection.Count - 1 do
+    Self.Add(TData(AnotherCollection[i]));
+
+end;
+
+procedure TCollection.SaveToStream(Stream: TStream; DumpFunc: TDumpFunc);
+var
+  it: TCollection.TEnumerator;
+  bs: TBytes;
+
+begin
+  it := Self.GetEnumerator;
+
+  while it.MoveNext do
+  begin
+    bs := DumpFunc(it.Current);
+    Stream.WriteBuffer(bs, Length(bs));
+
+  end;
+
+  it.Free;
+end;
+
 
 { TMap }
 
@@ -136,16 +175,6 @@ begin
     TData(Self[i]).Free;
 
   inherited Destroy;
-
-end;
-
-procedure TObjectCollection.AddAnotherCollection(AnotherCollection: TObjectCollection);
-var
-  i: Integer;
-
-begin
-  for i := 0 to AnotherCollection.Count- 1 do
-    Self.Add(TData(AnotherCollection[i]));
 
 end;
 

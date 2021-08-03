@@ -110,8 +110,11 @@ type
 
     // Returns all the elements in aResponse.
     function ExtractFromResponse(aResponse: TQueryResponse; MaxReturnedResult: Integer = -1): TDataList; virtual;
-    // Retruns all Data satisfying the query.
+    // Returns all Data satisfying the query.
     function GetAllWhere(WhereClause: AnsiString; Option: TGetWhereAllOptions = nil): TDataList; virtual;
+    // Returns the numbre of entries satisfying the query.
+    function GetCountWhere(WhereClause: AnsiString; Option: TGetWhereAllOptions = nil): TDataList; virtual;
+
     procedure DeleteAllWhere(WhereClause: AnsiString); virtual;
 
   end;
@@ -295,6 +298,25 @@ begin
 
   end;
 
+  DebugLn(Format('Q: %s', [Query]));
+  Response := DB.RunQuery(Query);
+
+  Result := ExtractFromResponse(Response, -1);
+
+  Option.Free;
+  Response.Free;
+
+end;
+
+function TBaseDataModuleManager.GetCountWhere(WhereClause: AnsiString;
+  Option: TGetWhereAllOptions): TDataList;
+var
+  Query: AnsiString;
+  Response: TQueryResponse;
+  i: Integer;
+
+begin
+  Query := Format('SELECT COUNT(*) FROM %s WHERE %s', [TData.TableName, WhereClause]);
   DebugLn(Format('Q: %s', [Query]));
   Response := DB.RunQuery(Query);
 

@@ -7,18 +7,18 @@ interface
 uses
   Pipeline.TypesUnit, Classes, SysUtils;
 
-function ExpandPattern(aPattern: AnsiString): TAnsiStringList;
+function ExpandPattern(aPattern: AnsiString): TStringList;
 
 implementation
 uses
   PathHelperUnit, RegExpr;
 
-function ExpandPattern(aPattern: AnsiString): TAnsiStringList;
+function ExpandPattern(aPattern: AnsiString): TStringList;
 var
   ExpandableRE: TRegExpr;
 
   procedure RecGenerate(Index: Integer; Prefix: AnsiString; Segments: TStringList;
-    Result: TAnsiStringList);
+    Result: TStringList);
   var
     i: Integer;
     Count: Integer;
@@ -61,7 +61,7 @@ begin
   Segments.Delimiter := '/';
   Segments.DelimitedText := aPattern;
 
-  Result := TAnsiStringList.Create;
+  Result := TStringList.Create;
   RecGenerate(0, '', Segments, Result);
 
   Segments.Free;

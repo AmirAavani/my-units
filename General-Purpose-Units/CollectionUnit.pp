@@ -9,7 +9,7 @@ type
 
   { TInt64Collection }
 
-  TInt64Collection= class (specialize TGenericCollectionForBuiltInData<Int64>)
+  TInt64Collection= class (specialize TCollection<Int64>)
   public
 
     procedure FillWithZero (Length: Integer);
@@ -21,7 +21,7 @@ type
 
   { TIntegerCollection }
 
-  TIntegerCollection= class (specialize TGenericCollectionForBuiltInData<Integer>)
+  TIntegerCollection= class (specialize TCollection<Integer>)
   public
     procedure FillWithZero (Length: Integer);
 

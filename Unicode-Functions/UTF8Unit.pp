@@ -14,6 +14,7 @@ type
   procedure GetAllRunes(const Text: AnsiString; out Output: TRuneList);
   function GetNextRune(var PText: PChar; Width: PInteger = nil): TRune;
   function RuneToUTF8(aRune: TRune; var Data: array of Byte): Integer;
+  function Append(constref Text: AnsiString; aRune: TRune): AnsiString;
 
 implementation
 
@@ -100,12 +101,14 @@ begin
   begin
     data[0] := aRune;
     Exit(1);
+
   end;
   if aRune <= $7FF then
   begin
     Data[0] := (aRune shr 6) or $C0;
     Data[1] := (aRune and $3F) or $80;
     Exit(2);
+
   end;
   if aRune <= $10000 then
   begin
@@ -113,6 +116,7 @@ begin
     Data[1] := ((aRune shr 6) and $3F) or $80;
     Data[2] := (aRune and $3F) or $80;
     Exit(3);
+
   end;
   if aRune < $110000 then
   begin
@@ -121,8 +125,26 @@ begin
     Data[2] := ((aRune shr 6) and $3F) or $80;
     Data[3] := (aRune and $3F) or $80;
     Exit(4);
+
   end;
+
   Result := 0;
+
+end;
+
+function Append(constref Text: AnsiString; aRune: TRune): AnsiString;
+var
+  Data: array [0..3] of Byte;
+  Width: Integer;
+  i: Integer;
+
+begin
+  Width := RuneToUTF8(aRune, Data);
+
+  Result := Text;
+  for i := 0 to Width - 1 do
+    Result += Chr(Data[i]);
+
 end;
 
 end.

@@ -14,6 +14,7 @@ function Pos(Sub, Main: PChar): Integer;
 function Copy(Main: PChar; Len: Integer): AnsiString;
 function TrimLeft(Main: PChar; aSetToSkip: TCharSet = []): PChar;
 function IsPrefix(Prefix, Main: PChar): Boolean;
+function IsSuffix(Suffix, Main: PChar): Boolean;
 
 implementation
 
@@ -61,6 +62,7 @@ end;
 function TrimLeft(Main: PChar; aSetToSkip: TCharSet): PChar;
 begin
   Result := Main;
+
   while Result^ <> #0 do
   begin
     if not (Result^ in aSetToSkip) then
@@ -74,14 +76,6 @@ end;
 
 function IsPrefix(Prefix, Main: PChar): Boolean;
 begin
-  while Main^ = #32 do
-  begin
-    Inc(Main);
-    if Main = #0 then
-      Break;
-
-  end;
-
   while (Prefix^ <> #0) and (Main^ <> #0) do
   begin
     if Prefix^ <> Main^ then
@@ -92,6 +86,28 @@ begin
   end;
 
   Result := Prefix^ = #0;
+
+end;
+
+function IsSuffix(Suffix, Main: PChar): Boolean;
+var
+  Last: PChar;
+
+begin
+  Last := Main;
+  while Last^ <> #0 do
+    Inc(Last);
+  while (Suffix^ <> #0) and (Last <> Main) do
+  begin
+    if Suffix^ <> Last^ then
+      Exit(False);
+
+    Dec(Last);
+    Inc(Suffix);
+  end;
+
+  Result := Suffix^ = #0;
+
 
 end;
 
