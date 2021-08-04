@@ -5,7 +5,7 @@ unit PipelineUnit;
 interface
 
 uses
-  Classes, SysUtils, Pipeline.TypesUnit, Pipeline.Utils, ThreadSafeQueueUnit, GenericCollectionUnit;
+  Classes, SysUtils, Pipeline.TypesUnit, ThreadSafeQueueUnit, GenericCollectionUnit;
 
 type
   TTask = class;
@@ -20,11 +20,14 @@ type
 
     TStepInfo = class(TObject)
     private
-      NumTasks: Integer;
-      ID: Integer;
+      FNumTasks: Integer;
+      FID: Integer;
       StepHandler: TStepHandler;
 
     public
+      property ID: Integer read FID;
+      property NumTasks: Integer read FNumTasks;
+
       constructor Create(_StepID: Integer; _NumTasks: Integer;
         Handler: TStepHandler);
       destructor Destroy; override;
@@ -68,11 +71,14 @@ type
 
     constructor Create(_ID: Integer; _Step: TPipeline.TStepInfo);
 
+    function FilterFilesModule(aPattern: AnsiString): TAnsiStringList;
+    function FilterFilesDiv(aPattern: AnsiString): TAnsiStringList;
   end;
 
 implementation
 uses
-  SyncUnit, StringUnit, ALoggerUnit, RunInAThreadUnit, ParameterManagerUnit;
+  SyncUnit, StringUnit, ALoggerUnit, RunInAThreadUnit, ParameterManagerUnit,
+  Pipeline.Utils;
 
 { TTask }
 
@@ -91,6 +97,28 @@ begin
 
 end;
 
+function TTask.FilterFilesModule(aPattern: AnsiString): TAnsiStringList;
+var
+  Tmp: TAnsiStringList;
+
+begin
+  Tmp := ExpandPattern(aPattern);
+  Result := Pipeline.Utils.FilterFilesModule(Tmp, Self.ID, Self.StepInfo.NumTasks);
+  Tmp.Free;
+
+end;
+
+function TTask.FilterFilesDiv(aPattern: AnsiString): TAnsiStringList;
+var
+  Tmp: TAnsiStringList;
+
+begin
+  Tmp := ExpandPattern(aPattern);
+  Result := Pipeline.Utils.FilterFilesDiv(Tmp, Self.ID, Self.StepInfo.NumTasks);
+  Tmp.Free;
+
+end;
+
 { TPipeline.TStepInfo }
 
 constructor TPipeline.TStepInfo.Create(_StepID: Integer; _NumTasks: Integer;
@@ -98,8 +126,8 @@ constructor TPipeline.TStepInfo.Create(_StepID: Integer; _NumTasks: Integer;
 begin
   inherited Create;
 
-  ID := _StepID;
-  NumTasks := _NumTasks;
+  FID := _StepID;
+  FNumTasks := _NumTasks;
   StepHandler := Handler;
 
 end;

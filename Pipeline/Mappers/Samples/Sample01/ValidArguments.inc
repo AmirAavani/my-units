@@ -1,6 +1,6 @@
 ValidArgumentsInfo: array of AnsiString =
-  ('--Debug:Integer');
+  ('--Debug:Integer', '--FileName:AnsiString', '--Pattern:AnsiString');
 ValidArgumentsValues: array of AnsiString =
-  ('0');
+  ('0', '', 'ABC');
 
 

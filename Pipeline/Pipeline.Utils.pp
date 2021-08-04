@@ -5,20 +5,22 @@ unit Pipeline.Utils;
 interface
 
 uses
-  Pipeline.TypesUnit, Classes, SysUtils;
+  Pipeline.TypesUnit;
 
-function ExpandPattern(aPattern: AnsiString): TStringList;
+function ExpandPattern(aPattern: AnsiString): TAnsiStringList;
+function FilterFilesModule(InputPattern: TAnsiStringList; TaskID, NumTasks: Integer): TAnsiStringList;
+function FilterFilesDiv(InputPattern: TAnsiStringList; TaskID, NumTasks: Integer): TAnsiStringList;
 
 implementation
 uses
-  PathHelperUnit, RegExpr;
+  Classes, SysUtils, PathHelperUnit, RegExpr;
 
-function ExpandPattern(aPattern: AnsiString): TStringList;
+function ExpandPattern(aPattern: AnsiString): TAnsiStringList;
 var
   ExpandableRE: TRegExpr;
 
   procedure RecGenerate(Index: Integer; Prefix: AnsiString; Segments: TStringList;
-    Result: TStringList);
+    Result: TAnsiStringList);
   var
     i: Integer;
     Count: Integer;
@@ -61,11 +63,44 @@ begin
   Segments.Delimiter := '/';
   Segments.DelimitedText := aPattern;
 
-  Result := TStringList.Create;
+  Result := TAnsiStringList.Create;
   RecGenerate(0, '', Segments, Result);
 
   Segments.Free;
   ExpandableRE.Free;
+
+end;
+
+function FilterFilesModule(InputPattern: TAnsiStringList; TaskID,
+  NumTasks: Integer): TAnsiStringList;
+var
+  i: Integer;
+
+begin
+  Result := TAnsiStringList.Create;
+
+  i := TaskID;
+  while i < InputPattern.Count do
+  begin
+    Result.Add(InputPattern[i]);
+    Inc(i, NumTasks);
+
+  end;
+
+end;
+
+function FilterFilesDiv(InputPattern: TAnsiStringList; TaskID, NumTasks: Integer
+  ): TAnsiStringList;
+var
+  i, Len: Integer;
+
+begin
+  Result := TAnsiStringList.Create;
+
+  Len := InputPattern.Count div NumTasks;
+
+  for i := (TaskID - 1) * Len to TaskID * Len - 1 do
+    Result.Add(InputPattern[i]);
 
 end;
 

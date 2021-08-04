@@ -65,55 +65,36 @@ end;
 
 procedure TThreadSafeQueue.DoInsert(Entry: T);
 begin
-  DebugLn(Format('Count: %d', [Semaphore.Value]));
-  DebugLn(Format('DoInsert M.Lock!', []));
   Mutex.Lock;
-
-  DebugLn(Format('M.Lock passed!', []));
-  DebugLn(Format('Count: %d', [Semaphore.Value]));
 
   FData.Add(Entry);
 
-  DebugLn(Format('Sending Signal!', []));
-
   Semaphore.Inc;
   Mutex.Unlock;
-
-  DebugLn(Format('Count: %d', [Semaphore.Value]));
 
 end;
 
 procedure TThreadSafeQueue.DoDelete(var LastElement: T);
 begin
    LastElement := nil;
-   DebugLn(Format('Who am I?', []));
+
    while LastElement = nil do
    begin
-     DebugLn(Format('Count: %d', [Semaphore.Value]));
-     DebugLn(Format('Before Semaphore.Dec', []));
-
      Semaphore.Dec;
-     DebugLn(Format('Count: %d', [Semaphore.Value]));
 
-     DebugLn(Format('Do.Delete M.Lock!', []));
      Mutex.Lock;
-     DebugLn(Format('M.Lock passed!', []));
-     DebugLn(Format('FData.Count = %d ', [FData.Count]));
 
      if 0 < FData.Count then
      begin
        LastElement := FData.First;
        FData.Delete(0);
 
-       DebugLn(Format('FData.Count = %d ', [FData.Count]));
        Mutex.Unlock;
 
        Break;
      end;
 
-     DebugLn(Format('M.UnLock', []));
      Mutex.Unlock;
-     DebugLn(Format('Count: %d', [Semaphore.Value]));
    end;
 
 end;

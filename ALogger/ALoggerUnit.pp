@@ -24,7 +24,7 @@ procedure DebugLnEveryN(N: Integer; Msg: AnsiString; Verbosity: Integer = 0);
 procedure FMTDebugLnEveryN(N: Integer; Fmt: AnsiString; const Args : array of const; Verbosity: Integer = 0);
 procedure FatalLn(Msg: AnsiString);
 procedure FmtFatalLn(Fmt: AnsiString; const Args: array of const);
-procedure MaybeFmtFatalLn(Condition: Boolean; Fmt: AnsiString; const Args: array of const);
+procedure FmtFatalLnIFFalse(Value: Boolean; Fmt: AnsiString; const Args: array of const);
 
 implementation
 
@@ -220,16 +220,18 @@ begin
 
 end;
 
-procedure MaybeFmtFatalLn(Condition: Boolean; Fmt: AnsiString;
+procedure FmtFatalLnIFFalse(Value: Boolean; Fmt: AnsiString;
   const Args: array of const);
 var
   Filename: AnsiString;
   LineNumber: Integer;
 
 begin
+  if Value then
+    Exit;
+
   GetParentLineInfo(Filename, LineNumber);
-  if Condition then
-    _FatalLn(Filename, LineNumber, Format(Fmt, Args));
+  _FatalLn(Filename, LineNumber, Format(Fmt, Args));
 
 end;
 
