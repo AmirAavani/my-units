@@ -113,7 +113,7 @@ type
     // Returns all Data satisfying the query.
     function GetAllWhere(WhereClause: AnsiString; Option: TGetWhereAllOptions = nil): TDataList; virtual;
     // Returns the numbre of entries satisfying the query.
-    function GetCountWhere(WhereClause: AnsiString; Option: TGetWhereAllOptions = nil): TDataList; virtual;
+    function GetCountWhere(WhereClause: AnsiString): UInt32; virtual;
 
     procedure DeleteAllWhere(WhereClause: AnsiString); virtual;
 
@@ -308,21 +308,18 @@ begin
 
 end;
 
-function TBaseDataModuleManager.GetCountWhere(WhereClause: AnsiString;
-  Option: TGetWhereAllOptions): TDataList;
+function TBaseDataModuleManager.GetCountWhere(WhereClause: AnsiString): UInt32;
 var
   Query: AnsiString;
   Response: TQueryResponse;
-  i: Integer;
 
 begin
   Query := Format('SELECT COUNT(*) FROM %s WHERE %s', [TData.TableName, WhereClause]);
   DebugLn(Format('Q: %s', [Query]));
   Response := DB.RunQuery(Query);
 
-  Result := ExtractFromResponse(Response, -1);
+  Result := StrToInt(Response.Row[0]);
 
-  Option.Free;
   Response.Free;
 
 end;

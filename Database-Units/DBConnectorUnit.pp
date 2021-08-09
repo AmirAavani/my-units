@@ -43,6 +43,8 @@ type
   function UnEscapeQuery(const EscapedQuery: WideString): WideString;
 
 implementation
+uses
+  ALoggerUnit, mysql50;
 
 type
 
@@ -105,12 +107,22 @@ begin
 end;
 
 function EscapeForQuery(const Query: WideString): WideString;
+const
+  SingleQuote = Chr(39);
+  Tab = Chr(7);
+  Source: array of WideString = (#$0, '\', SingleQuote, '"', #13#10, #10, Tab,
+  Chr(26), '%', '_');
+  Target: array of WideString = ('\0', '\\', '\' + SingleQuote, '\"', '\n','\n',
+  '\t', '\Z', '\%', '\_');
+var
+  i: Integer;
+
 begin
-  {
+{
  \0     An ASCII NUL(0x00) character.
 \'     A single quote(“'”) character.
 \"     A double quote(“"”) character.
-\b     A backspace character.
+-- \b  A backspace character.
 \n     A newline(linefeed) character.
 \r     A carriage return character.
 \t     A tab character.
@@ -119,13 +131,19 @@ begin
 \%     A “%” character. See note following the table.
 \_     A “_” character. See note following the table.
 }
-  Result := WideString(StringReplace(StringReplace(
-     AnsiString(Query), '''', '\''', [rfReplaceAll]),
-     '"', '\"', [rfReplaceAll]));
+
+  Result := Query;
+  for i := 0 to High(Source) do
+  begin
+    Result := WideString(StringReplace(AnsiString(Result), Source[i], Target[i],
+    [rfReplaceAll]));
+  end;
+
 end;
 
 function UnEscapeQuery(const EscapedQuery: WideString): WideString;
 begin
+  FmtFatalLn('NIY', []);
   Result := WideString(StringReplace(StringReplace(
      AnsiString(EscapedQuery), '\'+'''', '''', [rfReplaceAll]),
         '\"', '"', [rfReplaceAll]));

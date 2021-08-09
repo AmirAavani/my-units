@@ -125,13 +125,17 @@ type
   TBasePageHandler = class(TObject)
   private
     FName: AnsiString;
-    FServingPath: AnsiString;
+    FServingPaths: TStringList;
+    function GetServingPath: AnsiString;
 
   public
     property Name: AnsiString read FName;
-    property ServingPath: AnsiString read FServingPath;
+    property ServingPath: AnsiString read GetServingPath;
+    property ServingPaths: TStringList read FServingPaths;
 
     constructor Create(constref aName: AnsiString; constref aServingPath: AnsiString);
+    constructor Create(constref aName: AnsiString; TheServingPaths: array of AnsiString);
+    destructor Destroy; override;
 
     function WouldHandleRequest(ARequest: THTTPServerRequest): Boolean; virtual;
     function Execute(Sender: THTTPServerThread; TheRequest: THTTPServerRequest;
@@ -146,20 +150,49 @@ uses
 
 { TBasePageHandler }
 
+function TBasePageHandler.GetServingPath: AnsiString;
+begin
+  Result := FServingPaths[0];
+end;
+
 constructor TBasePageHandler.Create(constref aName: AnsiString;
   constref aServingPath: AnsiString);
 begin
   inherited Create;
 
+  FServingPaths := TStringList.Create;
   FName := aName;
-  FServingPath := aServingPath;
+  FServingPaths.Add(aServingPath);
 
+end;
+
+constructor TBasePageHandler.Create(constref aName: AnsiString;
+  TheServingPaths: array of AnsiString);
+var
+  Path: AnsiString;
+
+begin
+  inherited Create;
+
+  FServingPaths := TStringList.Create;
+  FName := aName;
+  for Path in TheServingPaths do
+    FServingPaths.Add(Path);
+
+end;
+
+destructor TBasePageHandler.Destroy;
+begin
+  FServingPaths.Free;
+
+  inherited Destroy;
 end;
 
 function TBasePageHandler.WouldHandleRequest(ARequest: THTTPServerRequest
   ): Boolean;
 begin
-  Result := ARequest.PathInfo = ServingPath;
+  FMTDebugLn('Path: "%s" "%s"', [ARequest.PathInfo, JoinStrings(FServingPaths, '**')]);
+  Result := 0 <= FServingPaths.IndexOf(ARequest.PathInfo);
 
 end;
 
@@ -577,6 +610,7 @@ end;
 function THTTPServerRequest.GetPathInfo: AnsiString;
 begin
   Result := OriginalRequest.PathInfo;
+
 end;
 
 function THTTPServerRequest.GetQueryString: AnsiString;
@@ -599,9 +633,13 @@ var
 
 begin
   for PageHandler in PageHandlers do
+  begin
     if PageHandler.WouldHandleRequest(ARequest) then
+    begin
       if PageHandler.Execute(Self, ARequest, AResponse) then
         Exit;
+    end;
+  end;
 
   FPageNotFoundHandler.Execute(Self, ARequest, AResponse);
 end;
@@ -654,6 +692,7 @@ procedure THTTPServerThread.RegisterPageHandler(
   const PageHandler: TBasePageHandler);
 begin
   PageHandlers.Add(PageHandler);
+
 end;
 
 procedure THTTPServerThread.Start;
