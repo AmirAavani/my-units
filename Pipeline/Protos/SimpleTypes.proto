@@ -1,0 +1,23 @@
+syntax = "proto3";
+
+package simple;
+
+message UInt64Message {
+  uint64 data = 1;
+}
+
+message Int64Message {
+  int64 data = 1;
+}
+
+message StringMessage {
+  string data = 1;
+}
+
+message DoubleMessage {
+  double data = 1;
+}
+
+message FloatMessage {
+  float data = 1;
+}

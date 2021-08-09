@@ -9,15 +9,6 @@ uses
 
 type
 
-  { TAbstractRunner }
-
-  TAbstractRunner = class(TObject)
-  private
-  public
-    procedure Execute; virtual; abstract;
-
-  end;
-
   { TThreadPool }
 
   TThreadPool = class(TObject)

@@ -20,6 +20,7 @@ begin
   Pipeline.AddNewStep(@Steps2And3Hanlder, 20);
   Pipeline.AddNewStep(@Steps2And3Hanlder, 100);
   Start := DateTimeToTimeStamp(Now).Time;
+
   if Pipeline.Run then
     ALoggerUnit.FMTDebugLn('Success! [in %dms]', [DateTimeToTimeStamp(Now).Time - Start])
   else

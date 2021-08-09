@@ -8,8 +8,8 @@ uses
   Classes, SysUtils, StreamUnit, ProtoHelperUnit, Generics.Collections;
 
 type
-  TPointerList = class(specialize TList<Pointer>)
-  end;
+  TPointerList = specialize TList<Pointer>;
+  TAnsiStringList = specialize TList<AnsiString>;
 
   { TPipelineKV }
 

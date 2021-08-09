@@ -7,7 +7,7 @@ interface
 uses
   Classes, SysUtils;
 type
-  TSharder = function (constref Key: AnsiString): UInt64;
+  TSharderFunction = function (constref Key: AnsiString): UInt64;
 
 
   { TChannelOptions }
@@ -18,8 +18,11 @@ type
 
   private
     FChannelType: TChannelType;
+    FSharder: TSharderFunction;
+
   public
     property ChannelType: TChannelType read FChannelType;
+    property Sharder: TSharderFunction read FSharder;
 
     function SetChannelType(_ChannelType: TChannelType): TChannelOptions;
 
@@ -31,23 +34,24 @@ type
   private
     FCapacity: Integer;
     FNumShards: Integer;
-    FSharder: TSharder;
+    FSharder: TSharderFunction;
     FThreadCount: Integer;
     FChannelOptions: TChannelOptions;
 
   public
     property NumShards: Integer read FNumShards;
-    property Sharder: TSharder read FSharder;
+    property Sharder: TSharderFunction read FSharder;
     property ThreadCount: Integer read FThreadCount;
     property ChannelOptions: TChannelOptions read FChannelOptions;
     property Capacity: Integer read FCapacity;
 
   public
     constructor Create;
+    destructor Destroy; override;
     class function NewOptions: TMappingOptions;
 
     function SetNumShards(_NumShards: Integer): TMappingOptions;
-    function SetSharder(_Sharder: TSharder): TMappingOptions;
+    function SetSharder(_Sharder: TSharderFunction): TMappingOptions;
     function SetThreadCount(_ThreadCount: Integer): TMappingOptions;
     function SetChannelOptions(_ChannelOptions: TChannelOptions): TMappingOptions;
     function SetCapactiy(_Capacity: Integer): TMappingOptions;
@@ -87,6 +91,13 @@ begin
 
 end;
 
+destructor TMappingOptions.Destroy;
+begin
+  FChannelOptions.Free;
+
+  inherited Destroy;
+end;
+
 class function TMappingOptions.NewOptions: TMappingOptions;
 begin
   Result := TMappingOptions.Create;
@@ -100,11 +111,11 @@ begin
 
 end;
 
-function TMappingOptions.SetSharder(_Sharder: TSharder): TMappingOptions;
+function TMappingOptions.SetSharder(_Sharder: TSharderFunction): TMappingOptions;
 begin
   Result := Self;
   Result.FSharder := _Sharder;
-
+  Result.FChannelOptions.FSharder := _Sharder;
 
 end;
 

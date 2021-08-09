@@ -8,18 +8,28 @@ uses
   Classes, SysUtils, cthreads, pthreads, Contnrs;
 
 type
-
   { TMutex }
-
   TMutex = class(TObject)
   private
     CS: TRTLCriticalSection;
-  public
+
+   public
     procedure Lock;
     procedure Unlock;
 
     constructor Create;
     destructor Destroy; override;
+  end;
+
+  { TRWMutex }
+
+  TRWMutex = class(TMultiReadExclusiveWriteSynchronizer)
+  public
+   procedure RLock;
+   procedure RUnlock;
+   procedure WLock;
+   procedure WUnlock;
+
   end;
 
   { TSemaphore }
@@ -67,6 +77,32 @@ implementation
 
 uses
   ALoggerUnit, BaseUnix;
+
+{ TRWMutex }
+
+procedure TRWMutex.RLock;
+begin
+  inherited BeginRead;
+
+end;
+
+procedure TRWMutex.RUnlock;
+begin
+  inherited EndRead;
+
+end;
+
+procedure TRWMutex.WLock;
+begin
+  inherited BeginWrite;
+
+end;
+
+procedure TRWMutex.WUnlock;
+begin
+  inherited EndWrite;
+
+end;
 
 { TWaitGroup }
 

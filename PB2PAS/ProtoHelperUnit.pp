@@ -38,7 +38,7 @@ type
     function LoadFromStream(Stream: TStream): Boolean; virtual;
     procedure SaveToStream(Stream: TStream);  virtual;
 
-    class function ToJson(const aMessage: TBaseMessage): AnsiString;
+    function ToJSON: AnsiString; virtual;
 
   end;
 
@@ -1335,7 +1335,7 @@ begin
   ProtoStream.Free;
 end;
 
-class function TBaseMessage.ToJson(const aMessage: TBaseMessage): AnsiString;
+function TBaseMessage.ToJSON: AnsiString;
 var
   Streamer: TJSONStreamer;
 
@@ -1343,7 +1343,7 @@ begin
   Streamer := TJSONStreamer.Create(nil);
   Streamer.Options := Streamer.Options + [jsoTStringsAsArray];
 
-  Result := Streamer.ObjectToJSONString(aMessage);
+  Result := Streamer.ObjectToJSONString(Self);
 
   Streamer.Free;
 

@@ -7,7 +7,8 @@ uses
   cthreads,
   {$ENDIF}
   Classes, sysutils, ALoggerUnit, SyncUnit, ElfHashUnit, DataLineUnit,
-  BaseMapperUnit, Mapper.OptionUnit
+Mapper.BaseMapperUnit, Mapper.OptionUnit, Mapper.ChannelUnit, MapperFunctionUnit,
+  Mapper.LibraryUnit, ParameterManagerUnit
   { you can add units after this };
 
 var
@@ -15,13 +16,18 @@ var
 
 begin
   dp := TDataPoint.Start.
-    Map('GenerateRandomNumbers', TBaseMapper.Create,
+    Map('Reader',
+    TNewLineReaderMapper.Create(
+      TFileStream.Create(GetRunTimeParameterManager.ValueByName['--FileName'].AsAnsiString,
+        fmOpenRead)),
       TMappingOptions.Create.SetNumShards(16).SetThreadCount(10)).
-    Map('SumThemUp', TBaseMapper.Create,
+    Map('SumThemUp',
+     TBaseMapper.MapperFromFunction(@SumThemUpMapper),
       TMappingOptions.Create.SetNumShards(16).SetThreadCount(10));
+
   dp.Summary;
-  if not dp.Run(False, True) then
-    FmtFatalLn('Failed To Run', []);
-  FMTDebugLn('Dl.Wait: %s', [BoolToStr(dp.Wait, 'T', 'F')]);
+
+  FmtFatalLnIFFalse(dp.Run(True, True), 'Failed To Run', []);
+  FMTDebugLn('Dl.Wait: %s', [BoolToStr(dp.Wait, 'True', 'False')]);
 end.
 

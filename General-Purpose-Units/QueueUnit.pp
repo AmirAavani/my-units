@@ -5,7 +5,7 @@ unit QueueUnit;
 interface
 
 uses
-  Classes, SysUtils, HeapUnit, cthreads, SyncUnit;
+  Classes, SysUtils, HeapUnit, cthreads, GenericCollectionUnit, SyncUnit;
   
 type
 
@@ -96,8 +96,10 @@ type
   { TGenericQueue }
 
   generic TGenericQueue<T>= class(specialize TGenericAbstractQueue<T>)
+  private type
+    TData = specialize TCollection<T>;
   private
-    FData: TList;
+    FData: TData;
 
   private
     function GetCount: Integer; override;
@@ -110,13 +112,33 @@ type
     function DoGetTop: T; override;
 
   public
-
     constructor Create;
-    destructor Destroy;
-    procedure Clear;
+    destructor Destroy; override;
+    procedure Clear; override;
 
   end;
 
+  { TThreadSafeGenericQueue }
+
+  generic TThreadSafeGenericQueue<T>= class(specialize TGenericQueue<T>)
+  private
+    Mutex: TMutex;
+
+    function GetCount: Integer; override;
+    function GetIsEmpty: Boolean; override;
+    function GetIsFull: Boolean; override;
+
+  protected
+    procedure DoInsert(Entry: T); override;
+    procedure DoDelete(var LastElement: T); override;
+    function DoGetTop: T; override;
+
+  public
+    constructor Create;
+    destructor Destroy; override;
+    procedure Clear; override;
+
+end;
   { TGenericPriorityQueue }
 
   generic TGenericPriorityQueue<T>= class(specialize TGenericAbstractQueue<T>)
@@ -150,6 +172,87 @@ implementation
 
 uses
   ALoggerUnit;
+
+{ TThreadSafeGenericQueue }
+
+function TThreadSafeGenericQueue.GetCount: Integer;
+begin
+  Result:=inherited GetCount;
+end;
+
+function TThreadSafeGenericQueue.GetIsEmpty: Boolean;
+begin
+  Mutex.Lock;
+
+  Result:= inherited GetIsEmpty;
+
+  Mutex.Unlock;
+end;
+
+function TThreadSafeGenericQueue.GetIsFull: Boolean;
+begin
+  Mutex.Lock;
+
+  Result:= inherited GetIsFull;
+
+  Mutex.Unlock;
+end;
+
+procedure TThreadSafeGenericQueue.DoInsert(Entry: T);
+begin
+  Mutex.Lock;
+
+  inherited DoInsert(Entry);
+
+  Mutex.Unlock;
+end;
+
+procedure TThreadSafeGenericQueue.DoDelete(var LastElement: T);
+begin
+  Mutex.Lock;
+
+  inherited DoDelete(LastElement);
+
+  Mutex.Unlock;
+
+end;
+
+function TThreadSafeGenericQueue.DoGetTop: T;
+begin
+  Mutex.Lock;
+
+  Result:= inherited DoGetTop;
+
+  Mutex.Unlock;
+
+end;
+
+constructor TThreadSafeGenericQueue.Create;
+begin
+  inherited Create;
+
+  Mutex := TMutex.Create;
+
+end;
+
+destructor TThreadSafeGenericQueue.Destroy;
+begin
+  Mutex.Lock;
+  Mutex.Unlock;
+
+  Mutex.Free;
+
+  inherited Destroy;
+end;
+
+procedure TThreadSafeGenericQueue.Clear;
+begin
+  Mutex.Lock;
+
+  inherited Clear;
+
+  Mutex.Unlock;
+end;
 
 { TGenericPriorityQueue }
 
@@ -386,7 +489,6 @@ begin
   if IsFull then
     raise EQueueIsFull.Create;
 
-
   FData.Add(Entry);
 
 end;
@@ -396,7 +498,7 @@ begin
   if IsEmpty then
     raise EQueueIsEmpty.Create;
 
-  LastElement:= T(FData[0]);
+  LastElement:= FData[0];
   FData.Delete(0);
 
 end;
@@ -408,13 +510,7 @@ begin
 end;
 
 destructor TGenericQueue.Destroy;
-var
-  i: Integer;
-
 begin
-  for i:= 0 to Count- 1 do
-    T(FData.Items[i]).Free;
-
 
   inherited Destroy;
 
