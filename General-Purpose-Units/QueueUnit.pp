@@ -340,7 +340,7 @@ end;
 
 function TGenericAbstractQueue.DoGetTop: T;
 begin
-  Result:= nil;
+  Result:= Default(T);
 
 end;
 

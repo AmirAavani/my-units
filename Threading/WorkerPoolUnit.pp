@@ -5,39 +5,39 @@ unit WorkerPoolUnit;
 interface
 
 uses
-  Classes, SysUtils, ThreadSafeQueueUnit, PairUnit, GenericCollectionUnit;
+  Classes, SysUtils, ThreadSafeQueueUnit, PairUnit, GenericCollectionUnit, ProtoHelperUnit;
 
 type
-  TRequest = Pointer;
-  TResponse = Pointer;
-  TWorkerFunction = function (Request: TRequest; Response: TResponse): Boolean;
-
   TWorkerPoolOptions = record
     TimeOut: Integer; // Not Implmented Yet.
     CreateNewThreadInNecessary: Boolean; // Not Implemented Yet.
-    NumberOfInitialThreads: Integer;
-    MaxNumberOfThreads: Integer;
+    NumberOfInitialThreads: Integer; // Default value is 16.
+    MaxNumberOfThreads: Integer; // Default value is 16.
+    FreeRequests: Boolean; // Default value is True.
 
   end;
 
   { TWorkerPool }
 
-  TWorkerPool = class(TObject)
+  generic TWorkerPool<TRequest: TBaseMessage; TResponse: TBaseMessage> = class(TObject)
+  public type
+    TWorkerFunction = function (Request: TRequest; Response: TResponse): Boolean;
+
+
   protected type
     TRequestResponsePair = specialize TPair<TRequest, TResponse>;
     TPoolQueue = specialize TThreadSafeQueue<TRequestResponsePair>;
-
     { TBasePoolWorker }
 
     TBasePoolWorker = class(TThread)
     protected
-      MyQueue: TPoolQueue;
+      Parent: TWorkerPool;
 
       procedure Serve(Request: TRequest; Response: TResponse); virtual; abstract;
 
       procedure Execute; override;
     public
-      constructor Create(_Queue: TPoolQueue);
+      constructor Create(_Parent: TWorkerPool);
       destructor Destroy; override;
 
     end;
@@ -52,16 +52,23 @@ type
 
 
     public
-      constructor Create(WorkerFunc: TWorkerFunction; _Queue: TPoolQueue);
+      constructor Create(_Parent: TWorkerPool; WorkerFunc: TWorkerFunction);
+      destructor Destroy; override;
     end;
 
+    TThreadCollection = specialize TObjectCollection<TBasePoolWorker>;
+
   protected
-    FThreads: specialize TObjectCollection<TThread>;
+    FThreads: TThreadCollection;
     FOptions: TWorkerPoolOptions;
     Queue: TPoolQueue;
 
+    procedure DoCreateWithOption(WorkerFunc: TWorkerFunction; Options: TWorkerPoolOptions);
+
   public
-    constructor CreateWithOption(WorkerFunc: TWorkerFunction; Options: TWorkerPoolOptions);
+    property Options: TWorkerPoolOptions read FOptions;
+
+    constructor CreateWithOption(WorkerFunc: TWorkerFunction; _Options: TWorkerPoolOptions);
     constructor CreateWithDefaultOptions(WorkerFunc: TWorkerFunction);
     destructor Destroy; override;
 
@@ -81,6 +88,7 @@ begin
   Result.CreateNewThreadInNecessary := False;
   Result.NumberOfInitialThreads := 16;
   Result.MaxNumberOfThreads := 16;
+  Result.FreeRequests := True;
 
 end;
 
@@ -93,13 +101,18 @@ begin
     FmtFatalLn('Failed', []);
 end;
 
-constructor TWorkerPool.TPoolWorkerFunc.Create(WorkerFunc: TWorkerFunction;
-  _Queue: TPoolQueue);
+constructor TWorkerPool.TPoolWorkerFunc.Create(_Parent: TWorkerPool;
+  WorkerFunc: TWorkerFunction);
 begin
-  inherited Create(_Queue);
+  inherited Create(_Parent);
 
   FWorkerFunc := WorkerFunc;
 
+end;
+
+destructor TWorkerPool.TPoolWorkerFunc.Destroy;
+begin
+  inherited Destroy;
 
 end;
 
@@ -114,60 +127,85 @@ begin
 
   while True do
   begin
-    Self.MyQueue.Delete(Pair);
+    Parent.Queue.Delete(Pair);
+
+    if Parent.Queue.EndOfOperation then
+      Break;
+
     Self.Serve(Pair.First, Pair.Second);
+    if Parent.Options.FreeRequests then
+      Pair.First.Free;
 
   end;
+
 end;
 
-constructor TWorkerPool.TBasePoolWorker.Create(_Queue: TPoolQueue);
+constructor TWorkerPool.TBasePoolWorker.Create(_Parent: TWorkerPool);
 begin
   inherited Create(True);
 
-  MyQueue := _Queue;
+  Parent := _Parent;
 
 end;
 
 destructor TWorkerPool.TBasePoolWorker.Destroy;
 begin
+
   inherited Destroy;
 end;
 
 { TWorkerPool }
 
-constructor TWorkerPool.CreateWithOption(WorkerFunc: TWorkerFunction;
+procedure TWorkerPool.DoCreateWithOption(WorkerFunc: TWorkerFunction;
   Options: TWorkerPoolOptions);
 var
   i: Integer;
   Thread: TPoolWorkerFunc;
 
 begin
-  inherited Create;
-
   FOptions := Options;
   Queue := TPoolQueue.Create;
-  FThreads := (specialize TObjectCollection<TThread>).Create;
+  FThreads := TThreadCollection.Create;
 
+  Queue.EndOfOperation := False;
   for i := 0 to FOptions.NumberOfInitialThreads do
   begin
-    Thread := TPoolWorkerFunc.Create(WorkerFunc, Queue);
+    Thread := TPoolWorkerFunc.Create(Self,WorkerFunc);
+    Thread.FreeOnTerminate := True;
     FThreads.Add(Thread);
     Thread.Start;
 
   end;
+
+end;
+
+constructor TWorkerPool.CreateWithOption(WorkerFunc: TWorkerFunction;
+  _Options: TWorkerPoolOptions);
+begin
+  inherited Create;
+
+  DoCreateWithOption(WorkerFunc, Options);
+
 end;
 
 constructor TWorkerPool.CreateWithDefaultOptions(WorkerFunc: TWorkerFunction);
 begin
-  CreateWithOption(WorkerFunc, GetDefaultOptions);
+  inherited Create;
+
+  DoCreateWithOption(WorkerFunc, GetDefaultOptions);
 
 end;
 
 destructor TWorkerPool.Destroy;
 begin
+  Queue.EndOfOperation := True;
   Queue.Free;
 
+  FThreads.Clear;
+  FThreads.Free;
+
   inherited Destroy;
+
 end;
 
 procedure TWorkerPool.ServeRequest(Request: TRequest; Response: TResponse

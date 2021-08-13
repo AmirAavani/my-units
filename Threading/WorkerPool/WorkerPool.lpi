@@ -60,6 +60,18 @@
         <Filename Value="../ThreadSafeStackUnit.pp"/>
         <IsPartOfProject Value="True"/>
       </Unit>
+      <Unit>
+        <Filename Value="../../PB2PAS/ProtoHelperUnit.pp"/>
+        <IsPartOfProject Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="Protos/RequestUnit.pp"/>
+        <IsPartOfProject Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="Protos/ResponseUnit.pp"/>
+        <IsPartOfProject Value="True"/>
+      </Unit>
     </Units>
   </ProjectOptions>
   <CompilerOptions>
@@ -69,7 +81,7 @@
     </Target>
     <SearchPaths>
       <IncludeFiles Value="$(ProjOutDir)"/>
-      <OtherUnitFiles Value="WebEngine;libraries/WebEngineUnits;libraries/General-Purpose-Units;libraries/Unicode-Functions;libraries/TemplatesUnit;libraries/Database-Units;DB;libraries/ALogger;DataModule;libraries/DataModule;libraries/Threading;..;../../General-Purpose-Units;../../Algortihmic-Unit;../../ALogger;../../Unicode-Functions"/>
+      <OtherUnitFiles Value="WebEngine;libraries/WebEngineUnits;libraries/General-Purpose-Units;libraries/Unicode-Functions;libraries/TemplatesUnit;libraries/Database-Units;DB;libraries/ALogger;DataModule;libraries/DataModule;libraries/Threading;..;../../General-Purpose-Units;../../Algortihmic-Unit;../../ALogger;../../Unicode-Functions;../../PB2PAS;Protos"/>
       <UnitOutputDirectory Value="lib/$(TargetCPU)-$(TargetOS)"/>
     </SearchPaths>
   </CompilerOptions>

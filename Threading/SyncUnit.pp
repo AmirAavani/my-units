@@ -73,10 +73,57 @@ type
     procedure Wait;
   end;
 
+  { TAtomic }
+
+  generic TAtomic<T> = class(TObject)
+  public type
+    TApplyFunc = function (v: T): T;
+  private
+    FValue: T;
+    Mutex: TMutex;
+
+  public
+    property Value: T read FValue;
+
+    constructor Create(InitValue: T);
+    destructor Destroy; override;
+
+    function Apply(Func: TApplyFunc): T;
+
+  end;
+
 implementation
 
 uses
   ALoggerUnit, BaseUnix;
+
+{ TAtomic }
+
+constructor TAtomic.Create(InitValue: T);
+begin
+  inherited Create;
+
+  Mutex := TMutex.Create;
+  FValue := InitValue;
+end;
+
+destructor TAtomic.Destroy;
+begin
+  Mutex.Free;
+
+  inherited Destroy;
+end;
+
+function TAtomic.Apply(Func: TApplyFunc): T;
+begin
+  Mutex.Lock;
+
+  Result := Func(Value);
+  FValue := Result;
+
+  Mutex.Unlock;
+
+end;
 
 { TRWMutex }
 

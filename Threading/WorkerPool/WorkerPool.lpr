@@ -6,48 +6,47 @@ uses
   {$IFDEF UNIX}
   cthreads,
   {$ENDIF}
-  Classes, sysutils, WorkerPoolUnit, ThreadPoolUnit, QueueUnit, HeapUnit, ALoggerUnit,
-  WideStringUnit, ThreadSafeStackUnit, GenericCollectionUnit
-  { you can add units after this };
+  Classes, sysutils, WorkerPoolUnit, ThreadPoolUnit, QueueUnit, HeapUnit,
+  ALoggerUnit, WideStringUnit, ThreadSafeStackUnit, ResponseUnit, RequestUnit,
+  GenericCollectionUnit;
 
 function WorkerFunction01(
-  Request: WorkerPoolUnit.TRequest;
-  Response: WorkerPoolUnit.TResponse): Boolean;
+  Request: TRequestForTest1;
+  Response: TResponseForTest1): Boolean;
 var
   S: AnsiString;
 
 begin
-  S := PAnsiString(Request)^;
-  PAnsiString(Response)^ := 'x' + S;
-  FMTDebugLn('Request: %s', [S]);
-  Sleep(Random(10));
+  S := Request.Text;
+  Response.Text := 'x' + S;
+  Sleep(Random(100) + 1);
+
   Result := True;
 
 end;
 
-procedure Test1;
+procedure Test01;
+type
+  TWorkerPoolForTest1 = specialize TWorkerPool<TRequestForTest1, TResponseForTest1>;
+
 var
-  wp: TWorkerPool;
+  wp: TWorkerPoolForTest1;
   i: Integer;
-  Request: TRequest;
-  Response: TResponse;
-  PStr: PAnsiString;
-  AllResponses: specialize TCollection<TResponse>;
+  Request: TRequestForTest1;
+  Response: TResponseForTest1;
+  AllResponses: specialize TCollection<TResponseForTest1>;
   AllDone: Boolean;
 
 begin
-  AllResponses :=  (specialize TCollection<TResponse>).Create;
+  AllResponses :=  (specialize TCollection<TResponseForTest1>).Create;
 
-  wp := TWorkerPool.CreateWithDefaultOptions(@WorkerFunction01);
+  wp := TWorkerPoolForTest1.CreateWithDefaultOptions(@WorkerFunction01);
 
   for i := 0 to 10000 do
   begin
-    New(PStr);
-    PStr^ := IntToStr(i);
-    Request := PStr;
-    New(PStr);
-    PStr^ := '';
-    Response := PStr;
+    Request := TRequestForTest1.Create;
+    Request.Text := IntToStr(i);
+    Response := TResponseForTest1.Create;
 
     AllResponses.Add(Response);
     wp.ServeRequest(Request, Response);
@@ -64,19 +63,19 @@ begin
       if AllResponses[i] = nil then
         Continue;
 
-      if PAnsiString(AllResponses[i])^ <> '' then
+      if AllResponses[i].Text <> '' then
       begin
-        if PAnsiString(AllResponses[i])^ <> 'x' + IntToStr(i) then
+        if AllResponses[i].Text <> 'x' + IntToStr(i) then
         begin
           FmtFatalLn('Something went wrong! Expected %s Recieved: %s',
             ['x' + IntToStr(i) ,  PAnsiString(AllResponses[i])^]);
         end;
-        FMTDebugLnEveryN(100, '%d is done', [i]);
-        Dispose(PAnsiString(AllResponses[i]));
+        AllResponses[i].Free;
         AllResponses[i] := nil;
 
         Continue;
       end;
+      // WriteLn('Not Done ', i);
       FMTDebugLn('Request %d has not been served yet!', [i]);
 
       AllDone := False;
@@ -87,13 +86,16 @@ begin
 
   end;
 
-  FMTDebugLn('All Done!', []);
+  WriteLn('AllDone: ', AllDone);
   wp.Free;
-
+  AllResponses.Free;
 end;
 
 begin
-  Test1;
+  Test01;
+
+  Sleep(1000);
+
 
 end.
 

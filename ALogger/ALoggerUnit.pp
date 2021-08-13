@@ -161,8 +161,11 @@ begin
   Mutex4Counters.Unlock;
 
   if b then
+  begin
     _Writeln(Format('%d-%s-%s:%d] %s', [ThreadID, DateTimeToStr(Now), Filename, LineNumber,
     Format(Fmt, Args)]));
+
+  end;
 
 end;
 
