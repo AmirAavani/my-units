@@ -27,6 +27,8 @@ type
 
   end;
 
+  TAnsiStrings = specialize TCollection<AnsiString>;
+
 implementation
 
 { TIntegerCollection }

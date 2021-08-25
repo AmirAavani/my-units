@@ -19,13 +19,34 @@ type
 
   { TWorkerPool }
 
-  generic TWorkerPool<TRequest: TBaseMessage; TResponse: TBaseMessage> = class(TObject)
+  TWorkerPool= class(TObject)
   public
     class function GetDefaultOptions: TWorkerPoolOptions;
 
   public type
+    TRequest = TBaseMessage;
+    TResponse = TBaseMessage;
     TWorkerFunction = function (Request: TRequest; Response: TResponse): Boolean;
     TCallbackProcedure = procedure (Request: TRequest; Response: TResponse);
+
+    { TBaseWorker }
+
+    TBaseWorker = class(TObject)
+    protected
+      procedure Serve(Request: TRequest; Response: TResponse; Callback: TCallbackProcedure); virtual; abstract;
+
+    public
+    end;
+
+    { TWorkerByFunction }
+
+    TWorkerByFunction = class(TBaseWorker)
+      FWorkerFunction: TWorkerFunction;
+
+    public
+      class function CreateWorkerByFunction(aFunction: TWorkerFunction): TWorkerPool.TWorkerByFunction;
+
+    end;
 
 
   protected type
@@ -77,8 +98,8 @@ type
   public
     property Options: TWorkerPoolOptions read FOptions;
 
-    constructor CreateWithOption(WorkerFunc: TWorkerFunction; _Options: TWorkerPoolOptions);
-    constructor CreateWithDefaultOptions(WorkerFunc: TWorkerFunction);
+    constructor CreateWithOption(_Options: TWorkerPoolOptions);
+    constructor CreateWithDefaultOptions;
     destructor Destroy; override;
 
     procedure ServeRequest(Request: TRequest; Response: TResponse; Callback: TCallbackProcedure = nil);
@@ -88,6 +109,15 @@ type
 implementation
 uses
   ALoggerUnit;
+
+{ TWorkerPool.TWorkerByFunction }
+
+class function TWorkerPool.TWorkerByFunction.CreateWorkerByFunction(
+  aFunction: TWorkerFunction): TWorkerPool.TWorkerByFunction;
+begin
+  Result := TWorkerPool.TWorkerByFunction.Create;
+  Result.FWorkerFunction := aFunction;
+end;
 
 { TWorkerPool.TPoolWorkerFunc }
 
@@ -185,7 +215,7 @@ begin
   FThreads := TThreadCollection.Create;
 
   Queue.EndOfOperation := False;
-  for i := 0 to FOptions.NumberOfInitialThreads do
+  for i := 1 to FOptions.NumberOfInitialThreads do
   begin
     Thread := TPoolWorkerFunc.Create(Self,WorkerFunc);
     Thread.FreeOnTerminate := True;
@@ -201,7 +231,7 @@ constructor TWorkerPool.CreateWithOption(WorkerFunc: TWorkerFunction;
 begin
   inherited Create;
 
-  DoCreateWithOption(WorkerFunc, Options);
+  DoCreateWithOption(WorkerFunc, _Options);
 
 end;
 
