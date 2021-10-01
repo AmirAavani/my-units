@@ -1,0 +1,11 @@
+syntax = "proto3";
+
+package request;
+
+message RequestForTest01 {
+  string text = 1;
+}
+
+message RequestForTest02 {
+  int32 number = 1;
+}

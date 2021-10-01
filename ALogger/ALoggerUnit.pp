@@ -18,13 +18,13 @@ type
 
   end;
 
-procedure DebugLn(Msg: AnsiString; Verbosity: Integer = 0);
-procedure FMTDebugLn(Fmt: AnsiString; const Args: array of const ; Verbosity: Integer = 0);
-procedure DebugLnEveryN(N: Integer; Msg: AnsiString; Verbosity: Integer = 0);
-procedure FMTDebugLnEveryN(N: Integer; Fmt: AnsiString; const Args : array of const; Verbosity: Integer = 0);
-procedure FatalLn(Msg: AnsiString);
-procedure FmtFatalLn(Fmt: AnsiString; const Args: array of const);
-procedure FmtFatalLnIFFalse(Value: Boolean; Fmt: AnsiString; const Args: array of const);
+procedure DebugLn(constref Msg: AnsiString; Verbosity: Integer = 0);
+procedure FMTDebugLn(constref Fmt: AnsiString; constref Args: array of const ; Verbosity: Integer = 0);
+procedure DebugLnEveryN(N: Integer; constref Msg: AnsiString; Verbosity: Integer = 0);
+procedure FMTDebugLnEveryN(N: Integer; constref Fmt: AnsiString; constref Args : array of const; Verbosity: Integer = 0);
+procedure FatalLn(constref Msg: AnsiString);
+procedure FmtFatalLn(constref Fmt: AnsiString; const Args: array of const);
+procedure FmtFatalLnIFFalse(Value: Boolean; constref Fmt: AnsiString; constref Args: array of const);
 
 implementation
 
@@ -108,7 +108,7 @@ begin
 end;
 
 
-procedure DebugLn(Msg: AnsiString; Verbosity: Integer);
+procedure DebugLn(constref Msg: AnsiString; Verbosity: Integer);
 var
   Filename: AnsiString;
   LineNumber: Integer;
@@ -118,7 +118,7 @@ begin
   _DebugLn(Filename, LineNumber, '%s', [Msg], Verbosity);
 end;
 
-procedure FMTDebugLn(Fmt: AnsiString; const Args: array of const;
+procedure FMTDebugLn(constref Fmt: AnsiString; constref Args: array of const;
   Verbosity: Integer);
 var
   Filename: AnsiString;
@@ -169,7 +169,7 @@ begin
 
 end;
 
-procedure DebugLnEveryN(N: Integer; Msg: AnsiString; Verbosity: Integer);
+procedure DebugLnEveryN(N: Integer; constref Msg: AnsiString; Verbosity: Integer);
 var
   Filename: AnsiString;
   LineNumber: Integer;
@@ -180,8 +180,8 @@ begin
 
 end;
 
-procedure FMTDebugLnEveryN(N: Integer; Fmt: AnsiString;
-  const Args: array of const; Verbosity: Integer);
+procedure FMTDebugLnEveryN(N: Integer; constref Fmt: AnsiString;
+  constref  Args: array of const; Verbosity: Integer);
 var
   Filename: AnsiString;
   LineNumber: Integer;
@@ -200,7 +200,7 @@ begin
 
 end;
 
-procedure FatalLn(Msg: AnsiString);
+procedure FatalLn(constref Msg: AnsiString);
 var
   Filename: AnsiString;
   LineNumber: Integer;
@@ -212,7 +212,7 @@ begin
 end;
 
 
-procedure FmtFatalLn(Fmt: AnsiString; const Args: array of const);
+procedure FmtFatalLn(constref Fmt: AnsiString; const Args: array of const);
 var
   Filename: AnsiString;
   LineNumber: Integer;
@@ -223,8 +223,8 @@ begin
 
 end;
 
-procedure FmtFatalLnIFFalse(Value: Boolean; Fmt: AnsiString;
-  const Args: array of const);
+procedure FmtFatalLnIFFalse(Value: Boolean; constref Fmt: AnsiString;
+  constref Args: array of const);
 var
   Filename: AnsiString;
   LineNumber: Integer;
