@@ -51,6 +51,7 @@ type
 
   function EscapeForJavascript(const InputString: AnsiString): AnsiString;
   function EscapeForHTML(const InputString: AnsiString): AnsiString;
+  function EscapeForTextAreas(const InputString: AnsiString): AnsiString;
   function EscapeForIframeSrcDoc(const InputString: AnsiString): AnsiString;
 
 implementation
@@ -72,7 +73,6 @@ begin
   for i := 0 to High(Str) do
     if Pos(Str[i], Result) <> 0 then
     begin
-      FMTDebugLn('%d:%s', [Pos(Str[i], Result), Result]);
       Result := StringReplace(Result, Str[i], RepStr[i], [rfReplaceAll]);
     end;
 
@@ -92,6 +92,12 @@ begin
   Result := InputString;
   for i := Low(Str) to High(Str) do
     Result := StringReplace(Result, Str[i], RepStr[i], [rfReplaceAll]);
+
+end;
+
+function EscapeForTextAreas(const InputString: AnsiString): AnsiString;
+begin
+  Result := InputString;
 
 end;
 

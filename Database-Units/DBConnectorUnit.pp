@@ -110,10 +110,10 @@ function EscapeForQuery(const Query: WideString): WideString;
 const
   SingleQuote = Chr(39);
   Tab = Chr(7);
-  Source: array of WideString = (#$0, '\', SingleQuote, '"', #13#10, #10, Tab,
-  Chr(26), '%', '_');
-  Target: array of WideString = ('\0', '\\', '\' + SingleQuote, '\"', '\n','\n',
-  '\t', '\Z', '\%', '\_');
+  Source: array of AnsiString = (#$0, '\',   SingleQuote,      '"',   #13#10,  #10,
+  Tab, Chr(26));
+  Target: array of AnsiString = ('\0', '\\', '\' + SingleQuote, '\"', '\n',    '\n',
+  '\t', '\Z');
 var
   i: Integer;
 
@@ -137,16 +137,16 @@ begin
   begin
     Result := WideString(StringReplace(AnsiString(Result), Source[i], Target[i],
     [rfReplaceAll]));
+
   end;
+
 
 end;
 
 function UnEscapeQuery(const EscapedQuery: WideString): WideString;
 begin
-  FmtFatalLn('NIY', []);
-  Result := WideString(StringReplace(StringReplace(
-     AnsiString(EscapedQuery), '\'+'''', '''', [rfReplaceAll]),
-        '\"', '"', [rfReplaceAll]));
+  Result := EscapedQuery;
+
 end;
 
 constructor ENoActiveDB.Create;

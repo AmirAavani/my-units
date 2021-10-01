@@ -61,6 +61,8 @@ type
   end;
 
 implementation
+uses
+  DBConnectorUnit;
 
 { TValue.EUninitializedValue }
 
@@ -288,7 +290,8 @@ begin
       itAnsiString:
       begin
         Self.ValuePtr := New(PAnsiString);
-        PAnsiString(ValuePtr)^ := NewValue;
+        PAnsiString(ValuePtr)^ := UnEscapeQuery(NewValue);
+
       end;
       itBoolean:
       begin

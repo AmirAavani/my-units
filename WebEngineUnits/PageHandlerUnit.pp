@@ -28,7 +28,7 @@ type
 
 implementation
 uses
-  httpprotocol;
+  httpprotocol, ALoggerUnit;
 
 { TXMLBasePageHandler }
 
@@ -54,6 +54,7 @@ end;
 function THTMLBasePageHandler.WouldHandleRequest(ARequest: THTTPServerRequest
   ): Boolean;
 begin
+  FMTDebugLn('PathInfo: %s', [ARequest.PathInfo]);
   Result := 0 <= Self.ServingPaths.IndexOf(ARequest.PathInfo);
 
 end;

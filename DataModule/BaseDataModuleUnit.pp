@@ -192,6 +192,8 @@ begin
     Exit('');
 
   Result:= inherited GetAsAnsiString;
+  Result := AnsiString(UnEscapeQuery(WideString(Result)));
+
 end;
 
 function TBaseDataModule.TDMValue.GetAsBoolean: Boolean;
