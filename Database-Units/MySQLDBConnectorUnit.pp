@@ -5,7 +5,7 @@ unit MySQLDBConnectorUnit;
 interface
 
 uses
-  Classes, SysUtils, DBConnectorUnit, mysql50, QueryResponeUnit;
+  Classes, SysUtils, DBConnectorUnit, mysql50, QueryResponeUnit, SyncUnit;
 
 type
   TMySQLDatabaseConnection = class;
@@ -19,6 +19,7 @@ type
     FCurrentRow: TStringList;
     FColumns: TStringList;
     FMySqlConnection: TMySQLDatabaseConnection;
+    Mutex: TMutex;
 
   protected
     function GetHasNext: Boolean; override;
@@ -45,7 +46,7 @@ type
   private
     MySQLConnection: PMYSQL;
     QMysql: st_mysql;
-    RTLEvent: PRTLEvent;
+    Mutex: TMutex;
 
   protected
 
@@ -134,6 +135,7 @@ begin
   FColumns := TStringList.Create;
   GetColumns(FColumns);
   FMySqlConnection := Connection;
+  Mutex := TMutex.Create;
 
 end;
 
@@ -142,7 +144,7 @@ begin
   mysql_free_result(FRes);
   FCurrentRow.Free;
   FColumns.Free;
-  RTLeventSetEvent(FMySqlConnection.RTLEvent);
+  Mutex.Free;
 
   inherited Destroy;
 end;
@@ -241,8 +243,9 @@ constructor TMySQLDatabaseConnection.Create (
 begin
   inherited;
 
-  RTLEvent := RTLEventCreate;
-  RTLeventSetEvent(RTLEvent);
+  Mutex := TMutex.Create;
+
+  Mutex.Lock;
 
   mysql_init(PMySQL(@QMysql));
   MySQLConnection := mysql_real_connect(PMysql(@QMysql), PChar(Host), PChar(Username),
@@ -253,14 +256,19 @@ begin
     Writeln(stderr, 'Couldn''t connect to MySQL.');
     Writeln(stderr, mysql_error(@QMysql));
     halt(1);
+
   end;
 
+  Mutex.Unlock;
 end;
 
 destructor TMySQLDatabaseConnection.Destroy;
 begin
-  RTLeventdestroy(RTLEvent);
+  Mutex.Lock;
   mysql_close(MySQLConnection);
+  Mutex.Unlock;
+
+  Mutex.Free;
 
   inherited Destroy;
 
@@ -268,48 +276,52 @@ end;
 
 function TMySQLDatabaseConnection.Refresh: Boolean;
 begin
-  RTLeventWaitFor(RTLEvent);
+  Mutex.Lock;
 
   mysql_refresh(MySQLConnection, 0);
 
-  RTLeventSetEvent(RTLEvent);
+  Mutex.Unlock;
 end;
 
 procedure TMySQLDatabaseConnection.Disconnect;
 begin
-  RTLeventWaitFor(RTLEvent);
+  Mutex.Lock;
 
   if MySQLConnection <> nil then
     mysql_close(MySQLConnection);
 
   MySQLConnection := nil;
-  RTLeventSetEvent(RTLEvent);
+  Mutex.Unlock;
 end;
 
 procedure TMySQLDatabaseConnection.SetActiveDatabase (DBName: AnsiString);
 begin
-  RTLeventWaitFor(RTLEvent);
+  Mutex.Lock;
 
   if mysql_select_db(MySQLConnection, PChar(DBName)) <> 0 then
+  begin
+    Mutex.Unlock;
     raise EMySqlError.Create('Failed to connect to Database with name: "'
                               + DBName + '"');
+  end;
 
-  RTLeventSetEvent(RTLEvent);
+  Mutex.Unlock;
 end;
 
 procedure TMySQLDatabaseConnection.Connect;
 begin
-  RTLeventWaitFor(RTLEvent);
+  Mutex.Lock;
 
   MySQLConnection := mysql_init(MySQLConnection);
   if mysql_real_connect(MySQLConnection, PAnsiChar(FHost), PAnsiChar(FUserName),
     PAnsiChar(FPassword), nil, 0, nil, CLIENT_MULTI_RESULTS) = nil then
     begin
-      RTLeventSetEvent(RTLEvent);
+      Mutex.Unlock;
       raise EMySqlError.Create('Couldn''t connect to MySQL.');
-      Exit;
+
     end;
-  RTLeventSetEvent(RTLEvent);
+
+  Mutex.Unlock;
 end;
 
 function TMySQLDatabaseConnection.RunQuery(const Query: AnsiString
@@ -318,23 +330,27 @@ var
   Res: PMYSQL_RES;
 
 begin
-  RTLeventWaitFor(RTLEvent);
+  Mutex.Lock;
+
   if mysql_query(MySQLConnection, PAnsiChar(Query)) <> 0 then
   begin
     WriteLn(StdErr, Format('Mysql_query: %s', [PAnsiChar(Query)]));
     WriteLn(StdErr, mysql_errno(MySQLConnection), ': ', mysql_error(MySQLConnection));
     Flush(Output);
 
-    RTLeventSetEvent(RTLEvent);
+    Mutex.Unlock;
     raise EMySqlError.Create('Query failed');
   end;
 
   Res := mysql_store_result(MySQLConnection);
   if Res = nil then
   begin
-    RTLeventSetEvent(RTLEvent);
+    Mutex.Unlock;
     Exit(nil);
+
   end;
+
+  Mutex.Unlock;
 
   Result := TMySqlQueryResponse.Create(Res, Self);
 end;
