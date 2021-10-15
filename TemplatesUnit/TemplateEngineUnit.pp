@@ -1,4 +1,5 @@
 unit TemplateEngineUnit;
+{$mode ObjFPC}{$H+}
 
 interface
 uses
