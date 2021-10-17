@@ -35,7 +35,7 @@ uses
 function TXMLBasePageHandler.Execute(Sender: THTTPServerThread;
   TheRequest: THTTPServerRequest; TheResponse: THTTPServerResponse): Boolean;
 begin
-  TheResponse.OriginalResponse.SetHeader(hhContentType, 'text/xml; charset=utf-8');
+  TheResponse.OriginalResponse.SetHeader(hhContentType, 'text/xml;charset=utf-8');
 
   Result := True;
 
@@ -46,7 +46,7 @@ end;
 function THTMLBasePageHandler.Execute(Sender: THTTPServerThread;
   TheRequest: THTTPServerRequest; TheResponse: THTTPServerResponse): Boolean;
 begin
-  TheResponse.OriginalResponse.SetHeader(hhContentType, 'text/html; charset=utf-8');
+  TheResponse.OriginalResponse.SetHeader(hhContentType, 'text/html;charset=utf-8');
 
   Result := True;
 end;
