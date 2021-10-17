@@ -45,7 +45,6 @@ type
   TMySQLDatabaseConnection= class (TDatabaseConnection)
   private
     MySQLConnection: PMYSQL;
-    QMysql: st_mysql;
     Mutex: TMutex;
 
   protected
@@ -240,6 +239,9 @@ end;
 
 constructor TMySQLDatabaseConnection.Create (
   const Username, Password, Host: AnsiString);
+var
+  Alloc: PMYSQL;
+
 begin
   inherited;
 
@@ -247,15 +249,17 @@ begin
 
   Mutex.Lock;
 
-  mysql_init(PMySQL(@QMysql));
-  MySQLConnection := mysql_real_connect(PMysql(@QMysql), PChar(Host), PChar(Username),
+  Alloc := mysql_init(nil);
+  MySQLConnection := mysql_real_connect(Alloc, PChar(Host), PChar(Username),
     PChar(Password), nil, 3306, nil, 0);
-
+  MySQLConnection^.options.max_allowed_packet:= 1024 * 1024;
   if MySQLConnection = Nil then
   begin
     Writeln(stderr, 'Couldn''t connect to MySQL.');
-    Writeln(stderr, mysql_error(@QMysql));
-    halt(1);
+    Writeln(stderr, mysql_error(nil));
+    Writeln('Couldn''t connect to MySQL.');
+    Writeln(mysql_error(nil));
+    halt(12);
 
   end;
 
