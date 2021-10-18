@@ -403,7 +403,10 @@ begin
   Result := True;
 
   for i := 0 to Row.Count - 1 do
+  begin
+    FMTDebugLn('Column[%d]: %s -> %d', [i, Column[i], Length(Row[i])]);
     Self.SetValueByColumnName(Column[i], Row[i]);
+  end;
 
 end;
 
