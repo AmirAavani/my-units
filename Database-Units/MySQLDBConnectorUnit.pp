@@ -163,13 +163,14 @@ end;
 procedure TMySqlQueryResponse.GetRow(Response: TStringList);
 var
   i: Integer;
-  Field: PMYSQL_FIELD;
 
 begin
   for i := 0 to NumColumns - 1 do
   begin
-    Field := mysql_fetch_field_direct(FRes, i);
+    WriteLn(Format('FCurrentRowRaw[%d] -> %d(%s)', [i, Length(FCurrentRowRaw[i]),
+    FCurrentRowRaw[i]]));
     Response.Add(FCurrentRowRaw[i]);
+
   end;
 
 end;
@@ -197,6 +198,7 @@ begin
   begin
     Field := mysql_fetch_field_direct(FRes, i);
     Response.Add(Field^.name);
+
   end;
 
 end;
@@ -252,7 +254,6 @@ begin
   Alloc := mysql_init(nil);
   MySQLConnection := mysql_real_connect(Alloc, PChar(Host), PChar(Username),
     PChar(Password), nil, 3306, nil, 0);
-  MySQLConnection^.options.max_allowed_packet:= 1024 * 1024;
   if MySQLConnection = Nil then
   begin
     Writeln(stderr, 'Couldn''t connect to MySQL.');
@@ -262,6 +263,7 @@ begin
     halt(12);
 
   end;
+  MySQLConnection^.options.max_allowed_packet:= 1024 * 1024;
 
   Mutex.Unlock;
 end;

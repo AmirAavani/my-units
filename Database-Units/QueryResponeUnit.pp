@@ -110,6 +110,9 @@ end;
 { TColumnInfo }
 
 constructor TColumnInfo.Create(Row: TStringList);
+var
+  r: AnsiString;
+
 begin
   inherited Create;
 
@@ -127,6 +130,11 @@ begin
   FExtra := TStringList.Create;
   FExtra.Sorted := True;
   FExtra.Add(Row[5]);
+
+  for r in Row do
+  begin
+    WriteLn(Format('r: %d -> %s', [Length(r), r]));
+  end;
 end;
 
 destructor TColumnInfo.Destroy;
