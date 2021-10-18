@@ -37,7 +37,6 @@ var
 
 procedure GetParentLineInfo(var Filename: AnsiString; var LineNumber: Integer);
 var
-  CallerFrame,
   CallerAddress,
   bp: CodePointer;
   Func, Source: ShortString;
@@ -57,9 +56,9 @@ begin
   end;
 
   CallerAddress := get_caller_addr(bp);
-  CallerFrame := get_caller_frame(bp);
-  if (CallerAddress = nil) or (CallerFrame = nil) then
+  if CallerAddress = nil then
   begin
+    WriteLn('CallerAddress = nil');
     Halt(1);
   end;
 
