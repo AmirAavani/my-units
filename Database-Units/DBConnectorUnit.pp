@@ -175,8 +175,6 @@ end;
 
 destructor TDatabaseConnection.Destroy;
 begin
-  Disconnect;
-
   inherited Destroy;
 
 end;

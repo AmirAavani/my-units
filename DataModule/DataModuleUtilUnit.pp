@@ -4,7 +4,7 @@ unit DataModuleUtilUnit;
 
 interface
 uses
-  Classes, SysUtils, fgl;
+  Classes, SysUtils, CollectionUnit;
 
 type
 
@@ -14,7 +14,7 @@ type
   private
     FMaxCount: Integer;
     FOrderByColumns: TStringList;
-    FOrderDesc: specialize TFPGList<Boolean>;
+    FOrderDesc: TBooleans;
     FStartLimit, FCountLimit: Integer;
 
     function GetOrderByColumns: TStringList;
@@ -22,11 +22,12 @@ type
     function GetStartLimit: Integer;
   public
     property OrderByColumns: TStringList read GetOrderByColumns;
-    property OrderDesc: specialize TFPGList<Boolean> read FOrderDesc;
+    property OrderDesc: TBooleans read FOrderDesc;
     property StartLimit: Integer read GetStartLimit;
     property CountLimit: Integer read GetCountLimit;
 
     constructor Create;
+    destructor Destroy; override;
 
     function AddLimit(Start, Count: Integer): TGetWhereAllOptions;
     function AddOrderBy(ColumnName: AnsiString; IsDesc: Boolean): TGetWhereAllOptions;
@@ -92,10 +93,18 @@ begin
 
   FMaxCount := -1;
   FOrderByColumns := TStringList.Create;
-  FOrderDesc := (specialize TFPGList<Boolean>).Create;
+  FOrderDesc := TBooleans.Create;
   FStartLimit := -1;
   FCountLimit := -1;
 
+end;
+
+destructor TGetWhereAllOptions.Destroy;
+begin
+  FOrderByColumns.Free;
+  FOrderDesc.Free;
+
+  inherited Destroy;
 end;
 
 function TGetWhereAllOptions.AddLimit(Start, Count: Integer

@@ -29,7 +29,8 @@ procedure FmtFatalLnIFFalse(Value: Boolean; constref Fmt: AnsiString; constref A
 implementation
 
 uses
-  ParameterManagerUnit, StringUnit, WideStringUnit, SyncUnit, OnceUnit, lnfodwrf, fgl;
+  ParameterManagerUnit, StringUnit, WideStringUnit, SyncUnit, OnceUnit, lnfodwrf,
+  GenericCollectionUnit;
 
 var
   Mutex4LineInfo: TMutex;
@@ -130,7 +131,7 @@ begin
 end;
 
 type
-  TLineInfoIntegerMap = specialize TFPGMap<AnsiString, Integer>;
+  TLineInfoIntegerMap = specialize TMap<AnsiString, Integer>;
 
 var
   Counters: TLineInfoIntegerMap;
@@ -139,7 +140,7 @@ var
 procedure _DebugLnEveryN(Filename: AnsiString; LineNumber: Integer; N: Integer; Fmt: AnsiString; const Args: array of const; Verbosity: Integer; Depth: Integer);
 var
   LineInfo: AnsiString;
-  Index: Integer;
+  Value: Integer;
   b: Boolean;
 
 begin
@@ -148,15 +149,16 @@ begin
   LineInfo := Format('%s:%d', [Filename, LineNumber]);
 
   Mutex4Counters.Lock;
-  if not Counters.Find(LineInfo, Index) then
+
+  if not Counters.TryGetData(LineInfo, Value) then
   begin
     Counters.Add(LineInfo, 0);
-    Counters.Find(LineInfo, Index);
+    Value := 0;
 
   end;
 
-  b := Counters.Data[Index] mod N = 0;
-  Counters.Data[Index] := Counters.Data[Index] + 1;
+  b := Value mod N = 0;
+  Counters.AddOrUpdateData(LineInfo, Value + 1);
   Mutex4Counters.Unlock;
 
   if b then
@@ -262,7 +264,6 @@ initialization
   Mutex4Counters := TMutex.Create;
   MutexWriteLn := TMutex.Create;
   Counters := TLineInfoIntegerMap.Create;
-  Counters.Sorted := True;
   PrintOnce := TOnce.Create(@PrintError, nil);
 
 finalization

@@ -28,6 +28,7 @@ type
   end;
 
   TAnsiStrings = specialize TCollection<AnsiString>;
+  TBooleans = specialize TCollection<Boolean>;
 
 implementation
 

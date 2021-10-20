@@ -167,8 +167,6 @@ var
 begin
   for i := 0 to NumColumns - 1 do
   begin
-    WriteLn(Format('FCurrentRowRaw[%d] -> %d(%s)', [i, Length(FCurrentRowRaw[i]),
-    FCurrentRowRaw[i]]));
     Response.Add(FCurrentRowRaw[i]);
 
   end;
@@ -270,10 +268,7 @@ end;
 
 destructor TMySQLDatabaseConnection.Destroy;
 begin
-  Mutex.Lock;
-  mysql_close(MySQLConnection);
-  Mutex.Unlock;
-
+  Disconnect;
   Mutex.Free;
 
   inherited Destroy;

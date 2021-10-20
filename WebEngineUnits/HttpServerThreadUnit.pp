@@ -117,6 +117,7 @@ type
 
     procedure RegisterPageHandler(const PageHandler: TBasePageHandler);
     procedure Start;
+    procedure Stop;
   end;
 
 
@@ -677,13 +678,9 @@ begin
 end;
 
 destructor THTTPServerThread.Destroy;
-var
-  PageHandler: TBasePageHandler;
-
 begin
-  for PageHandler in PageHandlers do
-    PageHandler.Free;
-
+  FPageNotFoundHandler.Free;
+  PageHandlers.Free;
   Server.Free;
 
 end;
@@ -698,6 +695,12 @@ end;
 procedure THTTPServerThread.Start;
 begin
   Server.Active := True;
+
+end;
+
+procedure THTTPServerThread.Stop;
+begin
+  Server.Active := False;
 
 end;
 

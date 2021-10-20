@@ -5,7 +5,8 @@ unit BaseDataModuleUnit;
 interface
 
 uses
-  DBConnectorUnit, QueryResponeUnit, ValueUnit, DataModuleUtilUnit, Classes, SysUtils, fgl;
+  sysutils, classes, DBConnectorUnit, QueryResponeUnit, ValueUnit, DataModuleUtilUnit,
+  GenericCollectionUnit;
 
 type
   { EInvalidColumnName }
@@ -45,7 +46,7 @@ type
       property AsMySQL: AnsiString read GetAsMySQL;
 
     end;
-    TDMValues = specialize TFPGList<TDMValue>;
+    TDMValues = specialize TObjectCollection<TDMValue>;
 
   protected
     FValues: TDMValues;
@@ -82,11 +83,10 @@ type
 
   { TBaseDataList }
 
-  generic TBaseDataList<TData> = class(specialize TFPGList<TData>)
+  generic TBaseDataList<TData> = class(specialize TObjectCollection<TData>)
   public
     procedure PrintAll; virtual;
 
-    destructor Destroy; override;
   end;
 
   { TBaseDataModuleManager }
@@ -147,6 +147,7 @@ var
 begin
   if aDataList = nil then
     Exit(nil);
+
   if aDataList.Count = 0 then
   begin
     aDataList.Free;
@@ -248,16 +249,6 @@ begin
 
 end;
 
-destructor TBaseDataList.Destroy;
-var
-  Obj: TData;
-begin
-  for Obj in Self do
-    Obj.Free;
-
-  inherited Destroy;
-end;
-
 { EInvalidColumnName }
 
 constructor EInvalidColumnName.Create(ColumnName: AnsiString);
@@ -291,6 +282,7 @@ begin
           Query += ' DESC ';
 
       end;
+
     end;
 
     if (Option.StartLimit <> -1) and (Option.CountLimit <> -1) then
@@ -518,12 +510,8 @@ begin
 end;
 
 destructor TBaseDataModule.Destroy;
-var
-  Value: TDMValue;
-
 begin
-  for Value in FValues do
-    Value.Free;
+  FValues.Free;
 
   inherited Destroy;
 end;

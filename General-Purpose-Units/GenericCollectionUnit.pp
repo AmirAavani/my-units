@@ -43,8 +43,11 @@ type
 
   generic TMap<TKey, TValue> = class(specialize TAVLTreeMap<TKey, TValue>)
   public
-    function Find(const aKey: TKey): TValue;
-    function TryGetData(const AKey: TKey; out AData: TValue): Boolean;
+    function Exists(constref Key: TKey): Boolean;
+    function Find(constref Key: TKey): TValue;
+    function TryGetData(constref Key: TKey; out Data: TValue): Boolean;
+    // Returns True if the key exists.
+    function AddOrUpdateData(constref Key: TKey; Data: Tvalue): Boolean;
 
   end;
 
@@ -94,34 +97,56 @@ end;
 
 { TMap }
 
-function TMap.Find(const aKey: TKey): TValue;
+function TMap.Exists(constref Key: TKey): Boolean;
+var
+  pn: PNode;
+
+begin
+  pn := inherited Find(Key);
+  Result := pn <> nil;
+
+end;
+
+function TMap.Find(constref Key: TKey): TValue;
 var
   pn: PNode;
 
 begin
   Result := Default(TValue);
 
-  pn := inherited Find(aKey);
+  pn := inherited Find(Key);
   if pn <> nil then
     Result := pn^.Value;
 
 end;
 
-function TMap.TryGetData(const AKey: TKey; out AData: TValue): Boolean;
+function TMap.TryGetData(constref Key: TKey; out Data: TValue): Boolean;
 var
   pn: PNode;
 
 begin
-  pn := inherited Find(AKey);
+  pn := inherited Find(Key);
 
   if pn = nil then
   begin
-    AData := Default(TValue);
+    Data := Default(TValue);
     Exit(False);
 
   end;
+
   Result := True;
-  AData := pn^.Value;
+  Data := pn^.Value;
+
+end;
+
+function TMap.AddOrUpdateData(constref Key: TKey; Data: Tvalue): Boolean;
+begin
+  Result := Exists(key);
+
+  if Result then
+    Self[Key] := Data
+  else
+    Self.Add(Key, Data);
 
 end;
 

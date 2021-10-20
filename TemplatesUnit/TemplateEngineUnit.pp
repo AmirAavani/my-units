@@ -3,7 +3,7 @@ unit TemplateEngineUnit;
 
 interface
 uses
-  classes, fgl;
+  classes, GenericCollectionUnit;
 
 type
 
@@ -11,9 +11,9 @@ type
 
   TName2ValueMapper = class(TObject)
   private type
-    TNameValueMapping = specialize TFPGMap<AnsiString, AnsiString>;
-    TNameValuesMapping = specialize TFPGMap<AnsiString, TStringList>;
-    TNameCounter = specialize TFPGMap<AnsiString, Integer>;
+    TNameValueMapping = specialize TMap<AnsiString, AnsiString>;
+    TNameValuesMapping = specialize TMapSimpleKeyObjectValue<AnsiString, TStringList>;
+    TNameCounter = specialize TMap<AnsiString, Integer>;
 
   private
     NameValueMapping: TNameValueMapping;
@@ -57,7 +57,7 @@ type
 
 implementation
 uses
-  ALoggerUnit, sysutils;
+  sysutils, ALoggerUnit;
 
 function EscapeForJavascript(const InputString: AnsiString): AnsiString;
 const
@@ -139,8 +139,6 @@ begin
 
   NameValueMapping := TNameValueMapping.Create;
   NameValuesMapping := TNameValuesMapping.Create;
-  NameValuesMapping.Sorted := True;
-  NameValueMapping.Sorted := True;
 
 end;
 
@@ -150,8 +148,6 @@ var
 begin
   NameValueMapping.Free;
 
-  for i := 0 to NameValuesMapping.Count - 1 do
-    NameValuesMapping.Data[i].Free;
   NameValuesMapping.Free;
 
   inherited Destroy;
@@ -159,7 +155,7 @@ end;
 
 procedure TName2ValueMapper.AddNameValue(const Name, Value: AnsiString);
 begin
-  NameValueMapping.AddOrSetData(Name, Value);
+  NameValueMapping.Add(Name, Value);
 
 end;
 
@@ -170,7 +166,7 @@ var
   Data: TStringList;
 
 begin
-  if NameValuesMapping.IndexOf(Name) = -1 then
+  if NameValuesMapping.Find(Name) = nil then
   begin
      NameValuesMapping.Add(Name, TStringList.Create);
      Self.AddNameValues(Name, Values);
@@ -190,11 +186,12 @@ var
   Data: TStringList;
 
 begin
-  if NameValuesMapping.IndexOf(Name) = -1 then
+  if NameValuesMapping.Find(Name) = nil then
   begin
      NameValuesMapping.Add(Name, TStringList.Create);
      Self.AddNameValues(Name, Values);
      Exit;
+
   end;
 
   Data := NameValuesMapping[Name];
@@ -230,7 +227,7 @@ begin
 end;
 
 type
-  TNameCounterMap = specialize TFPGMap<AnsiString, Integer>;
+  TNameCounterMap = specialize TMap<AnsiString, Integer>;
 
 function TTemplateEngine.Map(Mapper: TName2ValueMapper): AnsiString;
   function AtStart(PC: PChar; Index: Integer): Boolean;
@@ -287,18 +284,17 @@ var
     Inc(Count);
     if AllValues.Count < Count then
       Result := AllValues[AllValues.Count - 1];
-    NameCounterMap.AddOrSetData(aName, Count);
+    NameCounterMap.AddOrUpdateData(aName, Count);
 
   end;
 
 var
   i: Integer;
   PC: PChar;
-  aName: AnsiString;
 
 begin
   NameCounterMap := TNameCounterMap.Create;
-  NameCounterMap.Sorted := True;
+
   Result := '';
   i := 1;
   PC := @Text[1];
