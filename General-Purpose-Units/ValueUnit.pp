@@ -62,7 +62,7 @@ type
 
 implementation
 uses
-  DBConnectorUnit;
+  ALoggerUnit;
 
 { TValue.EUninitializedValue }
 
@@ -231,7 +231,10 @@ begin
     itInteger:
       Dispose(PInt64(ValuePtr));
     itUInteger:
-      Dispose(PUInt64(ValuePtr));
+      Dispose(PUInt64(ValuePtr))
+    else
+      FmtFatalLn('Unknown Type %d', [Ord(InputType)]);
+
   end;
 
   inherited Destroy;
@@ -290,7 +293,6 @@ begin
       itAnsiString:
       begin
         Self.ValuePtr := New(PAnsiString);
-        PAnsiString(ValuePtr)^ := UnEscapeQuery(NewValue);
 
       end;
       itBoolean:

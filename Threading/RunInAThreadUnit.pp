@@ -8,8 +8,8 @@ uses
   Classes, SysUtils, Generics.Collections;
 
 type
-  TPointerList = specialize TList<TObject>;
-  TThreadFunctionPtr = function (Args: TPointerList): Boolean;
+  TObjectList = specialize TList<TObject>;
+  TThreadFunctionPtr = function (Args: TObjectList): Boolean;
 
   { TData }
 
@@ -34,10 +34,10 @@ type
     constructor CreateExtended(e: Extended);
     constructor Create(D: Pointer; dt: TDataType);
 
-  destructor Destroy; override;
+    destructor Destroy; override;
   end;
 
-procedure RunInThread(F: TThreadFunctionPtr; Args: TPointerList;
+procedure RunInThread(F: TThreadFunctionPtr; Args: TObjectList;
   OutputResult: PBoolean);
 
 implementation
@@ -49,20 +49,20 @@ type
 
   TRunnerThread = class(TThread)
   private
-    Arguments: TPointerList;
+    Arguments: TObjectList;
     F: TThreadFunctionPtr;
     Result: PBoolean;
 
   public
     // Caller is responsibe for freeing the memory for SysArgs and Args.
-    constructor Create(FToRun: TThreadFunctionPtr; Args: TPointerList;
+    constructor Create(FToRun: TThreadFunctionPtr; Args: TObjectList;
        Res: PBoolean);
     destructor Destroy; override;
 
     procedure Execute; override;
   end;
 
-procedure RunInThread(F: TThreadFunctionPtr; Args: TPointerList;
+procedure RunInThread(F: TThreadFunctionPtr; Args: TObjectList;
   OutputResult: PBoolean);
 var
   Thread: TThread;
@@ -121,25 +121,35 @@ constructor TData.Create(D: Pointer; dt: TDataType);
 begin
   inherited Create;
 
-  case dt of
-  dtString:
-  begin
-    DataPtr := New(PAnsiString);
-    PAnsiString(DataPtr)^ := (PAnsiString(D))^;
+  DataType:= dt;
 
-  end;
+  case dt of
+    dtString:
+    begin
+      DataPtr := New(PAnsiString);
+      PAnsiString(DataPtr)^ := (PAnsiString(D))^;
+
+    end
+    else
+    begin
+      FmtFatalLn('Invalid dt: %d', [Ord(dt)]);
+
+    end;
   end;
 end;
 
 destructor TData.Destroy;
 begin
+  if DataType = dtString then
+    Dispose(PAnsiString(DataPtr));
+
   inherited Destroy;
 end;
 
 { TRunnerThread }
 
 constructor TRunnerThread.Create(FToRun: TThreadFunctionPtr;
-  Args: TPointerList; Res: PBoolean);
+  Args: TObjectList; Res: PBoolean);
 begin
   inherited Create(True);
 
