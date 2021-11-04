@@ -43,12 +43,27 @@ type
   { TMySQLDatabaseConnection }
 
   TMySQLDatabaseConnection= class (TDatabaseConnection)
+  private type
+
+    { TRefresherThread }
+
+    TRefresherThread = class(TThread)
+    private
+      DB: TMySQLDatabaseConnection;
+
+    public
+      constructor Create(_DB: TMySQLDatabaseConnection);
+
+      procedure Execute; override;
+
+    end;
+
   private
     MySQLConnection: PMYSQL;
     Mutex: TMutex;
+    RefresherThread: TRefresherThread;
 
   protected
-
     function GetActiveDB: AnsiString; override;
     function GetTables: TStringList; override;
 
@@ -61,6 +76,7 @@ type
     function Refresh: Boolean; override;
     procedure Disconnect;  override;
     procedure Connect; override;
+    function IsDisconnected: Boolean;
 
     function RunQuery(const Query: AnsiString): TQueryResponse; override;
     function Execute(const ProcName: AnsiString; InputArguments: array of AnsiString;
@@ -76,7 +92,11 @@ type
 
 implementation
 
+uses
+  ALoggerUnit, StringUnit, ParameterManagerUnit;
+
 type
+
   { ENotConnected }
 
   ENotConnected= class (Exception)
@@ -102,6 +122,32 @@ begin
 
   ActualLength := mysql_escape_string(PAnsiChar(Result), PAnsiChar(Str), Length(Str));
   SetLength(Result, ActualLength);
+end;
+
+{ TMySQLDatabaseConnection.TRefresherThread }
+
+constructor TMySQLDatabaseConnection.TRefresherThread.Create(
+  _DB: TMySQLDatabaseConnection);
+begin
+  inherited Create(True);
+
+  DB := _DB;
+
+end;
+
+procedure TMySQLDatabaseConnection.TRefresherThread.Execute;
+var
+  RefreshInterval: Int64;
+
+begin
+  RefreshInterval:= GetRunTimeParameterManager.ValueByName['--DBRefreshInterval'].AsInteger;
+
+  while True do
+  begin
+    Sleep(RefreshInterval * 1000);
+    FMTDebugLn('Refresh: %s', [BoolToStr(DB.Refresh, 'True', 'False')]);
+
+  end;
 end;
 
 { TMySqlQueryResponse }
@@ -264,6 +310,9 @@ begin
   MySQLConnection^.options.max_allowed_packet:= 1024 * 1024;
 
   Mutex.Unlock;
+  RefresherThread := TRefresherThread.Create(Self);
+
+  RefresherThread.Start;
 end;
 
 destructor TMySQLDatabaseConnection.Destroy;
@@ -279,7 +328,12 @@ function TMySQLDatabaseConnection.Refresh: Boolean;
 begin
   Mutex.Lock;
 
-  mysql_refresh(MySQLConnection, 0);
+  Result := mysql_refresh(MySQLConnection, 0) = 0;
+  if not Result then
+  begin
+    FMTDebugLn(mysql_error(MySQLConnection), []);
+
+  end;
 
   Mutex.Unlock;
 end;
@@ -325,6 +379,16 @@ begin
   Mutex.Unlock;
 end;
 
+const
+  DisConnectedStat = 'The client was disconnected by the server because of inactivity. ';
+
+function TMySQLDatabaseConnection.IsDisconnected: Boolean;
+begin
+  Result := IsPrefix(PChar(DisConnectedStat), mysql_stat(MySQLConnection));
+  FMTDebugLn('%s: %s vs %s', [BoolToStr(Result), DisConnectedStat, mysql_stat(MySQLConnection)]);
+
+end;
+
 function TMySQLDatabaseConnection.RunQuery(const Query: AnsiString
   ): TQueryResponse;
 var
@@ -332,6 +396,13 @@ var
 
 begin
   Mutex.Lock;
+
+  if Self.IsDisconnected then
+  begin
+    FMTDebugLn('The Client was diconnected! Reconnecting...', []);
+    Self.Refresh;
+    FMTDebugLn('Reconnected!', []);
+  end;
 
   if mysql_query(MySQLConnection, PAnsiChar(Query)) <> 0 then
   begin
