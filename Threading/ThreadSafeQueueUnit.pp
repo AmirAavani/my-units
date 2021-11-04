@@ -28,7 +28,6 @@ type
     function GetCount: Integer; override;
     function GetIsEmpty: Boolean; override;
     function GetIsFull: Boolean; override;
-    procedure SetEndOfOperation(AValue: Boolean);
 
   protected
     procedure DoInsert(Entry: T); override;
@@ -36,8 +35,9 @@ type
     function DoGetTop: T; override;
 
   public
+    property EndOfOperation: Boolean read FEndOfOperation;
+
     procedure Clear; override;
-    property EndOfOperation: Boolean read FEndOfOperation write SetEndOfOperation;
 
     constructor Create;
     destructor Destroy; override;
@@ -101,28 +101,11 @@ begin
 
 end;
 
-procedure TThreadSafeQueue.SetEndOfOperation(AValue: Boolean);
-begin
-  if FEndOfOperation = AValue then Exit;
-
-  if FEndOfOperation and not AValue then
-  begin
-    FmtFatalLn('Cannot Undo EndOfOperation!', []);
-
-  end;
-
-  Mutex.Lock;
-
-  FEndOfOperation := AValue;
-
-  Mutex.Unlock;
-end;
-
 procedure TThreadSafeQueue.DoInsert(Entry: T);
 begin
   Mutex.Lock;
 
-  if Self.EndOfOperation then
+  if Self.FEndOfOperation then
     raise EInsertion.RealCreate('Cannot Insert New Entry After Setting EndOfOpretion');
 
   FData.Add(Entry);
@@ -157,17 +140,10 @@ begin
    while not HasElement do
    begin
      Semaphore.Dec;
-     if EndOfOperation then
+     if FEndOfOperation then
        Break;
 
      Mutex.Lock;
-
-     if Self.EndOfOperation then
-     begin
-       Mutex.Unlock;
-       Break;
-
-     end;
 
      if 0 < FData.Count then
      begin
@@ -178,9 +154,16 @@ begin
        Mutex.Unlock;
 
        Break;
+     end
+     else if Self.FEndOfOperation then
+     begin
+       Mutex.Unlock;
+       Exit;
+
      end;
 
      Mutex.Unlock;
+
    end;
 
    wg.Done(1);
@@ -215,12 +198,11 @@ end;
 destructor TThreadSafeQueue.Destroy;
 begin
   FEndOfOperation := True;
-  FMTDebugLn('SuspendedThreads: %d', [wg.GetValue]);
   Semaphore.Inc(wg.GetValue);
 
   wg.Wait;
-  FMTDebugLn('SuspendedThreads: %d', [wg.GetValue]);
   wg.Free;
+
   Mutex.Free;
   FData.Free;
   Semaphore.Free;
