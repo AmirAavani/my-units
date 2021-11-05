@@ -385,7 +385,6 @@ const
 function TMySQLDatabaseConnection.IsDisconnected: Boolean;
 begin
   Result := IsPrefix(PChar(DisConnectedStat), mysql_stat(MySQLConnection));
-  FMTDebugLn('%s: %s vs %s', [BoolToStr(Result), DisConnectedStat, mysql_stat(MySQLConnection)]);
 
 end;
 
