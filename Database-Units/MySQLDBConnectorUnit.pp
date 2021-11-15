@@ -50,8 +50,10 @@ type
     TRefresherThread = class(TThread)
     private
       DB: TMySQLDatabaseConnection;
+      FDone: Boolean;
 
     public
+      property Done: Boolean read FDone;
       constructor Create(_DB: TMySQLDatabaseConnection);
 
       procedure Execute; override;
@@ -130,9 +132,10 @@ constructor TMySQLDatabaseConnection.TRefresherThread.Create(
   _DB: TMySQLDatabaseConnection);
 begin
   inherited Create(True);
+  FreeOnTerminate := True;
 
   DB := _DB;
-
+  FDone := False;
 end;
 
 procedure TMySQLDatabaseConnection.TRefresherThread.Execute;
@@ -142,7 +145,7 @@ var
 begin
   RefreshInterval:= GetRunTimeParameterManager.ValueByName['--DBRefreshInterval'].AsInteger;
 
-  while True do
+  while not Done do
   begin
     Sleep(RefreshInterval * 1000);
     FMTDebugLn('Refresh: %s', [BoolToStr(DB.Refresh, 'True', 'False')]);
@@ -319,7 +322,8 @@ destructor TMySQLDatabaseConnection.Destroy;
 begin
   Disconnect;
   Mutex.Free;
-
+  RefresherThread.Terminate;
+  WaitForThreadTerminate(RefresherThread.ThreadID, 0);
   inherited Destroy;
 
 end;
