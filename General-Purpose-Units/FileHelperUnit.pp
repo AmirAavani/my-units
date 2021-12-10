@@ -11,12 +11,12 @@ type
   TMatcherFunc = function (Path, FileName: AnsiString; Params: array of AnsiString): Boolean;
 
 function GetAllFiles(MatcherFunc: TMatcherFunc; Params: array of AnsiString; Path: AnsiString): TStringList;
-
+function DeleteDir(DirPath: AnsiString): Boolean;
 function GetMatcherByExtension(Path, FileName: AnsiString; Params: array of AnsiString): Boolean;
 
 implementation
 uses
-  StringUnit, ALoggerUnit;
+  StringUnit, ALoggerUnit, PathHelperUnit;
 
 function GetAllFiles(MatcherFunc: TMatcherFunc; Params: array of AnsiString;
   Path: AnsiString): TStringList;
@@ -49,6 +49,38 @@ begin
     Path := Path + '/';
 
   RecGetAllFiles(Path);
+end;
+
+function DeleteDir(DirPath: AnsiString): Boolean;
+var
+  Info : TSearchRec;
+
+begin
+  Result := False;
+  if FindFirst (DirPath, faAnyFile, Info) <> 0 then
+  begin
+    Exit;
+
+  end;
+
+  repeat
+    With Info do
+    begin
+      If (Attr and faDirectory) <> faDirectory then
+      begin
+        if not DeleteFile(JoinPath(DirPath, Info.Name)) then
+        begin
+          Exit;
+
+        end;
+
+      end;
+
+      DeleteDir(JoinPath(DirPath, Info.Name));
+    end;
+  until FindNext(info)<>0;
+  FindClose(Info);
+
 end;
 
 function GetMatcherByExtension(Path, FileName: AnsiString;
