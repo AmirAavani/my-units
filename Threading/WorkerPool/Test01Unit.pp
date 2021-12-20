@@ -9,17 +9,16 @@ procedure Test01;
 implementation
 uses
   SysUtils, WorkerPoolUnit, RequestUnit, ResponseUnit, GenericCollectionUnit,
-  ALoggerUnit;
+  ALoggerUnit, DataUnit, SourcerUnit;
 
 function WorkerFunction01(
-  Request: TRequestForTest01;
-  Response: TResponseForTest01): Boolean;
+  Data: TDataForTest01): Boolean;
 var
   S: AnsiString;
 
 begin
-  S := Request.Text;
-  Response.Text := 'x' + S;
+  S := Data.Request.Text;
+  Data.Response.Text := 'x' + S;
   Sleep(Random(100) + 1);
 
   Result := True;
@@ -28,51 +27,49 @@ end;
 
 procedure Test01;
 type
-  TWorkerPoolForTest1 = specialize TWorkerPool<TRequestForTest01, TResponseForTest01>;
+  TWorkerPoolForTest1 = specialize TWorkerPool<TDataForTest01>;
 
 var
   wp: TWorkerPoolForTest1;
   i: Integer;
-  Request: TRequestForTest01;
-  Response: TResponseForTest01;
-  AllResponses: specialize TCollection<TResponseForTest01>;
+  Data: TDataForTest01;
+  AllData: specialize TObjectCollection<TDataForTest01>;
   AllDone: Boolean;
 
 begin
-  AllResponses :=  (specialize TCollection<TResponseForTest01>).Create;
+  AllData :=  (specialize TObjectCollection<TDataForTest01>).Create;
 
-  wp := TWorkerPoolForTest1.CreateWithDefaultOptions(@WorkerFunction01);
+  wp := TWorkerPoolForTest1.CreateWithDefaultOptions;
 
   for i := 0 to 10000 do
   begin
-    Request := TRequestForTest01.Create;
-    Request.Text := IntToStr(i);
-    Response := TResponseForTest01.Create;
+    Data := TDataForTest01.Create;
+    Data.Request.Text := IntToStr(i);
+    Data.Response := TResponseForTest01.Create;
 
-    AllResponses.Add(Response);
-    wp.ServeRequest(Request, Response);
+    AllData.Add(Data);
 
   end;
-
+  wp.SetSource((specialize TSoucrerFromCollection<TDataForTest01>).Create(AllData));
+  wp.AddWorker(TWorkerPool.TWorkerFunction.);
   AllDone := False;
   while not AllDone do
   begin
     AllDone := True;
 
-    for i := 0 to AllResponses.Count - 1 do
+    for i := 0 to AllData.Count - 1 do
     begin
-      if AllResponses[i] = nil then
+      if AllData[i].Response = nil then
         Continue;
 
-      if AllResponses[i].Text <> '' then
+      if AllData[i].Response.Text <> '' then
       begin
-        if AllResponses[i].Text <> 'x' + IntToStr(i) then
+        if AllData[i].Response.Text <> 'x' + IntToStr(i) then
         begin
           FmtFatalLn('Something went wrong! Expected %s Recieved: %s',
-            ['x' + IntToStr(i) ,  PAnsiString(AllResponses[i])^]);
+            ['x' + IntToStr(i) ,  PAnsiString(AllData[i].Response)^]);
         end;
-        AllResponses[i].Free;
-        AllResponses[i] := nil;
+        AllData[i].Free;
 
         Continue;
       end;
@@ -88,7 +85,6 @@ begin
 
   WriteLn('AllDone: ', AllDone);
   wp.Free;
-  AllResponses.Free;
 
 end;
 
