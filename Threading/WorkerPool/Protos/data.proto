@@ -1,0 +1,17 @@
+syntax = "proto3";
+
+import "request.proto";
+import "response.proto";
+
+package workerpool;
+
+message DataForTest01 {
+  request.RequestForTest01 request = 1;
+  response.ResponseForTest01 response = 2;
+}
+
+message DataForTest02 {
+  request.RequestForTest02 request = 1;
+  response.ResponseForTest02 response = 2;
+}
+
