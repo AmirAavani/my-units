@@ -8,7 +8,15 @@ uses
   Classes, SysUtils, Generics.Collections, fptimer, SyncUnit, GenericCollectionUnit;
 
 type
-  TObjectList = specialize TObjectCollection<TObject>;
+
+  { TObjectList }
+
+  TObjectList = class(specialize TObjectCollection<TObject>)
+  public
+    function Add(Obj: TObject): TObjectList;
+
+  end;
+
   TTaskProcedurePtr = procedure (Args: TObjectList);
 
   { TTaskDefinition }
@@ -35,7 +43,7 @@ type
 
     function SetTaskProcedure(Task: TTaskProcedurePtr): TTaskDefinition;
     function SetArguments(Args: TObjectList): TTaskDefinition;
-    function SetInterval(Interval: UInt64): TTaskDefinition;
+    function SetInterval(IntervalInMS: UInt64): TTaskDefinition;
     function SetDeadline(_Deadline: Uint64): TTaskDefinition;
     function SetNotDoneOnDeadline(WhatToDo: TNotDoneOnDeadline): TTaskDefinition;
 
@@ -86,6 +94,8 @@ type
     procedure AddTask(TaskDefinition: TTaskDefinition);
     procedure Stop;
 
+    class function GetSchedular: TSchedular;
+
   end;
 
 implementation
@@ -94,6 +104,16 @@ uses
 
 type
   TSchedularRunnerThread = class;
+
+{ TObjectList }
+
+function TObjectList.Add(Obj: TObject): TObjectList;
+begin
+  Result := Self;
+
+  Result.Add(Obj);
+
+end;
 
   { TSchedular.TTaskInfo }
 
@@ -149,9 +169,9 @@ begin
 
 end;
 
-function TTaskDefinition.SetInterval(Interval: UInt64): TTaskDefinition;
+function TTaskDefinition.SetInterval(IntervalInMS: UInt64): TTaskDefinition;
 begin
-  FIntervalInMSec := Interval;
+  FIntervalInMSec := IntervalInMS;
   Result := Self;
 end;
 
@@ -322,6 +342,21 @@ begin
   DoneWG.Wait;
   Threads.Clear;
 end;
+
+var
+  Schedular: TSchedular;
+
+class function TSchedular.GetSchedular: TSchedular;
+begin
+  Result := Schedular;
+
+end;
+
+initialization
+  Schedular := TSchedular.Create;
+
+finalization
+  Schedular.Free;
 
 end.
 

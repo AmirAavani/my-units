@@ -26,11 +26,11 @@ type
     Arguments: TObjectList;
     F: TThreadFunctionPtr;
     Result: PBoolean;
+    FreeArgOnTerminate: Boolean;
 
   public
-    // Caller is responsibe for freeing the memory for Args.
     constructor Create(FToRun: TThreadFunctionPtr; Args: TObjectList;
-       Res: PBoolean);
+       Res: PBoolean; _FreeArgsOnTerminate: Boolean = False);
     destructor Destroy; override;
 
     procedure Execute; override;
@@ -50,19 +50,28 @@ end;
 
 { TRunnerThread }
 
-constructor TRunnerThread.Create(FToRun: TThreadFunctionPtr;
-  Args: TObjectList; Res: PBoolean);
+constructor TRunnerThread.Create(FToRun: TThreadFunctionPtr; Args: TObjectList;
+  Res: PBoolean; _FreeArgsOnTerminate: Boolean);
 begin
   inherited Create(True);
 
   F := FToRun;
   Arguments := Args;
   Result := Res;
-
+  FreeArgOnTerminate := _FreeArgsOnTerminate;
 end;
 
 destructor TRunnerThread.Destroy;
+var
+  Obj: TObject;
 begin
+  if FreeArgOnTerminate then
+  begin
+    for Obj in Arguments do
+      Obj.Free;
+
+    Arguments.Free;
+  end;
 
   inherited Destroy;
 end;

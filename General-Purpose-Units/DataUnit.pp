@@ -18,18 +18,24 @@ type
     DataType: TDataType;
 
   private
+    function GetDataAsExtended: Extended;
+    function GetDataAsInt64: Int64;
     function GetDataAsPointer: Pointer;
     function GetDataAsString: AnsiString;
+    function GetDataAsUInt64: UInt64;
   public
     property DataAsString: AnsiString read GetDataAsString;
     property DataAsPointer: Pointer read GetDataAsPointer;
+    property DataAsInt64: Int64 read GetDataAsInt64;
+    property DataAsUInt64: UInt64 read GetDataAsUInt64;
+    property DataAsExtended: Extended read GetDataAsExtended;
 
     constructor CreatePointer(Ptr: Pointer);
-    constructor CreateString(Str: AnsiString);
+    constructor CreateString(constref Str: AnsiString);
     constructor CreateInt64(i64: Int64);
     constructor CreateUInt64(u64: UInt64);
     constructor CreateExtended(e: Extended);
-    constructor Create(D: Pointer; dt: TDataType);
+    constructor Create(p: Pointer; dt: TDataType);
 
     destructor Destroy; override;
   end;
@@ -39,6 +45,16 @@ uses
   ALoggerUnit;
 
 { TData }
+
+function TData.GetDataAsExtended: Extended;
+begin
+  Result := PExtended(DataPtr)^;
+end;
+
+function TData.GetDataAsInt64: Int64;
+begin
+
+end;
 
 function TData.GetDataAsPointer: Pointer;
 begin
@@ -51,13 +67,18 @@ begin
 
 end;
 
+function TData.GetDataAsUInt64: UInt64;
+begin
+
+end;
+
 constructor TData.CreatePointer(Ptr: Pointer);
 begin
   Create(Ptr, dtPointer);
 
 end;
 
-constructor TData.CreateString(Str: AnsiString);
+constructor TData.CreateString(constref Str: AnsiString);
 begin
   Create(Pointer(@Str), dtString);
 
@@ -81,7 +102,7 @@ begin
 
 end;
 
-constructor TData.Create(D: Pointer; dt: TDataType);
+constructor TData.Create(p: Pointer; dt: TDataType);
 begin
   inherited Create;
 
@@ -91,12 +112,24 @@ begin
     dtString:
     begin
       DataPtr := New(PAnsiString);
-      PAnsiString(DataPtr)^ := (PAnsiString(D))^;
+      PAnsiString(DataPtr)^ := (PAnsiString(p))^;
+
+    end;
+    dtExtended:
+    begin
+      DataPtr := New(PExtended);
+      PExtended(DataPtr)^ := (PExtended(p))^;
+
+    end;
+    dtInt64:
+    begin
+      DataPtr := New(PInt64);
+      PInt64(DataPtr)^ := (PInt64(p))^;
 
     end;
     dtPointer:
     begin
-      DataPtr := d;
+      DataPtr := p;
 
     end
     else
