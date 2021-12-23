@@ -1,7 +1,7 @@
 syntax = "proto3";
 
-import "request.proto";
-import "response.proto";
+import "pb.request.proto";
+import "pb.response.proto";
 
 package workerpool;
 

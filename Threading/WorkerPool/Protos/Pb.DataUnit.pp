@@ -1,10 +1,10 @@
-unit DataUnit;
+unit Pb.DataUnit;
 {$Mode objfpc}
 
 interface
 
 uses
- RequestUnit, ResponseUnit, classes, fgl, sysutils, ProtoHelperUnit, ProtoHelperListsUnit, ProtoStreamUnit, GenericCollectionUnit;
+ Pb.RequestUnit, Pb.ResponseUnit, classes, fgl, sysutils, ProtoHelperUnit, ProtoHelperListsUnit, ProtoStreamUnit, GenericCollectionUnit;
 
 type
   TDataForTest01 = class;
@@ -16,30 +16,30 @@ type
   // Forward Declarations.
 
   private
-    FRequest: RequestUnit.TRequestForTest01;
+    FRequest: Pb.RequestUnit.TRequestForTest01;
 
   public
-    function GetRequest: RequestUnit.TRequestForTest01;
-    function GetOrCreateRequest: RequestUnit.TRequestForTest01;
+    function GetRequest: Pb.RequestUnit.TRequestForTest01;
+    function GetOrCreateRequest: Pb.RequestUnit.TRequestForTest01;
 
   public
     // request.RequestForTest01 request = 1;
-    property Request: RequestUnit.TRequestForTest01 read FRequest write FRequest;
-    property ConstRequest: RequestUnit.TRequestForTest01 read GetRequest;
-    property MutableRequest: RequestUnit.TRequestForTest01 read GetOrCreateRequest;
+    property Request: Pb.RequestUnit.TRequestForTest01 read FRequest write FRequest;
+    property ConstRequest: Pb.RequestUnit.TRequestForTest01 read GetRequest;
+    property MutableRequest: Pb.RequestUnit.TRequestForTest01 read GetOrCreateRequest;
 
   private
-    FResponse: ResponseUnit.TResponseForTest01;
+    FResponse: Pb.ResponseUnit.TResponseForTest01;
 
   public
-    function GetResponse: ResponseUnit.TResponseForTest01;
-    function GetOrCreateResponse: ResponseUnit.TResponseForTest01;
+    function GetResponse: Pb.ResponseUnit.TResponseForTest01;
+    function GetOrCreateResponse: Pb.ResponseUnit.TResponseForTest01;
 
   public
     // response.ResponseForTest01 response = 2;
-    property Response: ResponseUnit.TResponseForTest01 read FResponse write FResponse;
-    property ConstResponse: ResponseUnit.TResponseForTest01 read GetResponse;
-    property MutableResponse: ResponseUnit.TResponseForTest01 read GetOrCreateResponse;
+    property Response: Pb.ResponseUnit.TResponseForTest01 read FResponse write FResponse;
+    property ConstResponse: Pb.ResponseUnit.TResponseForTest01 read GetResponse;
+    property MutableResponse: Pb.ResponseUnit.TResponseForTest01 read GetOrCreateResponse;
 
   protected 
     procedure SaveToStream(Stream: TProtoStreamWriter); override;
@@ -61,30 +61,30 @@ type
   // Forward Declarations.
 
   private
-    FRequest: RequestUnit.TRequestForTest02;
+    FRequest: Pb.RequestUnit.TRequestForTest02;
 
   public
-    function GetRequest: RequestUnit.TRequestForTest02;
-    function GetOrCreateRequest: RequestUnit.TRequestForTest02;
+    function GetRequest: Pb.RequestUnit.TRequestForTest02;
+    function GetOrCreateRequest: Pb.RequestUnit.TRequestForTest02;
 
   public
     // request.RequestForTest02 request = 1;
-    property Request: RequestUnit.TRequestForTest02 read FRequest write FRequest;
-    property ConstRequest: RequestUnit.TRequestForTest02 read GetRequest;
-    property MutableRequest: RequestUnit.TRequestForTest02 read GetOrCreateRequest;
+    property Request: Pb.RequestUnit.TRequestForTest02 read FRequest write FRequest;
+    property ConstRequest: Pb.RequestUnit.TRequestForTest02 read GetRequest;
+    property MutableRequest: Pb.RequestUnit.TRequestForTest02 read GetOrCreateRequest;
 
   private
-    FResponse: ResponseUnit.TResponseForTest02;
+    FResponse: Pb.ResponseUnit.TResponseForTest02;
 
   public
-    function GetResponse: ResponseUnit.TResponseForTest02;
-    function GetOrCreateResponse: ResponseUnit.TResponseForTest02;
+    function GetResponse: Pb.ResponseUnit.TResponseForTest02;
+    function GetOrCreateResponse: Pb.ResponseUnit.TResponseForTest02;
 
   public
     // response.ResponseForTest02 response = 2;
-    property Response: ResponseUnit.TResponseForTest02 read FResponse write FResponse;
-    property ConstResponse: ResponseUnit.TResponseForTest02 read GetResponse;
-    property MutableResponse: ResponseUnit.TResponseForTest02 read GetOrCreateResponse;
+    property Response: Pb.ResponseUnit.TResponseForTest02 read FResponse write FResponse;
+    property ConstResponse: Pb.ResponseUnit.TResponseForTest02 read GetResponse;
+    property MutableResponse: Pb.ResponseUnit.TResponseForTest02 read GetOrCreateResponse;
 
   protected 
     procedure SaveToStream(Stream: TProtoStreamWriter); override;
@@ -104,7 +104,7 @@ type
 
 implementation
 
-function TDataForTest01.GetRequest: RequestUnit.TRequestForTest01;
+function TDataForTest01.GetRequest: Pb.RequestUnit.TRequestForTest01;
 begin
   if Self = nil then
     Exit(nil);
@@ -113,20 +113,20 @@ begin
 
 end;
 
-function TDataForTest01.GetOrCreateRequest: RequestUnit.TRequestForTest01;
+function TDataForTest01.GetOrCreateRequest: Pb.RequestUnit.TRequestForTest01;
 begin
   if Self = nil then
     Exit(nil);
 
   if Self.FRequest = nil then
-    FRequest := RequestUnit.TRequestForTest01.Create;
+    FRequest := Pb.RequestUnit.TRequestForTest01.Create;
 
   Result := FRequest; 
 
 end;
 
 
-function TDataForTest01.GetResponse: ResponseUnit.TResponseForTest01;
+function TDataForTest01.GetResponse: Pb.ResponseUnit.TResponseForTest01;
 begin
   if Self = nil then
     Exit(nil);
@@ -135,13 +135,13 @@ begin
 
 end;
 
-function TDataForTest01.GetOrCreateResponse: ResponseUnit.TResponseForTest01;
+function TDataForTest01.GetOrCreateResponse: Pb.ResponseUnit.TResponseForTest01;
 begin
   if Self = nil then
     Exit(nil);
 
   if Self.FResponse = nil then
-    FResponse := ResponseUnit.TResponseForTest01.Create;
+    FResponse := Pb.ResponseUnit.TResponseForTest01.Create;
 
   Result := FResponse; 
 
@@ -227,7 +227,7 @@ begin
 
 end;
 
-function TDataForTest02.GetRequest: RequestUnit.TRequestForTest02;
+function TDataForTest02.GetRequest: Pb.RequestUnit.TRequestForTest02;
 begin
   if Self = nil then
     Exit(nil);
@@ -236,20 +236,20 @@ begin
 
 end;
 
-function TDataForTest02.GetOrCreateRequest: RequestUnit.TRequestForTest02;
+function TDataForTest02.GetOrCreateRequest: Pb.RequestUnit.TRequestForTest02;
 begin
   if Self = nil then
     Exit(nil);
 
   if Self.FRequest = nil then
-    FRequest := RequestUnit.TRequestForTest02.Create;
+    FRequest := Pb.RequestUnit.TRequestForTest02.Create;
 
   Result := FRequest; 
 
 end;
 
 
-function TDataForTest02.GetResponse: ResponseUnit.TResponseForTest02;
+function TDataForTest02.GetResponse: Pb.ResponseUnit.TResponseForTest02;
 begin
   if Self = nil then
     Exit(nil);
@@ -258,13 +258,13 @@ begin
 
 end;
 
-function TDataForTest02.GetOrCreateResponse: ResponseUnit.TResponseForTest02;
+function TDataForTest02.GetOrCreateResponse: Pb.ResponseUnit.TResponseForTest02;
 begin
   if Self = nil then
     Exit(nil);
 
   if Self.FResponse = nil then
-    FResponse := ResponseUnit.TResponseForTest02.Create;
+    FResponse := Pb.ResponseUnit.TResponseForTest02.Create;
 
   Result := FResponse; 
 
