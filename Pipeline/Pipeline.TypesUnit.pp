@@ -8,7 +8,7 @@ uses
   Classes, SysUtils, StreamUnit, ProtoHelperUnit, Generics.Collections;
 
 type
-  TPointerList = specialize TList<Pointer>;
+  TObjectList = specialize TList<TObject>;
   TAnsiStringList = specialize TList<AnsiString>;
 
   { TPipelineKV }

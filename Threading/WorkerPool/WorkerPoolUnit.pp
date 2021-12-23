@@ -9,6 +9,17 @@ uses
   SourcerUnit, Generics.Collections, SyncUnit, PriorityQueueUnit;
 
 type
+  TSchedularPolicy = (
+    spLargestTimestamp = 0,
+    spSmallestTimestamp = 1,
+    spLargestWorkerID = 2,
+    spSmallestWorkerID = 3
+  );
+
+  TSchedularOptions = record
+    SchedularPolicy: TSchedularPolicy;  // spLargestTimestamp, etc.
+    MaxUnservedFromSource: Integer; // 1024
+  end;
 
   { TWorkerPoolOptions }
 
@@ -19,7 +30,7 @@ type
     MaxNumberOfThreads: Integer; // Default value is 16.
     FreeRequests: Boolean; // Default value is True.
     NumberOfSourceThread: Integer; // Not Implemented Yet. Default is 1.
-    SchedularPolicy: Integer; // 0: LargestTimestamp, etc.
+    SchedularOptions: TSchedularOptions;
 
   end;
 
@@ -43,15 +54,21 @@ type
     protected type
       TStatus = (ssSuccess = 0, ssAllDone = 1);
       TQueue = specialize TPQueue<TData, Integer>;
+      TRequest2WorkerID = specialize TMap<Pointer, Integer>;
+      TIntList = specialize TCollection<Integer>;
 
     protected
+      Options: TSchedularOptions;
+      RequestCount: TIntList;
+      Request2WorkerID: TRequest2WorkerID;
       Wg: TWaitGroup;
+      Mutex: TMutex;
       PQueue: TQueue;
       PriorityFunction: TPriorityFunction;
       wp: TWorkerPool;
 
     public
-      constructor Create(PFunction: TPriorityFunction; _wp: TWorkerPool);
+      constructor Create(_Options: TSchedularOptions; _wp: TWorkerPool);
       destructor Destroy; override;
 
       procedure Add(Data: TData; NextWorkerID: Integer);
@@ -158,39 +175,67 @@ uses
 
 { TWorkerPool.TSchedular }
 
-constructor TWorkerPool.TSchedular.Create(PFunction: TPriorityFunction;
+constructor TWorkerPool.TSchedular.Create(_Options: TSchedularOptions;
   _wp: TWorkerPool);
+const
+  PriorityFunctions: array [Low(TSchedularPolicy)..High(TSchedularPolicy)] of TWorkerPool.TPriorityFunction =
+    (
+    nil, nil, nil, nil {
+      @PFunctionFirstWorkerFirst,
+      @PFunctionFirstWorkerLast,
+      @PFunctionFirstTaskFirst,
+      @PFunctionFirstTaskLast
+      }
+    );
 begin
   inherited Create;
 
+  Options:= _Options;
   PQueue := TQueue.Create;
-  PriorityFunction := PFunction;
+  PriorityFunction := PriorityFunctions[Options.SchedularPolicy];
   wp := _wp;
   wg := TWaitGroup.Create;
-
+  Mutex := TMutex.Create;
+  RequestCount := TIntList.Create;
 end;
 
 destructor TWorkerPool.TSchedular.Destroy;
 begin
   PQueue.Free;
   wg.Free;
+  Mutex.Free;
 
   inherited Destroy;
 end;
 
 procedure TWorkerPool.TSchedular.Add(Data: TData; NextWorkerID: Integer);
 begin
+  Mutex.Lock;
+
   wg.Add(1);
   PQueue.Insert(Data, PriorityFunction(NextWorkerID));
+  Request2WorkerID[Data] := NextWorkerID;
+
+  while NextWorkerID <= RequestCount.Count do
+    RequestCount.Add(0);
+  RequestCount[NextWorkerID] := RequestCount[NextWorkerID] + 1;
+
+  Mutex.Unlock;
 
 end;
 
 function TWorkerPool.TSchedular.Delete(Data: TData; var NextWorkerID: Integer
   ): TStatus;
 begin
-  wg.Wait;
+  Mutex.Lock;
+
+  wg.Done(1);
   Result := ssSuccess;
   Data := PQueue.Delete;
+  RequestCount[NextWorkerID] := RequestCount[NextWorkerID] - 1;
+  Request2WorkerID.Delete(Pointer(Data), False);
+
+  Mutex.Unlock;
 
 end;
 
@@ -345,6 +390,8 @@ begin
   Result.MaxNumberOfThreads := 16;
   Result.FreeRequests := True;
   Result.NumberOfSourceThread := 1;
+  Result.SchedularOptions.SchedularPolicy := spLargestTimestamp;
+  Result.SchedularOptions.MaxUnservedFromSource := 1024;
 
 end;
 
@@ -379,16 +426,7 @@ begin
 end;
 
 procedure TWorkerPool.DoCreateWithOption(Options: TWorkerPoolOptions);
-const
-  PriorityFunctions: array [0..3] of TWorkerPool.TPriorityFunction =
-    (
-    nil, nil, nil, nil{
-      @PFunctionFirstWorkerFirst,
-      @PFunctionFirstWorkerLast,
-      @PFunctionFirstTaskFirst,
-      @PFunctionFirstTaskLast
-      }
-    );
+
 
 var
   i: Integer;
@@ -397,7 +435,7 @@ var
 begin
   FOptions := Options;
   Schedular :=
-    TSchedular.Create(PriorityFunctions[Options.SchedularPolicy], Self);
+    TSchedular.Create(Options.SchedularOptions, Self);
 
 //  FThreads := TThreadCollection.Create;
   Workers := TWorkerCollection.Create;

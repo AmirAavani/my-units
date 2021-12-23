@@ -8,8 +8,8 @@ procedure Test01;
 
 implementation
 uses
-  SysUtils, WorkerPoolUnit, RequestUnit, ResponseUnit, GenericCollectionUnit,
-  ALoggerUnit, DataUnit, SourcerUnit;
+  SysUtils, WorkerPoolUnit, GenericCollectionUnit,
+  ALoggerUnit, pb.DataUnit, Pb.RequestUnit, pb.ResponseUnit, SourcerUnit;
 
 function WorkerFunction01(
   Data: TDataForTest01): Boolean;
@@ -51,7 +51,7 @@ begin
 
   end;
   wp.SetSource((specialize TSoucrerFromCollection<TDataForTest01>).Create(AllData));
-  wp.AddWorker(TWorkerPool.TWorkerFunction.);
+//  wp.AddWorker(TWorkerPool.TWorkerFunction.);
   AllDone := False;
   while not AllDone do
   begin

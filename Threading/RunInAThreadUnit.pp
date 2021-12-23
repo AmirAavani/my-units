@@ -5,10 +5,10 @@ unit RunInAThreadUnit;
 interface
 
 uses
-  Classes, SysUtils, Generics.Collections;
+  Classes, SysUtils, Generics.Collections, GenericCollectionUnit;
 
 type
-  TObjectList = specialize TList<TObject>;
+  TObjectList = specialize TObjectCollection<TObject>;
   TThreadFunctionPtr = function (Args: TObjectList): Boolean;
 
 procedure RunInThread(F: TThreadFunctionPtr; Args: TObjectList;

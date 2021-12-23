@@ -138,7 +138,7 @@ begin
 
 end;
 
-function RunHandler(SysArgs: TPointerList): Boolean;
+function RunHandler(SysArgs: TObjectList): Boolean;
 var
   Task: TTask;
   wg: TWaitGroup;
@@ -172,7 +172,7 @@ type
 var
   i: Integer;
   AllTasks: TTasks;
-  SysArgs: TPointerList;
+  SysArgs: TObjectList;
   Status: array of Boolean;
   Wg: TWaitGroup;
 
@@ -190,7 +190,7 @@ begin
   begin
     AllTasks.Add(TTask.Create(i, Step));
 
-    SysArgs := TPointerList.Create;
+    SysArgs := TObjectList.Create;
     SysArgs.Count := 3;
     SysArgs[0] := AllTasks.Last;
     SysArgs[1] := wg;
@@ -243,7 +243,7 @@ begin
 
 end;
 
-function RunThePipeline(SysArgs: TPointerList): Boolean;
+function RunThePipeline(SysArgs: TObjectList): Boolean;
 var
   ThePipeline: TPipeline;
   StepID, FromStepID: Integer;
@@ -270,12 +270,12 @@ end;
 
 function TPipeline.Run(WaitToFinish: Boolean): Boolean;
 var
-  SysArgs: TPointerList;
+  SysArgs: TObjectList;
   wg: TWaitGroup;
   Done: Boolean;
 
 begin
-  SysArgs := TPointerList.Create;
+  SysArgs := TObjectList.Create;
   SysArgs.Add(Self);
   wg := TWaitGroup.Create;
   SysArgs.Add(wg);

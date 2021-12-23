@@ -6,7 +6,7 @@ uses
   {$IFDEF UNIX}
   cthreads,
   {$ENDIF}
-  Test01Unit{, Test02Unit};
+  Test01Unit, Pb.ResponseUnit, Pb.RequestUnit, Pb.DataUnit{, Test02Unit};
 
 
 begin
