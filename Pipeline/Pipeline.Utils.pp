@@ -5,11 +5,31 @@ unit Pipeline.Utils;
 interface
 
 uses
-  Pipeline.TypesUnit;
+  Pipeline.TypesUnit, PipelineUnit;
 
-function ExpandPattern(aPattern: AnsiString): TAnsiStringList;
-function FilterFilesModule(InputPattern: TAnsiStringList; TaskID, NumTasks: Integer): TAnsiStringList;
-function FilterFilesDiv(InputPattern: TAnsiStringList; TaskID, NumTasks: Integer): TAnsiStringList;
+type
+
+  { TFilePattern }
+
+  TFilePattern = class(TObject)
+  private
+    FAllFiles: TAnsiStringList;
+    FPattern: AnsiString;
+
+  public
+    property AllFiles: TAnsiStringList read FAllFiles;
+    property Pattern: AnsiString read FPattern;
+
+    constructor Create(constref PatternStr: AnsiString);
+    destructor Destroy; override;
+
+    function FilterFilesModule(TaskID, NumTasks: Integer): TAnsiStringList;
+    function FilterFilesDiv(TaskID, NumTasks: Integer): TAnsiStringList;
+    function FilterMyFilesModule(Task: TTask): TAnsiStringList;
+    function FilterMyFilesDiv(Task: TTask): TAnsiStringList;
+
+  end;
+
 
 implementation
 uses
@@ -71,25 +91,25 @@ begin
 
 end;
 
-function FilterFilesModule(InputPattern: TAnsiStringList; TaskID,
-  NumTasks: Integer): TAnsiStringList;
-var
-  i: Integer;
+{ TFilePattern }
 
+constructor TFilePattern.Create(constref PatternStr: AnsiString);
 begin
-  Result := TAnsiStringList.Create;
+  inherited Create;
 
-  i := TaskID;
-  while i < InputPattern.Count do
-  begin
-    Result.Add(InputPattern[i]);
-    Inc(i, NumTasks);
-
-  end;
+  FPattern := PatternStr;
+  FAllFiles := ExpandPattern(PatternStr);
 
 end;
 
-function FilterFilesDiv(InputPattern: TAnsiStringList; TaskID, NumTasks: Integer
+destructor TFilePattern.Destroy;
+begin
+  FAllFiles.Free;
+
+  inherited Destroy;
+end;
+
+function TFilePattern.FilterFilesDiv(TaskID, NumTasks: Integer
   ): TAnsiStringList;
 var
   i, Len: Integer;
@@ -97,10 +117,40 @@ var
 begin
   Result := TAnsiStringList.Create;
 
-  Len := InputPattern.Count div NumTasks;
+  Len := FAllFiles.Count div NumTasks;
 
   for i := (TaskID - 1) * Len to TaskID * Len - 1 do
-    Result.Add(InputPattern[i]);
+    Result.Add(FAllFiles[i]);
+
+end;
+
+function TFilePattern.FilterMyFilesModule(Task: TTask): TAnsiStringList;
+begin
+  Result := Self.FilterFilesModule(Task.ID, Task.Count);
+
+end;
+
+function TFilePattern.FilterMyFilesDiv(Task: TTask): TAnsiStringList;
+begin
+  Result := Self.FilterFilesDiv(Task.ID, Task.Count);
+
+end;
+
+function TFilePattern.FilterFilesModule(TaskID, NumTasks: Integer
+  ): TAnsiStringList;
+var
+  i: Integer;
+
+begin
+  Result := TAnsiStringList.Create;
+
+  i := TaskID;
+  while i < FAllFiles.Count do
+  begin
+    Result.Add(FAllFiles[i]);
+    Inc(i, NumTasks);
+
+  end;
 
 end;
 

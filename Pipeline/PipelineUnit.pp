@@ -71,8 +71,6 @@ type
 
     constructor Create(_ID: Integer; _Step: TPipeline.TStepInfo);
 
-    function FilterFilesModule(aPattern: AnsiString): TAnsiStringList;
-    function FilterFilesDiv(aPattern: AnsiString): TAnsiStringList;
   end;
 
 implementation
@@ -94,28 +92,6 @@ begin
 
   FID := _ID;
   FStep := _Step;
-
-end;
-
-function TTask.FilterFilesModule(aPattern: AnsiString): TAnsiStringList;
-var
-  Tmp: TAnsiStringList;
-
-begin
-  Tmp := ExpandPattern(aPattern);
-  Result := Pipeline.Utils.FilterFilesModule(Tmp, Self.ID, Self.StepInfo.NumTasks);
-  Tmp.Free;
-
-end;
-
-function TTask.FilterFilesDiv(aPattern: AnsiString): TAnsiStringList;
-var
-  Tmp: TAnsiStringList;
-
-begin
-  Tmp := ExpandPattern(aPattern);
-  Result := Pipeline.Utils.FilterFilesDiv(Tmp, Self.ID, Self.StepInfo.NumTasks);
-  Tmp.Free;
 
 end;
 
@@ -228,9 +204,6 @@ begin
 end;
 
 destructor TPipeline.Destroy;
-var
-  Step: TStepInfo;
-
 begin
   Steps.Free;
 
@@ -250,7 +223,7 @@ var
   wg: TWaitGroup;
 
 begin
-  ThePipeline := TPipeline(SysArgs[0]);
+  ThePipeline := SysArgs[0] as TPipeline;
   wg := TWaitGroup(SysArgs[1]);
 
   Result := False;
@@ -291,6 +264,7 @@ begin
 
   Result := Done;
   wg.Free;
+  SysArgs.Clear;
   SysArgs.Free;
 
 end;
