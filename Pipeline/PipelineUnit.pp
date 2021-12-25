@@ -5,12 +5,27 @@ unit PipelineUnit;
 interface
 
 uses
-  Classes, SysUtils, Pipeline.TypesUnit, ThreadSafeQueueUnit, GenericCollectionUnit;
+  Classes, SysUtils, Pipeline.TypesUnit, ThreadSafeQueueUnit, GenericCollectionUnit,
+  ThreadPoolUnit;
 
 type
   TTask = class;
   TStepHandler = function (Task: TTask): Boolean;
-  TFilenames = TStringList;
+
+  { TPipelineConfig }
+
+  TPipelineConfig = class(TObject)
+  private
+    FNumberOfThreads: Integer;
+  public
+    property NumberOfThreads: Integer read FNumberOfThreads;
+
+    constructor Create;
+
+    class function DefaultConfig: TPipelineConfig;
+    function SetNumberOfThreads(x: Integer): TPipelineConfig;
+
+  end;
 
   { TPipeline }
 
@@ -41,19 +56,22 @@ type
     Steps: TStepInfoList;
 
   protected
+    ThreadPool: TThreadPool;
+    Config: TPipelineConfig;
+
     function RunStep(Step: TStepInfo): Boolean;
 
-  function RunStep(StepIndex: Integer): Boolean;
-  function RunFromStep(StepIndex: Integer): Boolean;
+    function RunStep(StepIndex: Integer): Boolean;
+    function RunFromStep(StepIndex: Integer): Boolean;
   public
     property Name: AnsiString read FName;
 
-    constructor Create(_Name: AnsiString);
+    constructor Create(_Name: AnsiString; _Config: TPipelineConfig);
     destructor Destroy; override;
 
     procedure AddNewStep(Handler: TStepHandler; NumTasks: Integer);
 
-    function Run(WaitToFinish: Boolean = True): Boolean;
+    function Run: Boolean;
   end;
 
   { TTask }
@@ -77,6 +95,30 @@ implementation
 uses
   SyncUnit, StringUnit, ALoggerUnit, RunInAThreadUnit, ParameterManagerUnit,
   Pipeline.Utils;
+
+{ TPipelineConfig }
+
+constructor TPipelineConfig.Create;
+begin
+  inherited Create;
+
+  FNumberOfThreads := 16;
+
+end;
+
+class function TPipelineConfig.DefaultConfig: TPipelineConfig;
+begin
+  Result := TPipelineConfig.Create;
+
+end;
+
+function TPipelineConfig.SetNumberOfThreads(x: Integer): TPipelineConfig;
+begin
+  FNumberOfThreads := x;
+
+  Result := Self;
+
+end;
 
 { TTask }
 
@@ -124,13 +166,13 @@ begin
   Task := TTask(SysArgs[0]);
   wg := TWaitGroup(SysArgs[1]);
   Step := TPipeline.TStepInfo(SysArgs[2]);
-  FMTDebugLn('Running Task %d', [Task.ID]);
+  FMTDebugLn('Running Task %d', [Task.ID], 5);
 
-  FMTDebugLn('StepID: %d TaskID: %d', [Step.ID, Task.ID]);
+  FMTDebugLn('StepID: %d TaskID: %d', [Step.ID, Task.ID], 5);
 
   Result := Task.StepInfo.StepHandler(Task);
 
-  FMTDebugLn('wg.Done Task: %d Result: %s', [Task.ID, BoolToStr(Result, True)]);
+  FMTDebugLn('wg.Done Task: %d Result: %s', [Task.ID, BoolToStr(Result, True)], 5);
 
   wg.Done(1);
 
@@ -172,19 +214,19 @@ begin
     SysArgs[1] := wg;
     SysArgs[2] := Step;
 
-    RunInThread(@RunHandler, SysArgs, @Status[i]);
-
+    //RunInThread(@RunHandler, SysArgs, @Status[i]);
+    ThreadPool.Run(@RunHandler, SysArgs, @Status[i]);
   end;
 
-  FMTDebugLn('Waiting for all jobs of Step %d to Finish', [Step.ID]);
+  FMTDebugLn('Waiting for all jobs of Step %d to Finish', [Step.ID], 5);
   Wg.Wait();
-  FMTDebugLn('Step: %d All are Done', [Step.ID]);
+  FMTDebugLn('Step: %d All are Done', [Step.ID], 5);
 
   DebugLn('All jobs are Running');
 
   for i := 1 to Step.NumTasks do
   begin
-    FMTDebugLn('Task %d is Done with Status: %s', [i, BoolToStr(Status[i], True)]);
+    FMTDebugLn('Task %d is Done with Status: %s', [i, BoolToStr(Status[i], True)], 5);
   end;
 
   SetLength(Status, 0);
@@ -193,13 +235,15 @@ begin
   Result := True;
 end;
 
-constructor TPipeline.Create(_Name: AnsiString);
+constructor TPipeline.Create(_Name: AnsiString; _Config: TPipelineConfig);
 begin
   inherited Create;
 
   FName := _Name;
   Steps := TStepInfoList.Create;
   Steps.Add(nil);
+  Config := _Config;
+  ThreadPool := TThreadPool.Create(Config.NumberOfThreads);
 
 end;
 
@@ -221,6 +265,7 @@ var
   ThePipeline: TPipeline;
   StepID, FromStepID: Integer;
   wg: TWaitGroup;
+  ToStepID, ID: Integer;
 
 begin
   ThePipeline := SysArgs[0] as TPipeline;
@@ -229,23 +274,27 @@ begin
   Result := False;
   StepID := GetRunTimeParameterManager.ValueByName['Pipeline.StepID'].AsIntegerOrDefault(-1);
   FromStepID := GetRunTimeParameterManager.ValueByName['Pipeline.FromStepID'].AsIntegerOrDefault(1);
-
+  ToStepID := ThePipeline.Steps.Count - 1;
   if StepID <> -1 then
-    Result := ThePipeline.RunStep(StepID)
-  else
-    Result := ThePipeline.RunFromStep(FromStepID);
+  begin
+    FromStepID := StepID;
+    ToStepID := StepID;
 
-  FMTDebugLn('Result: %s', [BoolToStr(Result, True)]);
+  end;
+
+  for ID := FromStepID to ToStepID do
+    Result := ThePipeline.RunStep(ID);
+
+  FMTDebugLn('Result: %s', [BoolToStr(Result, True)], 5);
 
   wg.Done(1);
 
 end;
 
-function TPipeline.Run(WaitToFinish: Boolean): Boolean;
+function TPipeline.Run: Boolean;
 var
   SysArgs: TObjectList;
   wg: TWaitGroup;
-  Done: Boolean;
 
 begin
   SysArgs := TObjectList.Create;
@@ -253,16 +302,11 @@ begin
   wg := TWaitGroup.Create;
   SysArgs.Add(wg);
 
+  Result := False;
   wg.Add(1);
-  if WaitToFinish then
-    RunInThread(@RunThePipeline, SysArgs, @Done)
-  else
-    RunInThread(@RunThePipeline, SysArgs, nil);
+  RunInThread(@RunThePipeline, SysArgs, @Result);
+  wg.Wait;
 
-  if WaitToFinish then
-    wg.Wait;
-
-  Result := Done;
   wg.Free;
   SysArgs.Clear;
   SysArgs.Free;
@@ -271,11 +315,11 @@ end;
 
 function TPipeline.RunStep(StepIndex: Integer): Boolean;
 begin
-  FMTDebugLn('%d StepIndex: %d', [ThreadID, StepIndex]);
+  FMTDebugLn('%d StepIndex: %d', [ThreadID, StepIndex], 5);
 
   Result := RunStep(Steps[StepIndex]);
 
-  FMTDebugLn('%d Result: %s', [ThreadID, BoolToStr(Result, True)]);
+  FMTDebugLn('%d Result: %s', [ThreadID, BoolToStr(Result, True)], 5);
 
 end;
 

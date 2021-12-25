@@ -56,18 +56,15 @@ begin
     Exit;
   end;
 
+  Func := ''; Source := '';
   CallerAddress := get_caller_addr(bp);
   if CallerAddress = nil then
   begin
-    WriteLn('CallerAddress = nil');
-    Halt(1);
-  end;
-
-  Func := ''; Source := '';
-  if not GetLineInfo(CodePtrUInt(CallerAddress), Func, Source, LineNumber) then
+    PrintOnce.Run
+  end
+  else if not GetLineInfo(CodePtrUInt(CallerAddress), Func, Source, LineNumber) then
   begin
     PrintOnce.Run;
-    Exit;
 
   end;
 

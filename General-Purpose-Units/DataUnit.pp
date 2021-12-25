@@ -69,6 +69,7 @@ end;
 
 function TData.GetDataAsUInt64: UInt64;
 begin
+  Result := PUInt64(DataPtr)^;
 
 end;
 
@@ -127,6 +128,12 @@ begin
       PInt64(DataPtr)^ := (PInt64(p))^;
 
     end;
+    dtUint64:
+    begin
+      DataPtr := New(PUInt64);
+      PUInt64(DataPtr)^ := (PUInt64(p))^;
+
+    end;
     dtPointer:
     begin
       DataPtr := p;
@@ -142,8 +149,35 @@ end;
 
 destructor TData.Destroy;
 begin
-  if DataType = dtString then
-    Dispose(PAnsiString(DataPtr));
+  case DataType of
+    dtString:
+    begin
+      Dispose(PAnsiString(DataPtr));
+
+    end;
+    dtExtended:
+    begin
+      Dispose(PExtended(DataPtr));
+
+    end;
+    dtInt64:
+    begin
+      Dispose(PInt64(DataPtr));
+
+    end;
+    dtUint64:
+    begin
+      Dispose(PUInt64(DataPtr));
+
+    end;
+    else
+    begin
+      FmtFatalLn('Invalid dt: %d', [Ord(DataType)]);
+
+    end;
+
+  end;
+
 
   inherited Destroy;
 end;
