@@ -250,6 +250,8 @@ end;
 destructor TPipeline.Destroy;
 begin
   Steps.Free;
+  ThreadPool.Free;
+  Config.Free;
 
   inherited Destroy;
 end;

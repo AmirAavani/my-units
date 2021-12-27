@@ -12,7 +12,10 @@ function Steps2And3Hanlder(Task: TTask): Boolean;
 
 implementation
 uses
-  ALoggerUnit, Time;
+  ALoggerUnit, Time, DataUnit, GenericCollectionUnit;
+type
+  TObjectList = specialize TObjectCollection<TObject>;
+
 
 function Step1Hanlder(Task: TTask): Boolean;
 var
@@ -30,19 +33,25 @@ begin
 
 end;
 
-function CreateStep2Args: TPointerList;
+function CreateStep2Args(Task: TTask): TObjectList;
+var
+  Data: TData;
+
 begin
-  Result := TPointerList.Create;
-  Result.Add(New(PInteger));
-  PInteger(Result[0])^ := 2;
+  Data := TData.CreateInt64(Task.ID * 10 + 2);
+  Result := TObjectList.Create;
+  Result.Add(Data);
 
 end;
 
-function CreateStep3Args: TPointerList;
+function CreateStep3Args(Task: TTask): TObjectList;
+var
+  Data: TData;
+
 begin
-  Result := TPointerList.Create;
-  Result.Add(New(PInteger));
-  PInteger(Result[0])^ := 3;
+  Data := TData.CreateInt64(Task.ID * 10 + 3);
+  Result := TObjectList.Create;
+  Result.Add(Data);
 
 end;
 
@@ -50,16 +59,26 @@ function Steps2And3Hanlder(Task: TTask): Boolean;
 var
   SleepTime: Integer;
   StepID: Integer;
+  Args: TObjectList;
 
 begin
+  if Task.StepInfo.ID = 2 then
+    Args := CreateStep2Args(Task)
+  else if Task.StepInfo.ID = 3 then
+    Args := CreateStep3Args(Task)
+  else
+    FmtFatalLn('Invalid StepInfo.ID: %d', [Task.StepInfo.ID]);
+  StepID := Task.StepInfo.ID;
+
   SleepTime := Random(1000);
-  FMTDebugLn('Step %d Task: %d Sleeping for %dms', [StepID, Task.ID, SleepTime]);
+  FMTDebugLn('Step %d Task: %d  with Arg %d Sleeping for %dms',
+    [StepID, Task.ID, (Args[0].Create as TData).DataAsUInt64, SleepTime]);
   Sleep(SleepTime);
 
   FMTDebugLn('Done Step %d Task: %d', [StepID, Task.ID]);
 
   Result := True;
-
+  Args.Free;
 end;
 
 end.
