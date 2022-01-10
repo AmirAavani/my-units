@@ -17,4 +17,4 @@ Test01-Profiling:
 
 
 clean:
-	rm -Rf /tmp/Test01-*
+	rm -Rf /tmp/Test00-*

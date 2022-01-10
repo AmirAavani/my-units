@@ -45,6 +45,7 @@ type
   public
     function Exists(constref Key: TKey): Boolean;
     function Find(constref Key: TKey): TValue;
+    function Delete(constref Key: TKey; DisposeValue: Boolean): Boolean;
     function TryGetData(constref Key: TKey; out Data: TValue): Boolean;
     // Returns True if the key exists.
     function AddOrUpdateData(constref Key: TKey; Data: Tvalue): Boolean;
@@ -117,6 +118,21 @@ begin
   pn := inherited Find(Key);
   if pn <> nil then
     Result := pn^.Value;
+
+end;
+
+function TMap.Delete(constref Key: TKey; DisposeValue: Boolean): Boolean;
+var
+  Node: PNode;
+
+begin
+  Node := inherited Find(Key);
+
+  if Node = nil then
+    Exit(False);
+
+  Result := True;
+  inherited Delete(Node, DisposeValue);
 
 end;
 
