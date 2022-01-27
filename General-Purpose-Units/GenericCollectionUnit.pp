@@ -12,10 +12,15 @@ type
   { TCollection }
 
   generic TCollection<TData> = class(specialize TList<TData>)
+  private
+    function GetIsEmpty: Boolean; inline;
+
   public type
     TDumpFunc = function (d: TData): TBytes;
 
   public
+    property IsEmpty: Boolean read GetIsEmpty;
+
     procedure AddAnotherCollection(AnotherCollection: TCollection);
     procedure SaveToStream(Stream: TStream; DumpFunc: TDumpFunc);
 
@@ -66,6 +71,11 @@ uses
   Generics.Defaults;
 
 { TCollection }
+
+function TCollection.GetIsEmpty: Boolean;
+begin
+  Result := Count = 0;
+end;
 
 procedure TCollection.AddAnotherCollection(AnotherCollection: TCollection);
 var
