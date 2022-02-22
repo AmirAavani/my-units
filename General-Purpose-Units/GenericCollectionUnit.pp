@@ -26,7 +26,7 @@ type
 
   end;
 
-  { TGenericCollection }
+  { TObjectCollection }
 
   generic TObjectCollection<TData>= class(specialize TList<TData>)
   private
@@ -41,7 +41,7 @@ type
     {
       Deletes the Index-th item from the list and return it.
     }
-    function Delete(Index: Integer): TData;
+    function Delete(Index: SizeInt): TData;
   end;
 
   { TMap }
@@ -170,9 +170,15 @@ begin
   Result := Exists(key);
 
   if Result then
+  begin
     Self[Key] := Data
+
+  end
   else
+  begin
     Self.Add(Key, Data);
+
+  end;
 
 end;
 
@@ -223,16 +229,16 @@ var
 
 begin
   for i := 0 to Count - 1 do
-    TData(Self[i]).Free;
+    Self[i].Free;
 
   inherited Destroy;
 
 end;
 
-function TObjectCollection.Delete(Index: Integer): TData;
+function TObjectCollection.Delete(Index: SizeInt): TData;
 begin
   Result := Self[Index];
-  Self.Delete(Index);
+  inherited Delete(Index);
 
 end;
 
