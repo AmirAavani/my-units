@@ -71,6 +71,7 @@ type
     FStream: TStream;
     FRoot: TLinkListNode;
     FCurrentNode: TLinkListNode;
+    TakeOwnership: Boolean;
 
     function GetSize: Int64;
     property CurrentNode: TLinkListNode read FCurrentNode;
@@ -81,8 +82,7 @@ type
     property Size: Int64 read GetSize;
     property Root: TLinkListNode read FRoot;
 
-    // Takes the ownership of AnStream Object.
-    constructor Create(AnStream: TStream);
+    constructor Create(AnStream: TStream; _TakeOwnership: Boolean = True);
     destructor Destroy; override;
 
     function AddIntervalNode: TLinkListNode;
@@ -531,20 +531,24 @@ begin
   end;
 end;
 
-constructor TProtoStreamWriter.Create(AnStream: TStream);
+constructor TProtoStreamWriter.Create(AnStream: TStream; _TakeOwnership: Boolean
+  );
 begin
   inherited Create;
 
   FRoot := TLinkListNode.Create;
   FCurrentNode := Root;
   FStream := AnStream;
+  TakeOwnership := _TakeOwnership;
 end;
 
 destructor TProtoStreamWriter.Destroy;
 begin
   Self.WriteToStream;
   Root.Free;
-  FStream.Free;
+
+  if TakeOwnership then
+    FStream.Free;
 
   inherited;
 

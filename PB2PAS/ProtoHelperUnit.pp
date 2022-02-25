@@ -34,9 +34,9 @@ type
     destructor Destroy; override;
     procedure Clear; virtual;
 
-    function LoadFromString(Str: AnsiString): Boolean; virtual;
     function LoadFromStream(Stream: TStream): Boolean; virtual;
-    procedure SaveToStream(Stream: TStream);  virtual;
+    procedure SaveToStream(Stream: TStream); virtual;
+
 
     function ToJSON: AnsiString; virtual;
 
@@ -1302,14 +1302,6 @@ begin
 
 end;
 
-function TBaseMessage.LoadFromString(Str: AnsiString): Boolean;
-begin
-  Self.Clear;
-
-  Result := Self.LoadFromStream(TStringStream.Create(Str));
-
-end;
-
 function TBaseMessage.LoadFromStream(Stream: TStream): Boolean;
 var
   ProtoStream: TProtoStreamReader;
@@ -1328,7 +1320,7 @@ var
   ProtoStream: TProtoStreamWriter;
 
 begin
-  ProtoStream := TProtoStreamWriter.Create(Stream);
+  ProtoStream := TProtoStreamWriter.Create(Stream, False);
 
   Self.SaveToStream(ProtoStream);
 
