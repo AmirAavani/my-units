@@ -97,7 +97,7 @@ const
 
   function GetNameFromArgInfo(ArgInfo: AnsiString): AnsiString;
   begin
-    Result :=  Copy(ArgInfo, 1, Pos(':', ArgInfo) - 1);
+    Result :=  Copy(ArgInfo, 1, Pos(':', ArgInfo + ':') - 1);
 
   end;
 
