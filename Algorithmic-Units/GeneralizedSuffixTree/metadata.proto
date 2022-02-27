@@ -1,0 +1,5 @@
+syntax = "proto3";
+
+message DocMetaData {
+  uint32 doc_id = 1;
+}
