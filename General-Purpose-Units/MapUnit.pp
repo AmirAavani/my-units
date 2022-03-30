@@ -15,7 +15,7 @@ type
   private
     FCount: Integer;
 
-  type private
+  private type
     PMapNode= ^TMapNode;
 
     TMapNode= record
@@ -27,7 +27,7 @@ type
     end;
 
     TIsGreaterThanFunction= function (const a: T; const b: T): Boolean;
-  type public
+  public type
     TFindResult= record
       Data: T;
       IsValid: Boolean;
