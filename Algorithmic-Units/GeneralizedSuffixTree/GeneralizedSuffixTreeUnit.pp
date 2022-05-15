@@ -5,7 +5,8 @@ unit GeneralizedSuffixTreeUnit;
 interface
 
 uses
-  Classes, SysUtils, GenericCollectionUnit, DocUnit, TupleUnit;
+  Classes, SysUtils, GenericCollectionUnit, DocUnit, TupleUnit, QueryUnit;
+
 const
   EndToken: UInt16 = 0;
 
@@ -116,6 +117,7 @@ type
     LastIndex: Integer;
     Haystack: THaystack;
 
+    function GetRoot: TNode;
     function ToString(s: TBaseDoc; b, e: Int64): AnsiString;
     function ToString(s: TBaseDoc): AnsiString;
     function ToString(Interval: TInterval): AnsiString;
@@ -131,11 +133,15 @@ type
     function GetCharAt(DocIndex, Position: Integer): Int32;
 
   public
+    property Root: TNode read GetRoot;
+
     constructor Create;
     destructor Destroy; override;
 
     function AddDoc(Doc: TBaseDoc): Integer;
     function IsSuffix(Start, Fin: Integer; d: TBaseDoc): Boolean;
+
+    function CountMatches(Q: TBaseQuery): UInt32;
 
     procedure DumpTree;
     procedure PrintAll;
@@ -418,6 +424,12 @@ begin
 
 end;
 
+function TGeneralizedSuffixTree.GetRoot: TNode;
+begin
+  Result := Tree.Root;
+
+end;
+
 function TGeneralizedSuffixTree.ToString(s: TBaseDoc): AnsiString;
 begin
   Result := ToString(s, 0, s.Count - 1);
@@ -686,7 +698,12 @@ begin
     while (i <= Orig.Right) and (i < s.Count) do
     begin
       if s.CharAt[i] <> 0 then
-        Write(Chr(s.CharAt[i]), ' ')
+      begin
+        if Chr(s.CharAt[i]) in ['A'..'Z', 'a'..'z', '0'..'9'] then
+          Write(Chr(s.CharAt[i]), ' ')
+        else
+          Write('(#', s.CharAt[i], ')')
+      end
       else
         Write('$ ');
 
@@ -717,6 +734,7 @@ begin
     SameLine := False;
 
   end;
+  tit.Free;
 
   if SameLine then
     WriteLn('##');
@@ -738,6 +756,12 @@ begin
 
 end;
 
+function TGeneralizedSuffixTree.CountMatches(Q: TBaseQuery): UInt32;
+begin
+  Result := 0;
+
+end;
+
 procedure TGeneralizedSuffixTree.PrintAllTransitions;
   procedure DFS(root: TNode);
   var
@@ -753,9 +777,18 @@ procedure TGeneralizedSuffixTree.PrintAllTransitions;
     it := root.FNeighbors.GetEnumerator;
     while it.MoveNext do
     begin
-      WriteLn(Format('id: (%d -> %d) k: %S l: %d r: %d', [root.FID, it.Current.Value.First.FID,
-        specialize ifthen<AnsiString>(it.Current.Key > 0, Chr(it.Current.Key), IntToStr(it.Current.Key)),
-        it.Current.Value.Second.Left, it.Current.Value.Second.Right]));
+      WriteLn(Format('id: (%d -> %d) k: %S d: %d l: %d r: %d', [
+        root.FID,
+        it.Current.Value.First.FID,
+        specialize ifthen<AnsiString>(it.Current.Key in [
+          Ord('A')..Ord('Z'),
+          Ord('a')..Ord('z'),
+          Ord('0')..Ord('9')
+          ], Chr(it.Current.Key),
+          IntToStr(it.Current.Key)),
+          it.Current.Value.Second.DocIndex,
+          it.Current.Value.Second.Left,
+        it.Current.Value.Second.Right]));
       DFS(it.Current.Value.First);
 
     end;
@@ -824,7 +857,7 @@ begin
   NewDoc := TSuffixTreeDoc.Create(Doc,
     CreateMetadata(Haystack.Count + 1, Doc));
   Haystack.Add(NewDoc);
-  LastIndex:= Haystack.Count - 1;
+  LastIndex := Haystack.Count - 1;
 
   if DeploySuffixes(NewDoc, LastIndex) < 0 then
   begin

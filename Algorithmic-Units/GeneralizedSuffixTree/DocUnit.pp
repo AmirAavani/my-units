@@ -8,8 +8,6 @@ uses
   Classes, SysUtils, GenericCollectionUnit;
 
 type
-  TIntList = specialize TCollection<Int16>;
-
   { TBaseDoc }
 
   TBaseDoc = class(TObject)

@@ -1,5 +1,6 @@
 all:
-	fpc -Sd ./GeneralizedSuffixTreeTest.lpr -Fu../ -Fu../../../my-units/General-Purpose-Units/
+	fpc -Sd ./GeneralizedSuffixTreeTest.lpr -Fu../ -Fu../../../my-units/* -Fu../../../my-units/*/* -oGeneralizedSuffixTreeTest -FU/tmp
 
 memleak:
-	fpc -gh -g -gl -Sd ./GeneralizedSuffixTreeTest.lpr -Fu../ -Fu../../../my-units/General-Purpose-Units/ -FU/tmp -Fu../../../my-units/PB2PAS
+	fpc -gh -g -gl -Sd ./GeneralizedSuffixTreeTest.lpr -Fu../ -Fu../../../my-units/*/* -Fu../../../my-units/* -FU/tmp -Fu../../../my-units/PB2PAS -oMLeakGeneralizedSuffixTreeTest
+
