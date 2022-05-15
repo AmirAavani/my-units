@@ -5,7 +5,7 @@ unit GeneralizedSuffixTreeUnit;
 interface
 
 uses
-  Classes, SysUtils, GenericCollectionUnit, DocUnit, TupleUnit, QueryUnit;
+  Classes, SysUtils, GenericCollectionUnit, DocUnit, TupleUnit;
 
 const
   EndToken: UInt16 = 0;
@@ -140,8 +140,6 @@ type
 
     function AddDoc(Doc: TBaseDoc): Integer;
     function IsSuffix(Start, Fin: Integer; d: TBaseDoc): Boolean;
-
-    function CountMatches(Q: TBaseQuery): UInt32;
 
     procedure DumpTree;
     procedure PrintAll;
@@ -753,12 +751,6 @@ begin
   RootPoint := CreateReferencePoint(Tree.Root, -1, 0);
   Result := GetStartingNode(s, RootPoint) = Inf;
   s.Free;
-
-end;
-
-function TGeneralizedSuffixTree.CountMatches(Q: TBaseQuery): UInt32;
-begin
-  Result := 0;
 
 end;
 

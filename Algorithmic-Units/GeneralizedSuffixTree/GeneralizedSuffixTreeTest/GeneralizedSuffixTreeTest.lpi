@@ -29,39 +29,11 @@
         <IsPartOfProject Value="True"/>
       </Unit>
       <Unit>
-        <Filename Value="../GeneralizedSuffixTreeUnit.pp"/>
+        <Filename Value="../../../General-Purpose-Units/StreamUnit.pas"/>
         <IsPartOfProject Value="True"/>
       </Unit>
       <Unit>
-        <Filename Value="../../../my-units/General-Purpose-Units/CollectionUnit.pp"/>
-        <IsPartOfProject Value="True"/>
-      </Unit>
-      <Unit>
-        <Filename Value="DocUnit.pp"/>
-        <IsPartOfProject Value="True"/>
-      </Unit>
-      <Unit>
-        <Filename Value="../../../my-units/General-Purpose-Units/TupleUnit.pp"/>
-        <IsPartOfProject Value="True"/>
-      </Unit>
-      <Unit>
-        <Filename Value="../../../my-units/PB2PAS/ProtoHelperUnit.pp"/>
-        <IsPartOfProject Value="True"/>
-      </Unit>
-      <Unit>
-        <Filename Value="../../../my-units/Unicode-Functions/WideStringUnit.pas"/>
-        <IsPartOfProject Value="True"/>
-      </Unit>
-      <Unit>
-        <Filename Value="../../../my-units/ALogger/ALoggerUnit.pp"/>
-        <IsPartOfProject Value="True"/>
-      </Unit>
-      <Unit>
-        <Filename Value="ValidArguments.inc"/>
-        <IsPartOfProject Value="True"/>
-      </Unit>
-      <Unit>
-        <Filename Value="../../../my-units/Threading/SyncUnit.pp"/>
+        <Filename Value="../../../Unicode-Functions/WideStringUnit.pas"/>
         <IsPartOfProject Value="True"/>
       </Unit>
     </Units>
@@ -73,7 +45,7 @@
     </Target>
     <SearchPaths>
       <IncludeFiles Value="$(ProjOutDir)"/>
-      <OtherUnitFiles Value="..;../../../my-units/General-Purpose-Units;../../../my-units/PB2PAS;../../../my-units/Unicode-Functions;../../../my-units/ALogger;../../../my-units/Threading"/>
+      <OtherUnitFiles Value="../../../General-Purpose-Units;../../../Unicode-Functions;../../../ALogger;../../../Threading;..;../../../PB2PAS"/>
       <UnitOutputDirectory Value="lib/$(TargetCPU)-$(TargetOS)"/>
     </SearchPaths>
   </CompilerOptions>

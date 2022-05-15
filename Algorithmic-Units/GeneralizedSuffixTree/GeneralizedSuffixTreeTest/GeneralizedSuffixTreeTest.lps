@@ -7,59 +7,74 @@
       <Unit>
         <Filename Value="GeneralizedSuffixTreeTest.lpr"/>
         <IsPartOfProject Value="True"/>
-        <CursorPos X="10" Y="35"/>
+        <CursorPos X="74" Y="9"/>
         <UsageCount Value="213"/>
         <Loaded Value="True"/>
       </Unit>
       <Unit>
         <Filename Value="../GeneralizedSuffixTreeUnit.pp"/>
-        <IsPartOfProject Value="True"/>
         <IsVisibleTab Value="True"/>
         <EditorIndex Value="6"/>
-        <TopLine Value="335"/>
-        <CursorPos Y="352"/>
-        <FoldState Value=" T7iUG72@"/>
+        <TopLine Value="401"/>
+        <CursorPos Y="421"/>
         <UsageCount Value="213"/>
         <Bookmarks Count="2">
-          <Item0 Y="207" ID="1"/>
-          <Item1 X="49" Y="186" ID="2"/>
+          <Item0 Y="205" ID="1"/>
+          <Item1 X="49" Y="184" ID="2"/>
         </Bookmarks>
         <Loaded Value="True"/>
       </Unit>
       <Unit>
         <Filename Value="../../../my-units/General-Purpose-Units/CollectionUnit.pp"/>
-        <IsPartOfProject Value="True"/>
-        <EditorIndex Value="15"/>
+        <EditorIndex Value="-1"/>
         <UsageCount Value="213"/>
-        <Loaded Value="True"/>
       </Unit>
       <Unit>
         <Filename Value="DocUnit.pp"/>
-        <IsPartOfProject Value="True"/>
         <EditorIndex Value="-1"/>
         <CursorPos X="60" Y="13"/>
         <UsageCount Value="213"/>
       </Unit>
       <Unit>
         <Filename Value="../../../my-units/General-Purpose-Units/TupleUnit.pp"/>
-        <IsPartOfProject Value="True"/>
-        <EditorIndex Value="13"/>
+        <EditorIndex Value="-1"/>
         <CursorPos X="3" Y="5"/>
         <UsageCount Value="212"/>
-        <Loaded Value="True"/>
       </Unit>
       <Unit>
         <Filename Value="../../../my-units/PB2PAS/ProtoHelperUnit.pp"/>
-        <IsPartOfProject Value="True"/>
-        <EditorIndex Value="8"/>
+        <EditorIndex Value="-1"/>
         <TopLine Value="1305"/>
         <CursorPos X="3" Y="1311"/>
         <UsageCount Value="210"/>
+      </Unit>
+      <Unit>
+        <Filename Value="../../../my-units/Unicode-Functions/WideStringUnit.pas"/>
+        <EditorIndex Value="-1"/>
+        <UsageCount Value="22"/>
+      </Unit>
+      <Unit>
+        <Filename Value="../../../my-units/ALogger/ALoggerUnit.pp"/>
+        <EditorIndex Value="-1"/>
+        <TopLine Value="14"/>
+        <CursorPos X="53" Y="32"/>
+        <UsageCount Value="22"/>
+      </Unit>
+      <Unit>
+        <Filename Value="ValidArguments.inc"/>
+        <EditorIndex Value="5"/>
+        <CursorPos X="47" Y="2"/>
+        <UsageCount Value="22"/>
         <Loaded Value="True"/>
       </Unit>
       <Unit>
+        <Filename Value="../../../my-units/Threading/SyncUnit.pp"/>
+        <EditorIndex Value="-1"/>
+        <UsageCount Value="21"/>
+      </Unit>
+      <Unit>
         <Filename Value="../SuffixTreeUnit.pp"/>
-        <EditorIndex Value="14"/>
+        <EditorIndex Value="9"/>
         <TopLine Value="94"/>
         <CursorPos Y="117"/>
         <UsageCount Value="106"/>
@@ -67,11 +82,10 @@
       </Unit>
       <Unit>
         <Filename Value="../../../my-units/General-Purpose-Units/GenericCollectionUnit.pp"/>
-        <EditorIndex Value="12"/>
+        <EditorIndex Value="-1"/>
         <TopLine Value="32"/>
         <CursorPos X="63" Y="53"/>
         <UsageCount Value="118"/>
-        <Loaded Value="True"/>
       </Unit>
       <Unit>
         <Filename Value="/usr/local/share/src/fpc-3.3.1/fpc/packages/rtl-generics/src/generics.collections.pas"/>
@@ -83,7 +97,7 @@
       </Unit>
       <Unit>
         <Filename Value="../DocUnit.pp"/>
-        <EditorIndex Value="11"/>
+        <EditorIndex Value="8"/>
         <TopLine Value="150"/>
         <CursorPos X="11" Y="161"/>
         <UsageCount Value="106"/>
@@ -92,18 +106,16 @@
       <Unit>
         <Filename Value="../MetadataUnit.pp"/>
         <EditorIndex Value="7"/>
-        <TopLine Value="11"/>
-        <CursorPos X="15" Y="28"/>
+        <CursorPos X="26" Y="7"/>
         <UsageCount Value="105"/>
         <Loaded Value="True"/>
       </Unit>
       <Unit>
         <Filename Value="../../../my-units/PB2PAS/ProtoStreamUnit.pp"/>
-        <EditorIndex Value="10"/>
+        <EditorIndex Value="-1"/>
         <TopLine Value="189"/>
         <CursorPos Y="207"/>
         <UsageCount Value="72"/>
-        <Loaded Value="True"/>
       </Unit>
       <Unit>
         <Filename Value="/usr/local/share/src/fpc-3.3.1/fpc/rtl/objpas/sysutils/sysutilh.inc"/>
@@ -114,11 +126,10 @@
       </Unit>
       <Unit>
         <Filename Value="../../../my-units/PB2PAS/ProtoHelperListsUnit.pp"/>
-        <EditorIndex Value="9"/>
+        <EditorIndex Value="-1"/>
         <TopLine Value="3"/>
         <CursorPos X="11" Y="33"/>
         <UsageCount Value="72"/>
-        <Loaded Value="True"/>
       </Unit>
       <Unit>
         <Filename Value="../../../my-units/General-Purpose-Units/StreamUnit.pas"/>
@@ -128,82 +139,46 @@
         <UsageCount Value="10"/>
       </Unit>
       <Unit>
-        <Filename Value="../../../my-units/Unicode-Functions/WideStringUnit.pas"/>
-        <IsPartOfProject Value="True"/>
-        <EditorIndex Value="5"/>
-        <UsageCount Value="22"/>
-        <Loaded Value="True"/>
-      </Unit>
-      <Unit>
-        <Filename Value="../../../my-units/ALogger/ALoggerUnit.pp"/>
-        <IsPartOfProject Value="True"/>
-        <EditorIndex Value="3"/>
-        <TopLine Value="14"/>
-        <CursorPos X="53" Y="32"/>
-        <UsageCount Value="22"/>
-        <Loaded Value="True"/>
-      </Unit>
-      <Unit>
         <Filename Value="../../../my-units/General-Purpose-Units/ParameterManagerUnit.pp"/>
-        <EditorIndex Value="2"/>
+        <EditorIndex Value="-1"/>
         <TopLine Value="205"/>
         <CursorPos Y="221"/>
         <UsageCount Value="11"/>
-        <Loaded Value="True"/>
       </Unit>
       <Unit>
-        <Filename Value="ValidArguments.inc"/>
+        <Filename Value="../../../General-Purpose-Units/StreamUnit.pas"/>
         <IsPartOfProject Value="True"/>
-        <EditorIndex Value="1"/>
-        <CursorPos X="47" Y="2"/>
-        <UsageCount Value="22"/>
+        <EditorIndex Value="2"/>
+        <TopLine Value="111"/>
+        <CursorPos X="31" Y="130"/>
+        <UsageCount Value="20"/>
         <Loaded Value="True"/>
       </Unit>
       <Unit>
-        <Filename Value="../../../my-units/Threading/SyncUnit.pp"/>
+        <Filename Value="../../../Unicode-Functions/WideStringUnit.pas"/>
         <IsPartOfProject Value="True"/>
         <EditorIndex Value="4"/>
-        <UsageCount Value="21"/>
+        <UsageCount Value="20"/>
+        <Loaded Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="../../../ALogger/ALoggerUnit.pp"/>
+        <EditorIndex Value="3"/>
+        <TopLine Value="13"/>
+        <CursorPos X="53" Y="32"/>
+        <UsageCount Value="10"/>
+        <Loaded Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="../../../General-Purpose-Units/ParameterManagerUnit.pp"/>
+        <EditorIndex Value="1"/>
+        <TopLine Value="202"/>
+        <CursorPos Y="221"/>
+        <UsageCount Value="10"/>
         <Loaded Value="True"/>
       </Unit>
     </Units>
     <JumpHistory HistoryIndex="29">
-      <Position>
-        <Filename Value="../GeneralizedSuffixTreeUnit.pp"/>
-        <Caret Line="509" Column="5" TopLine="492"/>
-      </Position>
-      <Position>
-        <Filename Value="../GeneralizedSuffixTreeUnit.pp"/>
-        <Caret Line="65" Column="19" TopLine="35"/>
-      </Position>
-      <Position>
-        <Filename Value="../GeneralizedSuffixTreeUnit.pp"/>
-        <Caret Line="924" Column="3" TopLine="922"/>
-      </Position>
-      <Position>
-        <Filename Value="../GeneralizedSuffixTreeUnit.pp"/>
-        <Caret Line="134" Column="3" TopLine="116"/>
-      </Position>
-      <Position>
-        <Filename Value="../GeneralizedSuffixTreeUnit.pp"/>
-        <Caret Line="804" Column="3" TopLine="801"/>
-      </Position>
-      <Position>
-        <Filename Value="../GeneralizedSuffixTreeUnit.pp"/>
-        <Caret Line="142" Column="31" TopLine="122"/>
-      </Position>
-      <Position>
-        <Filename Value="GeneralizedSuffixTreeTest.lpr"/>
-        <Caret Line="27"/>
-      </Position>
-      <Position>
-        <Filename Value="../GeneralizedSuffixTreeUnit.pp"/>
-        <Caret Line="508" Column="3" TopLine="492"/>
-      </Position>
-      <Position>
-        <Filename Value="GeneralizedSuffixTreeTest.lpr"/>
-        <Caret Line="27"/>
-      </Position>
       <Position>
         <Filename Value="../GeneralizedSuffixTreeUnit.pp"/>
         <Caret Line="140" Column="5" TopLine="122"/>
@@ -237,54 +212,89 @@
         <Caret Line="34" Column="10"/>
       </Position>
       <Position>
-        <Filename Value="../../../my-units/Unicode-Functions/WideStringUnit.pas"/>
-      </Position>
-      <Position>
         <Filename Value="ValidArguments.inc"/>
         <Caret Column="66"/>
-      </Position>
-      <Position>
-        <Filename Value="../../../my-units/General-Purpose-Units/ParameterManagerUnit.pp"/>
-        <Caret Line="104" Column="18" TopLine="78"/>
-      </Position>
-      <Position>
-        <Filename Value="../../../my-units/General-Purpose-Units/ParameterManagerUnit.pp"/>
-        <Caret Line="139" Column="30" TopLine="111"/>
-      </Position>
-      <Position>
-        <Filename Value="../../../my-units/General-Purpose-Units/ParameterManagerUnit.pp"/>
-        <Caret Line="106" Column="27" TopLine="87"/>
-      </Position>
-      <Position>
-        <Filename Value="../../../my-units/Threading/SyncUnit.pp"/>
-      </Position>
-      <Position>
-        <Filename Value="../../../my-units/General-Purpose-Units/ParameterManagerUnit.pp"/>
-        <Caret Line="106" TopLine="87"/>
-      </Position>
-      <Position>
-        <Filename Value="../../../my-units/General-Purpose-Units/ParameterManagerUnit.pp"/>
-        <Caret Line="119" TopLine="91"/>
-      </Position>
-      <Position>
-        <Filename Value="../../../my-units/General-Purpose-Units/ParameterManagerUnit.pp"/>
-        <Caret Line="120" TopLine="92"/>
-      </Position>
-      <Position>
-        <Filename Value="../../../my-units/General-Purpose-Units/ParameterManagerUnit.pp"/>
-        <Caret Line="139" TopLine="125"/>
-      </Position>
-      <Position>
-        <Filename Value="../../../my-units/General-Purpose-Units/ParameterManagerUnit.pp"/>
-        <Caret Line="226" Column="24" TopLine="193"/>
       </Position>
       <Position>
         <Filename Value="ValidArguments.inc"/>
         <Caret Line="2" Column="47"/>
       </Position>
       <Position>
-        <Filename Value="../../../my-units/General-Purpose-Units/ParameterManagerUnit.pp"/>
-        <Caret Line="221" TopLine="205"/>
+        <Filename Value="../GeneralizedSuffixTreeUnit.pp"/>
+        <Caret Line="344" Column="32" TopLine="335"/>
+      </Position>
+      <Position>
+        <Filename Value="../GeneralizedSuffixTreeUnit.pp"/>
+        <Caret Line="8" Column="22"/>
+      </Position>
+      <Position>
+        <Filename Value="../GeneralizedSuffixTreeUnit.pp"/>
+        <Caret Line="10" Column="23"/>
+      </Position>
+      <Position>
+        <Filename Value="GeneralizedSuffixTreeTest.lpr"/>
+        <Caret Line="9" Column="12"/>
+      </Position>
+      <Position>
+        <Filename Value="../GeneralizedSuffixTreeUnit.pp"/>
+      </Position>
+      <Position>
+        <Filename Value="GeneralizedSuffixTreeTest.lpr"/>
+        <Caret Line="10" Column="30"/>
+      </Position>
+      <Position>
+        <Filename Value="../GeneralizedSuffixTreeUnit.pp"/>
+        <Caret Line="14" Column="70"/>
+      </Position>
+      <Position>
+        <Filename Value="../../../General-Purpose-Units/StreamUnit.pas"/>
+      </Position>
+      <Position>
+        <Filename Value="../../../Unicode-Functions/WideStringUnit.pas"/>
+      </Position>
+      <Position>
+        <Filename Value="../../../ALogger/ALoggerUnit.pp"/>
+        <Caret Line="8" Column="29"/>
+      </Position>
+      <Position>
+        <Filename Value="../../../General-Purpose-Units/StreamUnit.pas"/>
+        <Caret Line="130" Column="31" TopLine="111"/>
+      </Position>
+      <Position>
+        <Filename Value="../../../ALogger/ALoggerUnit.pp"/>
+        <Caret Line="32" Column="53" TopLine="13"/>
+      </Position>
+      <Position>
+        <Filename Value="GeneralizedSuffixTreeTest.lpr"/>
+        <Caret Line="9" Column="48"/>
+      </Position>
+      <Position>
+        <Filename Value="../GeneralizedSuffixTreeUnit.pp"/>
+        <Caret Line="8" Column="63"/>
+      </Position>
+      <Position>
+        <Filename Value="../GeneralizedSuffixTreeUnit.pp"/>
+        <Caret Line="144" Column="3" TopLine="125"/>
+      </Position>
+      <Position>
+        <Filename Value="../MetadataUnit.pp"/>
+        <Caret Line="7" Column="26"/>
+      </Position>
+      <Position>
+        <Filename Value="../GeneralizedSuffixTreeUnit.pp"/>
+        <Caret Line="759" TopLine="740"/>
+      </Position>
+      <Position>
+        <Filename Value="../GeneralizedSuffixTreeUnit.pp"/>
+        <Caret Line="144" TopLine="130"/>
+      </Position>
+      <Position>
+        <Filename Value="GeneralizedSuffixTreeTest.lpr"/>
+        <Caret Line="9" Column="74"/>
+      </Position>
+      <Position>
+        <Filename Value="../../../General-Purpose-Units/ParameterManagerUnit.pp"/>
+        <Caret Line="221" TopLine="202"/>
       </Position>
     </JumpHistory>
     <RunParams>
@@ -300,13 +310,6 @@
         <WatchKind Value="wpkWrite"/>
         <Source Value="../GeneralizedSuffixTreeUnit.pp"/>
         <Line Value="1"/>
-      </Item>
-      <Item>
-        <Kind Value="bpkSource"/>
-        <WatchScope Value="wpsLocal"/>
-        <WatchKind Value="wpkWrite"/>
-        <Source Value="../GeneralizedSuffixTreeUnit.pp"/>
-        <Line Value="423"/>
       </Item>
       <Item>
         <Kind Value="bpkSource"/>

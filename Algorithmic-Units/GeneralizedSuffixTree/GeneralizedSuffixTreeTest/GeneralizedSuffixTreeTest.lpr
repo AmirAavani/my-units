@@ -6,9 +6,7 @@ uses
   {$IFDEF UNIX}
   cthreads,
   {$ENDIF}
-  Classes, GeneralizedSuffixTreeUnit, CollectionUnit, DocUnit, StreamUnit,
-  WideStringUnit, ALoggerUnit, SyncUnit
-  { you can add units after this };
+  Classes, StreamUnit, WideStringUnit, GeneralizedSuffixTreeUnit, DocUnit;
 
 var
   Tree: TGeneralizedSuffixTree;
