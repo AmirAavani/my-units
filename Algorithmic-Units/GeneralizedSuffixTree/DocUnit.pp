@@ -5,7 +5,7 @@ unit DocUnit;
 interface
 
 uses
-  Classes, SysUtils, GenericCollectionUnit;
+  Classes, SysUtils, GenericCollectionUnit, StreamUnit;
 
 type
   { TBaseDoc }
@@ -22,6 +22,9 @@ type
 
     function Find(SIndex, EIndex: Integer; Token: Integer): Boolean; virtual;
     function SubStr(SIndex, EIndex: Integer): AnsiString; virtual;
+
+    procedure SaveToStream(Stream: TMyBinStream); virtual; abstract;
+    class function LoadFromStream(Stream: TMyBinStream): TBaseDoc; virtual;
   end;
 
   { TStringDoc }
@@ -36,6 +39,9 @@ type
   public
     constructor Create(constref Str: AnsiString);
     function SubStr(SIndex, EIndex: Integer): AnsiString; override;
+
+    procedure SaveToStream(Stream: TMyBinStream); override;
+    class function LoadFromStream(Stream: TMyBinStream): TBaseDoc; override;
 
   end;
 
@@ -54,15 +60,22 @@ type
     function GetCount: Integer; override;
     function GetCharAt(Index: Integer): UInt16; override;
     function SubStr(s, e: Integer): AnsiString; override;
+
+    procedure SaveToStream(Stream: TMyBinStream); override;
+    class function LoadFromStream(Stream: TMyBinStream): TBaseDoc; override;
+
   end;
 
   TBaseDocs = specialize TObjectCollection<TBaseDoc>;
+
+type
+  TDocMode = (dmNone = 0, dmStringDoc = 1, dmRefDoc = 2, dmSuffixTreeDoc = 3);
 
 
 implementation
 
 uses
-  StringUnit;
+  StringUnit, ALoggerUnit, SuffixTreeDocUnit;
 
 { TRefDoc }
 
@@ -115,6 +128,16 @@ begin
   Result := BaseDoc.SubStr(s + SIndex, e + SIndex);
 end;
 
+procedure TRefDoc.SaveToStream(Stream: TMyBinStream);
+begin
+
+end;
+
+class function TRefDoc.LoadFromStream(Stream: TMyBinStream): TBaseDoc;
+begin
+  Result:=inherited LoadFromStream(Stream);
+end;
+
 { TBaseDoc }
 
 constructor TBaseDoc.Create;
@@ -154,6 +177,31 @@ begin
   StrList.Free;
 end;
 
+class function TBaseDoc.LoadFromStream(Stream: TMyBinStream): TBaseDoc;
+var
+  b: Byte;
+  Str: AnsiString;
+
+begin
+  b := Stream.ReadByte;
+  Result := nil;
+
+  case b of
+  Ord(dmStringDoc):
+  begin
+    Result := TStringDoc.LoadFromStream(Stream);
+
+  end;
+  Ord(dmSuffixTreeDoc):
+  begin
+    Result := TSuffixTreeDoc.LoadFromStream(Stream);
+
+  end
+  else
+    ALoggerUnit.FmtFatalLn('Invalid mode: %d', [b]);
+  end;
+end;
+
 { TStringDoc }
 
 function TStringDoc.GetCount: Integer;
@@ -179,6 +227,23 @@ end;
 function TStringDoc.SubStr(SIndex, EIndex: Integer): AnsiString;
 begin
   Result := Copy(FStr, SIndex + 1, EIndex - SIndex + 1);
+
+end;
+
+procedure TStringDoc.SaveToStream(Stream: TMyBinStream);
+begin
+  Stream.WriteByte(Ord(dmStringDoc));
+  Stream.WriteStr(FStr);
+
+end;
+
+class function TStringDoc.LoadFromStream(Stream: TMyBinStream): TBaseDoc;
+var
+  Str: AnsiString;
+
+begin
+  Str := Stream.ReadStr;
+  Result := TStringDoc.Create(Str);
 
 end;
 

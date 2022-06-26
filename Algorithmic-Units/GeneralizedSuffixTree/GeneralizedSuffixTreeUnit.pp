@@ -5,10 +5,7 @@ unit GeneralizedSuffixTreeUnit;
 interface
 
 uses
-  Classes, SysUtils, GenericCollectionUnit, DocUnit, TupleUnit;
-
-const
-  EndToken: UInt16 = 0;
+  Classes, SysUtils, GenericCollectionUnit, DocUnit, TupleUnit, StreamUnit;
 
 type
 
@@ -17,6 +14,16 @@ type
   TGeneralizedSuffixTree = class(TObject)
   public type
     TNode = class;
+
+    { TNodes }
+
+    TNodes = class(specialize TCollection<TNode>)
+    private
+      function GetByID(TargetID: UInt32): TNode;
+    public
+      property ByID[TargetID: UInt32]: TNode read GetByID;
+    end;
+
     TCharType = Int32;
     { TInterval }
 
@@ -43,7 +50,14 @@ type
     function CreateReferencePoint(n: TNode; DocIndex, CharIndex: Integer): TReferencePoint;
 
   private type
-    TTransitionMap = specialize TMap<TCharType, TTransition>;
+
+    { TTransitionMap }
+
+    TTransitionMap = class(specialize TMap<TCharType, TTransition>)
+      procedure SaveToStream(Stream: TMyBinStream);
+      class function LoadFromStream(Stream: TMyBinStream; AllNodes: TNodes): TTransitionMap;
+
+    end;
 
     { TNode }
 
@@ -56,6 +70,8 @@ type
     protected
       function GetIsLeaf: Boolean; virtual;
       function GetNeighbor(Ch: TCharType): TTransition; virtual;
+      procedure SaveToStream(Stream: TMyBinStream);
+      function LoadFromStream(Stream: TMyBinStream; AllNodes: TNodes): TNode;
 
     public
       property Neighbor[Ch: TCharType]: TTransition read GetNeighbor;
@@ -92,8 +108,6 @@ type
 
     end;
 
-    TNodes = specialize TCollection<TNode>;
-
     { TBase }
 
     TBase = class(TObject)
@@ -106,6 +120,9 @@ type
     public
       constructor Create;
       destructor Destroy; override;
+
+      procedure SaveToStream(Stream: TMyBinStream);
+      class function LoadFromStream(Stream: TMyBinStream): TBase;
 
     end;
   private type
@@ -144,35 +161,18 @@ type
     procedure DumpTree;
     procedure PrintAll;
     procedure PrintAllTransitions;
+
+    procedure SaveToStream(Stream: TMyBinStream);
+    class function LoadFromStream(Stream: TMyBinStream): TGeneralizedSuffixTree;
+
   end;
 
 implementation
 uses
-  Math, MetadataUnit;
+  Math, MetadataUnit, ALoggerUnit, SuffixTreeDocUnit;
 
 const
   Inf = High(Int64);
-
-type
-
-  { TSuffixTreeDoc }
-
-  TSuffixTreeDoc = class(TBaseDoc)
-  private
-    Doc: TBaseDoc;
-    MetaData: TDocMetaData;
-    MetaDataBs: TBytes;
-
-  protected
-    function GetCount: Integer; override;
-    function GetCharAt(Index: Integer): UInt16; override;
-
-  public
-    constructor Create(_Doc: TBaseDoc; _Metadata: TDocMetaData);
-    destructor Destroy; override;
-    function SubStr(b, e: Integer): AnsiString; override;
-
-  end;
 
 function CreateMetadata(DocID: Uint32; Doc: TBaseDoc): TDocMetaData;
 begin
@@ -182,85 +182,69 @@ begin
 
 end;
 
-{ TSuffixTreeDoc }
+{ TGeneralizedSuffixTree.TNodes }
 
-function TSuffixTreeDoc.GetCount: Integer;
+function TGeneralizedSuffixTree.TNodes.GetByID(TargetID: UInt32): TNode;
+
 begin
-  Result := Doc.Count + 1 + (Length(MetaDataBs) + 1) div 2;
+  for Result in Self do
+    if Result.ID = TargetID then
+      Exit;
 
-
+  Result := nil;
 end;
 
-function TSuffixTreeDoc.GetCharAt(Index: Integer): UInt16;
+{ TGeneralizedSuffixTree.TTransitionMap }
+
+procedure TGeneralizedSuffixTree.TTransitionMap.SaveToStream(
+  Stream: TMyBinStream);
 var
-  i: Integer;
+  Enum: TTransitionMap.TPairEnumerator;
+  Transition: TTransition;
 
 begin
-  if Index < Doc.Count then
-    Exit(Doc.CharAt[Index]);
+  Enum := Self.GetEnumerator;
+  Stream.WriteUInt32(Self.Count);
 
-  if Index = Doc.Count then
-    Exit(EndToken);
+  while Enum.MoveNext do
+  begin
+    Stream.WriteInt32(Enum.Current.Key);
+    Transition := Enum.Current.Value;
+    Stream.WriteUInt32(Transition.First.ID);
+    Stream.WriteInt64(Transition.Second.Left);
+    Stream.WriteInt64(Transition.Second.Right);
+    Stream.WriteUInt32(Transition.Second.DocIndex);
 
-  {
-   C+1, -> M[0], M[1]
-   C+2  -> M[2], M[3]
-   ...
-  }
-  i := Index - Doc.Count - 1;
-  Result := Ord(MetaDataBs[2 * i]) shl 8;
-  if 2 * i + 1 < Length(MetaDataBs) then
-    Result := Result or UInt16(MetaDataBs[2 * i + 1]);
+  end;
 
+  Enum.Free;
 end;
 
-constructor TSuffixTreeDoc.Create(_Doc: TBaseDoc; _Metadata: TDocMetaData);
+class function TGeneralizedSuffixTree.TTransitionMap.LoadFromStream(
+  Stream: TMyBinStream; AllNodes: TNodes): TTransitionMap;
 var
-  S: TStream;
+  Transition: TTransition;
+  c: UInt32;
+  ID: UInt32;
+  Key: Int32;
 
 begin
-  inherited Create;
+  Result := TTransitionMap.Create;
+  c := Stream.ReadUInt32;
 
-  Doc := _Doc;
-  MetaData := _Metadata;
+  while c <> 0 do
+  begin
+    Key := Stream.ReadInt32;
+    ID := Stream.ReadUInt32;
+    Transition.First:= AllNodes[ID];
+    Transition.Second.Left := Stream.ReadInt64;
+    Transition.Second.Right := Stream.ReadInt64;
+    Transition.Second.DocIndex := Stream.ReadUInt32;
 
-  S := TBytesStream.Create;
-  Metadata.SaveToStream(S);
-  S.Position := 0;
-  SetLength(MetaDataBs, S.Size);
-  S.ReadData(MetaDataBs, S.Size);
-  S.Free;
+    Dec(c);
+    Result[Key] := Transition;
 
-end;
-
-destructor TSuffixTreeDoc.Destroy;
-begin
-  Doc.Free;
-  MetaData.Free;
-  SetLength(MetaDataBs, 0);
-
-  inherited Destroy;
-end;
-
-function TSuffixTreeDoc.SubStr(b, e: Integer): AnsiString;
-var
-  i: Integer;
-
-begin
-  Result := Doc.SubStr(b, Min(e, Doc.Count - 1));
-  if e < Doc.Count then
-    Exit;
-
-  Result += '(EOF)';
-  if e = Doc.Count then
-    Exit;
-
-  Result += '{';
-  for i := Doc.Count + 1 to e do
-    Result += IntToStr(Self.CharAt[i]) + ',';
-  Delete(Result, Length(Result), 1);
-  Result += '}';
-
+  end;
 
 end;
 
@@ -327,10 +311,112 @@ begin
   inherited Destroy;
 end;
 
+function CompareIDs(constref aNode, bNode: TGeneralizedSuffixTree.TNode): Integer;
+begin
+  Result := Sign(aNode.ID - bNode.ID);
+
+end;
+
+procedure TGeneralizedSuffixTree.TBase.SaveToStream(Stream: TMyBinStream);
+  procedure CollectallNodes(Root: TNode; AllNodes: TNodes);
+  var
+    it: TTransitionMap.TPairEnumerator;
+
+  begin
+    AllNodes.Add(Root);
+    it := Root.FNeighbors.GetEnumerator;
+
+    while it.MoveNext do
+    begin
+      CollectallNodes(it.Current.Value.First, AllNodes);
+
+    end;
+
+    it.Free;
+
+  end;
+
+var
+  AllNodes: TNodes;
+  Node: TNode;
+
+begin
+  AllNodes := TNodes.Create;
+  CollectAllNodes(Root, AllNodes);
+  AllNodes.Sort(@CompareIDs);
+  Stream.WriteUInt32(AllNodes.Count);
+
+  for Node in AllNodes do
+  begin
+    if Node.ClassName = 'TGeneralizedSuffixTree.TNode' then
+      Stream.WriteByte(0)
+    else if Node.ClassName = 'TGeneralizedSuffixTree.TLeaf' then
+      Stream.WriteByte(1)
+    else if Node.ClassName = 'TGeneralizedSuffixTree.TSinkNode' then
+      Stream.WriteByte(2)
+    else
+      FmtFatalLn('Unkown Node Type: %s', [ClassName]);
+
+  end;
+
+  for Node in AllNodes do
+    Node.SaveToStream(Stream);
+
+  AllNodes.Free;
+  Stream.WriteUInt32(Root.ID);
+  Stream.WriteUInt32(Sink.ID);
+
+end;
+
+class function TGeneralizedSuffixTree.TBase.LoadFromStream(Stream: TMyBinStream
+  ): TBase;
+var
+  AllNodes: TNodes;
+  Node: TNode;
+  Count: Integer;
+  i: Integer;
+  ClassDataType: Integer;
+
+begin
+  Result := TBase.Create;
+  Count := Stream.ReadUInt32;
+
+  AllNodes := TNodes.Create;
+  AllNodes.Count := Count + 1;
+  for i := 0 to Count do
+  begin
+    ClassDataType := Stream.ReadByte;
+
+    case ClassDataType of
+    0: Node := TNode.Create;
+    1: Node := TLeaf.Create;
+    2: Node := TSinkNode.Create
+    else
+      FmtFatalLn('Invalid Node.ClassDataType: %d', [ClassDataType]);
+    end;
+    AllNodes[i] := Node;
+
+  end;
+
+  for Node in AllNodes do
+  begin
+    if Node = nil then
+      Continue;
+
+    Node.LoadFromStream(Stream, AllNodes);
+
+  end;
+
+  Result.Root := AllNodes[Stream.ReadUInt32];
+  Result.Sink := AllNodes[Stream.ReadUInt32] as TSinkNode;
+  AllNodes.Clear;
+  AllNodes.Free;
+
+end;
+
 { TGeneralizedSuffixTree.TSinkNode }
 
-function TGeneralizedSuffixTree.TSinkNode.GetNeighbor(Ch: TCharType
-  ): TTransition;
+function TGeneralizedSuffixTree.TSinkNode.GetNeighbor(Ch: TCharType): TTransition;
 begin
   Result.First := Self.SuffixNode;
   Result.Second := CreateInterval;
@@ -710,12 +796,11 @@ begin
     end;
 
     Write('- ');
-    Delta := Orig.Right - Orig.Left + 2;
     if Orig.Right = Inf then
-    begin
-      Delta := s.Count - Orig.Left;
+      Delta := s.Count - Orig.Left
+    else
+      Delta := Orig.Right - Orig.Left + 2;
 
-    end;
 
   end;
 
@@ -791,6 +876,44 @@ procedure TGeneralizedSuffixTree.PrintAllTransitions;
 
 begin
   DFS(Tree.Root);
+
+end;
+
+procedure TGeneralizedSuffixTree.SaveToStream(Stream: TMyBinStream);
+var
+  d: TBaseDoc;
+
+begin
+  Stream.WriteUInt32(Haystack.Count);
+  for d in Haystack do
+  begin
+    d.SaveToStream(Stream);
+
+  end;
+
+ Tree.SaveToStream(Stream);
+
+end;
+
+class function TGeneralizedSuffixTree.LoadFromStream(Stream: TMyBinStream
+  ): TGeneralizedSuffixTree;
+var
+  d: TBaseDoc;
+  i: Integer;
+  DocCount: Integer;
+
+begin
+  Result := TGeneralizedSuffixTree.Create;
+  DocCount := Stream.ReadUInt32;
+  Result.Haystack := THaystack.Create;
+  for i := 1 to DocCount do
+  begin
+    d := TBaseDoc.LoadFromStream(Stream);
+    Result.Haystack.Add(d);
+
+  end;
+
+ Result.Tree := TBase.LoadFromStream(Stream);
 
 end;
 
@@ -938,6 +1061,37 @@ begin
     Exit;
   if FNeighbors <> nil then
     FNeighbors.TryGetData(Ch, Result);
+
+end;
+
+procedure TGeneralizedSuffixTree.TNode.SaveToStream(Stream: TMyBinStream);
+begin
+  Stream.WriteUInt32(self.ID);
+
+  if SuffixNode = nil then
+  begin
+    Stream.WriteUInt32(0);
+
+  end
+  else
+  begin
+    Stream.WriteUInt32(SuffixNode.ID);
+
+  end;
+
+  FNeighbors.SaveToStream(Stream);
+
+end;
+
+function TGeneralizedSuffixTree.TNode.LoadFromStream(Stream: TMyBinStream; AllNodes: TNodes): TNode;
+begin
+  Result := Self;
+
+  Result.FID := Stream.ReadUInt32;
+
+  Result.FSuffixNode := AllNodes[Stream.ReadUInt32];
+  Result.FNeighbors := TTransitionMap.LoadFromStream(Stream, AllNodes);
+
 
 end;
 
