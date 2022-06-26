@@ -111,6 +111,7 @@ type
     function ReadStr: AnsiString;
 
     procedure WriteChar(const Ch: Char);
+    procedure WriteByte(const b: Byte);
     procedure WriteInt(const n: Integer);
     procedure WriteInt32(const n: Int32);
     procedure WriteInt64(const n: Int64);
@@ -494,6 +495,12 @@ end;
 procedure TMyBinStream.WriteChar(const Ch: Char);
 begin
   FTargerStream.Write(Ch, 1);
+
+end;
+
+procedure TMyBinStream.WriteByte(const b: Byte);
+begin
+  FTargerStream.Write(b, 1);
 
 end;
 

@@ -6,7 +6,8 @@ uses
   {$IFDEF UNIX}
   cthreads,
   {$ENDIF}
-  Classes, StreamUnit, WideStringUnit, GeneralizedSuffixTreeUnit, DocUnit;
+  Classes, StreamUnit, WideStringUnit, GeneralizedSuffixTreeUnit, DocUnit,
+  SuffixTreeDocUnit;
 
 var
   Tree: TGeneralizedSuffixTree;
@@ -28,10 +29,22 @@ begin
   Tree.PrintAll;
 
   WriteLn('DumpTree');
-  Stream := TMyBinStream.Create(TFileStream.Create('/tmp/a.bin', fmCreate));
   Tree.DumpTree;
+
+  WriteLn('Saving');
+  Stream := TMyBinStream.Create(TFileStream.Create('/tmp/a.bin', fmCreate), True);
+  Tree.SaveToStream(Stream);
   Stream.Free;
 
+  Tree.Free;
+
+  WriteLn('Loading');
+  Stream := TMyBinStream.Create(TFileStream.Create('/tmp/a.bin', fmOpenRead), True);
+  Tree := TGeneralizedSuffixTree.LoadFromStream(Stream);
+  Stream.Free;
+
+  WriteLn('DumpTree');
+  Tree.DumpTree;
   Tree.Free;
 
 end.

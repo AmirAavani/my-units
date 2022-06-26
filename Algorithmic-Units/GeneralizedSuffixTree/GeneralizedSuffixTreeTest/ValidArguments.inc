@@ -1,2 +1,2 @@
-ValidArgumentsInfo: array of AnsiString = ('--TreeOutputFilename:AnsiString');
-ValidArgumentsValues: array of AnsiString = ('');
+ValidArgumentsInfo: array of AnsiString = ('--Debug', '--TreeOutputFilename:AnsiString');
+ValidArgumentsValues: array of AnsiString = ('0', '');
