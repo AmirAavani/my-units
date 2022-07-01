@@ -43,8 +43,29 @@ begin
   Tree := TGeneralizedSuffixTree.LoadFromStream(Stream);
   Stream.Free;
 
+  WriteLn('PrintAllTransitions');
+  Tree.PrintAllTransitions;
+
+  WriteLn('PrintAll');
+  Tree.PrintAll;
+
   WriteLn('DumpTree');
   Tree.DumpTree;
+
+  Tree.AddDoc(TStringDoc.Create('R'));
+  Tree.AddDoc(TStringDoc.Create('Amin'));
+
+  WriteLn('DumpTree');
+  Tree.DumpTree;
+  WriteLn('PrintAll');
+  Tree.PrintAll;
+  WriteLn('PrintAllTransitions');
+  Tree.PrintAllTransitions;
+
+  Stream := TMyBinStream.Create(TFileStream.Create('/tmp/a.bin', fmCreate), True);
+  Tree.SaveToStream(Stream);
+  Stream.Free;
+
   Tree.Free;
 
 end.
