@@ -68,5 +68,27 @@ begin
 
   Tree.Free;
 
+  Tree := TGeneralizedSuffixTree.Create;
+
+  Tree.AddDoc(TStringDoc.Create('Mississipi'));
+  Tree.AddDoc(TStringDoc.Create('AMiR'));
+  Tree.AddDoc(TStringDoc.Create('R'));
+  Tree.AddDoc(TStringDoc.Create('R'));
+  Tree.AddDoc(TStringDoc.Create('R'));
+  Tree.AddDoc(TStringDoc.Create('Amin'));
+
+  WriteLn('DumpTree');
+  Tree.DumpTree;
+  WriteLn('PrintAll');
+  Tree.PrintAll;
+  WriteLn('PrintAllTransitions');
+  Tree.PrintAllTransitions;
+
+  Stream := TMyBinStream.Create(TFileStream.Create('/tmp/a.bin', fmCreate), True);
+  Tree.SaveToStream(Stream);
+  Stream.Free;
+
+  Tree.Free;
+
 end.
 

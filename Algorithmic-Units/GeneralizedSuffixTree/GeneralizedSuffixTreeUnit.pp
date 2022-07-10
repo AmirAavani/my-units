@@ -121,7 +121,7 @@ type
       destructor Destroy; override;
 
       procedure SaveToStream(Stream: TMyBinStream);
-      class function LoadFromStream(Stream: TMyBinStream): TBase;
+      class function LoadFromStream(Stream: TMyBinStream; var NextNodeID: UInt32): TBase;
 
     end;
   private type
@@ -380,8 +380,8 @@ begin
 
 end;
 
-class function TGeneralizedSuffixTree.TBase.LoadFromStream(Stream: TMyBinStream
-  ): TBase;
+class function TGeneralizedSuffixTree.TBase.LoadFromStream(
+  Stream: TMyBinStream; var NextNodeID: UInt32): TBase;
 var
   AllNodes: TNodes;
   Node: TNode;
@@ -409,6 +409,7 @@ begin
     AllNodes[i] := Node;
 
   end;
+  NextNodeID := Count + 1;
 
   for Node in AllNodes do
   begin
@@ -921,7 +922,7 @@ begin
 
   end;
 
-  Result.Tree := TBase.LoadFromStream(Stream);
+  Result.Tree := TBase.LoadFromStream(Stream, Result.FNextNodeID);
 
 end;
 
