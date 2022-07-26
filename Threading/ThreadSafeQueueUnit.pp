@@ -17,7 +17,7 @@ type
   generic TThreadSafeQueue<T> = class(specialize TGenericAbstractQueue<T>)
   private type
     TDataList = specialize TCollection<T>;
-    TAtomicInt = specialize TAtomic<Integer>;
+
   private
     FData: TDataList;
     FEndOfOperation: Boolean;
@@ -54,9 +54,6 @@ type
 
   end;
 
-
-function IncAtomicInt(v: Integer): Integer;
-function DecAtomicInt(v: Integer): Integer;
 
 implementation
 uses
@@ -115,58 +112,47 @@ begin
 
 end;
 
-function IncAtomicInt(v: Integer): Integer;
-begin
-  Result := v + 1;
-
-end;
-
-function DecAtomicInt(v: Integer): Integer;
-begin
-  Result := v - 1;
-
-end;
-
 procedure TThreadSafeQueue.DoDelete(var LastElement: T);
 var
   HasElement: Boolean;
 
 begin
-   wg.Add(1);
+  wg.Add(1);
 
-   LastElement := Default(T);
-   HasElement := False;
+  LastElement := Default(T);
+  HasElement := False;
 
-   while not HasElement do
-   begin
-     Semaphore.Dec;
-     if FEndOfOperation then
-       Break;
+  while not HasElement do
+  begin
+    Semaphore.Dec;
+    if FEndOfOperation then
+    begin
+      Break;
 
-     Mutex.Lock;
+    end;
 
-     if 0 < FData.Count then
-     begin
-       LastElement := FData.First;
-       HasElement := True;
-       FData.Delete(0);
+    Mutex.Lock;
 
-       Mutex.Unlock;
-
-       Break;
-     end
-     else if Self.FEndOfOperation then
-     begin
-       Mutex.Unlock;
-       Exit;
-
-     end;
-
+    if 0 < FData.Count then
+    begin
+      LastElement := FData.First;
+      HasElement := True;
+      FData.Delete(0);
+      Mutex.Unlock;
+      Break;
+    end
+    else if Self.FEndOfOperation then
+    begin
      Mutex.Unlock;
+     Exit;
 
-   end;
+    end;
 
-   wg.Done(1);
+    Mutex.Unlock;
+
+  end;
+
+  wg.Done(1);
 
 end;
 

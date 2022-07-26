@@ -15,7 +15,8 @@ var
   Start: Integer;
 
 begin
-  Pipeline := TPipeline.Create('Sample01', TPipelineConfig.DefaultConfig.SetNumberOfThreads(16));
+  Pipeline := TPipeline.Create('Sample01',
+    TPipelineConfig.DefaultConfig.SetNumberOfThreads(16));
 
   Pipeline.AddNewStep(@Step1Hanlder, 10);
   Pipeline.AddNewStep(@Steps2And3Hanlder, 20);

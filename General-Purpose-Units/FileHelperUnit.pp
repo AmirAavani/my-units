@@ -13,6 +13,7 @@ type
 function GetAllFiles(MatcherFunc: TMatcherFunc; Params: array of AnsiString; Path: AnsiString): TStringList;
 function DeleteDir(DirPath: AnsiString): Boolean;
 function GetMatcherByExtension(Path, FileName: AnsiString; Params: array of AnsiString): Boolean;
+function CreateDir(Path: AnsiString; Recursive: Boolean): Boolean;
 
 implementation
 uses
@@ -87,6 +88,48 @@ function GetMatcherByExtension(Path, FileName: AnsiString;
   Params: array of AnsiString): Boolean;
 begin
   Result := ExtractFileExt(FileName) = Params[0];
+
+end;
+
+function CreateDir(Path: AnsiString; Recursive: Boolean): Boolean;
+var
+  Parts: TStringList;
+  CurPath: AnsiString;
+  Part: AnsiString;
+
+begin
+  if not Recursive then
+  begin
+    Exit(SysUtils.CreateDir(Path));
+
+  end;
+
+  Parts := TStringList.Create;
+  Parts.Delimiter := '/';
+  Parts.DelimitedText := Path;
+
+
+  CurPath := '';
+  Result := False;
+  for Part in Parts do
+  begin
+    CurPath += Part;
+    if CurPath = '' then
+    begin
+      CurPath += '/';
+      Continue;
+
+    end;
+
+    if not DirectoryExists(CurPath) and not CreateDir(CurPath, False) then
+      Exit;
+
+    CurPath += '/';
+  end;
+
+  Result := True;
+  Parts.Free;
+
 
 end;
 

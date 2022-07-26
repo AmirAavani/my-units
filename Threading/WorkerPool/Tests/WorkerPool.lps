@@ -1,0 +1,385 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CONFIG>
+  <ProjectSession>
+    <Version Value="12"/>
+    <BuildModes Active="Default"/>
+    <Units>
+      <Unit>
+        <Filename Value="WorkerPool.lpr"/>
+        <IsPartOfProject Value="True"/>
+        <CursorPos X="49" Y="14"/>
+        <UsageCount Value="200"/>
+        <Loaded Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="../../ThreadPoolUnit.pp"/>
+        <IsPartOfProject Value="True"/>
+        <EditorIndex Value="15"/>
+        <CursorPos X="22" Y="8"/>
+        <UsageCount Value="200"/>
+        <Loaded Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="../../../General-Purpose-Units/QueueUnit.pp"/>
+        <IsPartOfProject Value="True"/>
+        <EditorIndex Value="11"/>
+        <TopLine Value="87"/>
+        <CursorPos X="12" Y="98"/>
+        <UsageCount Value="200"/>
+        <Loaded Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="../../../Algortihmic-Unit/HeapUnit.pp"/>
+        <IsPartOfProject Value="True"/>
+        <EditorIndex Value="13"/>
+        <UsageCount Value="200"/>
+        <Loaded Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="../../../ALogger/ALoggerUnit.pp"/>
+        <IsPartOfProject Value="True"/>
+        <EditorIndex Value="16"/>
+        <TopLine Value="112"/>
+        <CursorPos Y="131"/>
+        <UsageCount Value="200"/>
+        <Loaded Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="ValidArguments.inc"/>
+        <IsPartOfProject Value="True"/>
+        <EditorIndex Value="8"/>
+        <CursorPos X="59" Y="3"/>
+        <UsageCount Value="200"/>
+        <Loaded Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="../../../Unicode-Functions/WideStringUnit.pas"/>
+        <IsPartOfProject Value="True"/>
+        <EditorIndex Value="-1"/>
+        <CursorPos X="79" Y="9"/>
+        <UsageCount Value="200"/>
+      </Unit>
+      <Unit>
+        <Filename Value="../../ThreadSafeStackUnit.pp"/>
+        <IsPartOfProject Value="True"/>
+        <EditorIndex Value="-1"/>
+        <TopLine Value="128"/>
+        <CursorPos Y="161"/>
+        <UsageCount Value="200"/>
+      </Unit>
+      <Unit>
+        <Filename Value="../../../PB2PAS/ProtoHelperUnit.pp"/>
+        <IsPartOfProject Value="True"/>
+        <EditorIndex Value="5"/>
+        <TopLine Value="2"/>
+        <CursorPos X="3" Y="18"/>
+        <UsageCount Value="234"/>
+        <Loaded Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="Test01Unit.pp"/>
+        <IsPartOfProject Value="True"/>
+        <EditorIndex Value="1"/>
+        <CursorPos X="19" Y="35"/>
+        <UsageCount Value="228"/>
+        <Loaded Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="Test02Unit.pp"/>
+        <IsPartOfProject Value="True"/>
+        <EditorIndex Value="-1"/>
+        <TopLine Value="106"/>
+        <CursorPos X="2" Y="137"/>
+        <UsageCount Value="228"/>
+      </Unit>
+      <Unit>
+        <Filename Value="Test03Unit.pp"/>
+        <IsPartOfProject Value="True"/>
+        <EditorIndex Value="-1"/>
+        <CursorPos X="29" Y="10"/>
+        <UsageCount Value="210"/>
+      </Unit>
+      <Unit>
+        <Filename Value="../SourcerUnit.pp"/>
+        <IsPartOfProject Value="True"/>
+        <EditorIndex Value="6"/>
+        <CursorPos X="59" Y="8"/>
+        <UsageCount Value="233"/>
+        <Loaded Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="../Protos/DataUnit.pp"/>
+        <IsPartOfProject Value="True"/>
+        <EditorIndex Value="4"/>
+        <CursorPos X="53" Y="13"/>
+        <UsageCount Value="200"/>
+        <Loaded Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="../WorkerPoolUnit.pp"/>
+        <IsVisibleTab Value="True"/>
+        <EditorIndex Value="2"/>
+        <TopLine Value="110"/>
+        <CursorPos X="3" Y="152"/>
+        <UsageCount Value="200"/>
+        <Loaded Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="../Protos/RequestUnit.pp"/>
+        <EditorIndex Value="-1"/>
+        <TopLine Value="29"/>
+        <CursorPos X="22" Y="59"/>
+        <UsageCount Value="212"/>
+      </Unit>
+      <Unit>
+        <Filename Value="../Protos/ResponseUnit.pp"/>
+        <EditorIndex Value="-1"/>
+        <TopLine Value="35"/>
+        <CursorPos X="3" Y="59"/>
+        <UsageCount Value="212"/>
+      </Unit>
+      <Unit>
+        <Filename Value="../../ThreadSafeQueueUnit.pp"/>
+        <EditorIndex Value="10"/>
+        <CursorPos X="11" Y="17"/>
+        <UsageCount Value="100"/>
+        <Loaded Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="../../SyncUnit.pp"/>
+        <EditorIndex Value="14"/>
+        <TopLine Value="237"/>
+        <CursorPos X="13" Y="326"/>
+        <UsageCount Value="100"/>
+        <Loaded Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="../../../General-Purpose-Units/ParameterManagerUnit.pp"/>
+        <EditorIndex Value="17"/>
+        <TopLine Value="114"/>
+        <CursorPos X="38" Y="129"/>
+        <UsageCount Value="100"/>
+        <Loaded Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="../../../General-Purpose-Units/GenericCollectionUnit.pp"/>
+        <EditorIndex Value="12"/>
+        <CursorPos X="11" Y="16"/>
+        <UsageCount Value="100"/>
+        <Loaded Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="../../../General-Purpose-Units/PairUnit.pp"/>
+        <IsPartOfProject Value="True"/>
+        <EditorIndex Value="9"/>
+        <CursorPos X="20" Y="17"/>
+        <UsageCount Value="132"/>
+        <Loaded Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="/usr/local/share/src/fpc-3.3.1/fpc/rtl/objpas/classes/classesh.inc"/>
+        <EditorIndex Value="-1"/>
+        <TopLine Value="1938"/>
+        <CursorPos X="27" Y="1956"/>
+        <UsageCount Value="7"/>
+      </Unit>
+      <Unit>
+        <Filename Value="../../WorkerPoolUnit.pp"/>
+        <EditorIndex Value="-1"/>
+        <CursorPos X="34" Y="9"/>
+        <UsageCount Value="96"/>
+        <Bookmarks Count="1">
+          <Item0 X="3" Y="413" ID="1"/>
+        </Bookmarks>
+      </Unit>
+      <Unit>
+        <Filename Value="/usr/local/share/src/fpc-3.3.1/fpc/packages/rtl-generics/src/generics.collections.pas"/>
+        <UnitName Value="Generics.Collections"/>
+        <EditorIndex Value="-1"/>
+        <TopLine Value="333"/>
+        <CursorPos X="3" Y="349"/>
+        <UsageCount Value="37"/>
+      </Unit>
+      <Unit>
+        <Filename Value="/usr/local/share/src/fpc-3.3.1/fpc/rtl/unix/sysutils.pp"/>
+        <EditorIndex Value="-1"/>
+        <TopLine Value="1592"/>
+        <CursorPos Y="1616"/>
+        <UsageCount Value="2"/>
+      </Unit>
+      <Unit>
+        <Filename Value="../../../General-Purpose-Units/CollectionUnit.pp"/>
+        <EditorIndex Value="7"/>
+        <UsageCount Value="112"/>
+        <Loaded Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="/usr/local/share/src/fpc-3.3.1/fpc/rtl/objpas/classes/classes.inc"/>
+        <EditorIndex Value="-1"/>
+        <TopLine Value="263"/>
+        <CursorPos X="3" Y="265"/>
+        <UsageCount Value="16"/>
+      </Unit>
+      <Unit>
+        <Filename Value="../../../Algortihmic-Unit/PriorityQueueUnit.pp"/>
+        <EditorIndex Value="3"/>
+        <CursorPos X="11" Y="13"/>
+        <UsageCount Value="34"/>
+        <Bookmarks Count="1">
+          <Item0 X="24" Y="141" ID="1"/>
+        </Bookmarks>
+        <Loaded Value="True"/>
+      </Unit>
+    </Units>
+    <JumpHistory HistoryIndex="29">
+      <Position>
+        <Filename Value="../WorkerPoolUnit.pp"/>
+        <Caret Line="371" Column="32" TopLine="333"/>
+      </Position>
+      <Position>
+        <Filename Value="../WorkerPoolUnit.pp"/>
+        <Caret Line="381" Column="7" TopLine="333"/>
+      </Position>
+      <Position>
+        <Filename Value="../WorkerPoolUnit.pp"/>
+        <Caret Line="25" Column="3"/>
+      </Position>
+      <Position>
+        <Filename Value="../WorkerPoolUnit.pp"/>
+        <Caret Line="40" Column="16"/>
+      </Position>
+      <Position>
+        <Filename Value="../WorkerPoolUnit.pp"/>
+        <Caret Line="37" Column="17"/>
+      </Position>
+      <Position>
+        <Filename Value="../WorkerPoolUnit.pp"/>
+        <Caret Line="378" Column="38" TopLine="330"/>
+      </Position>
+      <Position>
+        <Filename Value="../WorkerPoolUnit.pp"/>
+        <Caret Line="352" Column="78" TopLine="332"/>
+      </Position>
+      <Position>
+        <Filename Value="../WorkerPoolUnit.pp"/>
+        <Caret Line="38" Column="13" TopLine="25"/>
+      </Position>
+      <Position>
+        <Filename Value="../WorkerPoolUnit.pp"/>
+        <Caret Line="384" Column="8" TopLine="333"/>
+      </Position>
+      <Position>
+        <Filename Value="../WorkerPoolUnit.pp"/>
+        <Caret Line="396" Column="3" TopLine="348"/>
+      </Position>
+      <Position>
+        <Filename Value="../WorkerPoolUnit.pp"/>
+        <Caret Line="137" Column="15" TopLine="97"/>
+      </Position>
+      <Position>
+        <Filename Value="../WorkerPoolUnit.pp"/>
+        <Caret Line="396" Column="11" TopLine="348"/>
+      </Position>
+      <Position>
+        <Filename Value="../WorkerPoolUnit.pp"/>
+        <Caret Line="404" Column="13" TopLine="348"/>
+      </Position>
+      <Position>
+        <Filename Value="../WorkerPoolUnit.pp"/>
+        <Caret Line="445" Column="11" TopLine="356"/>
+      </Position>
+      <Position>
+        <Filename Value="../WorkerPoolUnit.pp"/>
+        <Caret Line="446" Column="11" TopLine="357"/>
+      </Position>
+      <Position>
+        <Filename Value="../WorkerPoolUnit.pp"/>
+        <Caret Line="490" Column="25" TopLine="400"/>
+      </Position>
+      <Position>
+        <Filename Value="../WorkerPoolUnit.pp"/>
+        <Caret Line="19" Column="23"/>
+      </Position>
+      <Position>
+        <Filename Value="../WorkerPoolUnit.pp"/>
+        <Caret Line="341" Column="28" TopLine="252"/>
+      </Position>
+      <Position>
+        <Filename Value="../WorkerPoolUnit.pp"/>
+        <Caret Line="396" Column="3" TopLine="307"/>
+      </Position>
+      <Position>
+        <Filename Value="../WorkerPoolUnit.pp"/>
+        <Caret Line="404" Column="3" TopLine="356"/>
+      </Position>
+      <Position>
+        <Filename Value="../WorkerPoolUnit.pp"/>
+        <Caret Line="388" Column="99" TopLine="360"/>
+      </Position>
+      <Position>
+        <Filename Value="../WorkerPoolUnit.pp"/>
+        <Caret Line="408" Column="4" TopLine="385"/>
+      </Position>
+      <Position>
+        <Filename Value="../WorkerPoolUnit.pp"/>
+        <Caret Line="410" Column="22" TopLine="387"/>
+      </Position>
+      <Position>
+        <Filename Value="../WorkerPoolUnit.pp"/>
+        <Caret Line="28" Column="32" TopLine="4"/>
+      </Position>
+      <Position>
+        <Filename Value="../WorkerPoolUnit.pp"/>
+        <Caret Line="138" Column="5" TopLine="100"/>
+      </Position>
+      <Position>
+        <Filename Value="../WorkerPoolUnit.pp"/>
+        <Caret Line="384" Column="8" TopLine="375"/>
+      </Position>
+      <Position>
+        <Filename Value="../WorkerPoolUnit.pp"/>
+        <Caret Line="434" Column="13" TopLine="410"/>
+      </Position>
+      <Position>
+        <Filename Value="../WorkerPoolUnit.pp"/>
+        <Caret Line="436" TopLine="412"/>
+      </Position>
+      <Position>
+        <Filename Value="../WorkerPoolUnit.pp"/>
+        <Caret Line="443" Column="32" TopLine="419"/>
+      </Position>
+      <Position>
+        <Filename Value="../WorkerPoolUnit.pp"/>
+      </Position>
+    </JumpHistory>
+    <RunParams>
+      <FormatVersion Value="2"/>
+      <Modes ActiveMode="default">
+        <Mode Name="default">
+          <local>
+            <CommandLineParams Value="--Debug 1"/>
+          </local>
+        </Mode>
+      </Modes>
+    </RunParams>
+    <HistoryLists>
+      <List Name="LaunchingApplication" Type="File" Count="1">
+        <Item1 Value="/usr/bin/gnome-terminal -t &apos;Lazarus Run Output&apos; -e &apos;$(LazarusDir)/tools/runwait.sh $(TargetCmdLine)&apos;"/>
+      </List>
+      <List Name="CommandLineParameters" Count="1">
+        <Item1 Value="--Debug 1"/>
+      </List>
+    </HistoryLists>
+  </ProjectSession>
+  <Debugging>
+    <BreakPoints>
+      <Item>
+        <Kind Value="bpkSource"/>
+        <WatchScope Value="wpsLocal"/>
+        <WatchKind Value="wpkWrite"/>
+        <Source Value="../../WorkerPoolUnit.pp"/>
+        <Line Value="270"/>
+      </Item>
+    </BreakPoints>
+  </Debugging>
+</CONFIG>

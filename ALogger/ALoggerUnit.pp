@@ -82,9 +82,8 @@ var
 procedure _WriteLn(Message: AnsiString);
 begin
   MutexWriteLn.Lock;
-
   System.Writeln(StdErr, Message);
-  Flush(Output);
+  Flush(StdErr);
 
   MutexWriteLn.Unlock;
 

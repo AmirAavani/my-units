@@ -5,8 +5,8 @@ unit ThreadPoolUnit;
 interface
 
 uses
-  Classes, SysUtils, ThreadSafeQueueUnit, SyncUnit, GenericCollectionUnit,
-  PairUnit;
+  Classes, SysUtils, ThreadSafeQueueUnit, SyncUnit, GenericCollectionUnit;//,
+ // PairUnit;
 
 type
   TObjectList = specialize TObjectCollection<TObject>;
@@ -82,11 +82,18 @@ begin
     FMTDebugLn('Before Delete', [], 5);
 
     FParent.RequestsQueue.Delete(Args);
+
     if not Args.IsValid then
+    begin
       Break;
+    end;
+
     _Result := Args.FuncPtr(Args.Arguments);
     if Args.PResult <> nil then
+    begin
       Args.PResult^ := _Result;
+
+    end;
 
     FParent.Wg.Done(1);
 
@@ -143,9 +150,7 @@ end;
 
 procedure TThreadPool.Wait;
 begin
-  FMTDebugLn('Waiting', []);
   wg.Wait;
-  FMTDebugLn('Done Waiting', []);
 end;
 
 end.

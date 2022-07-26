@@ -6,11 +6,12 @@ interface
 
 uses
   Classes, SysUtils, Pipeline.TypesUnit, ThreadSafeQueueUnit, GenericCollectionUnit,
-  ThreadPoolUnit;
+  ThreadPoolUnit, ValueUnit;
 
 type
   TTask = class;
   TStepHandler = function (Task: TTask): Boolean;
+  TObjectList = specialize TObjectCollection<TObject>;
 
   { TPipelineConfig }
 
@@ -30,7 +31,7 @@ type
   { TPipeline }
 
   TPipeline = class(TObject)
-  private type
+  public type
     { TStepInfo }
 
     TStepInfo = class(TObject)
@@ -38,6 +39,7 @@ type
       FNumTasks: Integer;
       FID: Integer;
       StepHandler: TStepHandler;
+      FArguments: TObjectList;
 
     public
       property ID: Integer read FID;
@@ -45,6 +47,8 @@ type
 
       constructor Create(_StepID: Integer; _NumTasks: Integer;
         Handler: TStepHandler);
+      constructor Create(_StepID: Integer; _NumTasks: Integer;
+        Handler: TStepHandler; Arguments: TObjectList);
       destructor Destroy; override;
 
     end;
@@ -69,7 +73,10 @@ type
     constructor Create(_Name: AnsiString; _Config: TPipelineConfig);
     destructor Destroy; override;
 
-    procedure AddNewStep(Handler: TStepHandler; NumTasks: Integer);
+    procedure AddNewStep(
+      Handler: TStepHandler;
+      NumTasks: Integer;
+      Arguments: TObjectList = nil);
 
     function Run: Boolean;
   end;
@@ -147,6 +154,18 @@ begin
   FID := _StepID;
   FNumTasks := _NumTasks;
   StepHandler := Handler;
+
+end;
+
+constructor TPipeline.TStepInfo.Create(_StepID: Integer; _NumTasks: Integer;
+  Handler: TStepHandler; Arguments: TObjectList);
+begin
+  inherited Create;
+
+  FID := _StepID;
+  FNumTasks := _NumTasks;
+  StepHandler := Handler;
+  FArguments := Arguments;
 
 end;
 
@@ -256,7 +275,8 @@ begin
   inherited Destroy;
 end;
 
-procedure TPipeline.AddNewStep(Handler: TStepHandler; NumTasks: Integer);
+procedure TPipeline.AddNewStep(Handler: TStepHandler; NumTasks: Integer;
+  Arguments: TObjectList);
 begin
   Steps.Add(TStepInfo.Create(Steps.Count, NumTasks, Handler));
 

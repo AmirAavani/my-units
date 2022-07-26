@@ -14,7 +14,7 @@ type
 
   { TLinkedListNode }
 
-  TLinkedListNode= class (TObject)
+  generic TLinkedListNode<TData> = class(TObject)
   protected
     FData: TData;
     FNext: TLinkedListNode;
@@ -23,23 +23,26 @@ type
     property Data: TData read FData;
     property Next: TLinkedListNode read FNext;
     
-    constructor Create (d: TData);
+    constructor Create(d: TData);
     destructor Destroy; override;
     
-    function Add (AData: TData): TLinkedListNode; virtual;
+    function Add(AData: TData): TLinkedListNode; virtual;
     
   end;
 
-  TLinkedList= class (TObject)
+  generic TLinkedList<TData> = class(TObject)
+  protected type
+    TLinkedListNodeData = specialize TLinkedListNode<TData>;
+
   protected
-    FRoot: TLinkedListNode;
-    FTail: TLinkedListNode;
+    FRoot: TLinkedListNodeData;
+    FTail: TLinkedListNodeData;
 
   public
-    property Root: TLinkedListNode read FRoot;
-    property Tail: TLinkedListNode read FTail;
+    property Root: TLinkedListNodeData read FRoot;
+    property Tail: TLinkedListNodeData read FTail;
 
-    procedure AddData (d: TData); virtual;
+    procedure AddData(d: TData); virtual;
 
     constructor Create;
     destructor Destroy; override;
@@ -48,24 +51,27 @@ type
 
   { TDoubleLinkedListNode }
 
-  TDoubleLinkedListNode= class (TLinkedListNode)
+  generic TDoubleLinkedListNode<TData> = class(specialize TLinkedListNode<TData>)
+  private type
+      TLinkedListNodeData = specialize TLinkedListNode<TData>;
+
   private
-    FPrev: TLinkedListNode;
+    FPrev: TLinkedListNodeData;
     
   public
-    property Prev: TLinkedListNode read FPrev;
+    property Prev: TLinkedListNodeData read FPrev;
 
-    constructor Create (d: TData; PreviousNode: TLinkedListNode);
+    constructor Create(d: TData; PreviousNode: TLinkedListNodeData);
     destructor Destroy; override;
 
-    function Add (AData: TData): TLinkedListNode; override;
+    function Add(AData: TData): TLinkedListNodeData; override;
 
   end;
 
-  TDoubleLinkedList= class (TLinkedList)
+  generic TDoubleLinkedList<TData> = class(specialize TLinkedList<TData>)
   public
 
-    procedure AddData (d: TData); override;
+    procedure AddData(d: TData); override;
 
   end;
 
@@ -84,7 +90,7 @@ begin
 end;
 }
 
-constructor TLinkedListNode.Create (d: TData);
+constructor TLinkedListNode.Create(d: TData);
 begin
   inherited Create;
   
@@ -102,13 +108,13 @@ begin
   
 end;
 
-function TLinkedListNode.Add (AData: TData): TLinkedListNode;
+function TLinkedListNode.Add(AData: TData): TLinkedListNode;
 begin
   if FNext<> nil then
-    Result:= FNext.Add (AData)
+    Result:= FNext.Add(AData)
   else
   begin
-    FNext:= TLinkedListNode.Create (AData);
+    FNext:= TLinkedListNode.Create(AData);
     Result:= FNext;
 
   end;
@@ -117,10 +123,10 @@ end;
 
 { TDoubleLinkedList }
 
-constructor TDoubleLinkedListNode.Create(d: TData; PreviousNode: TLinkedListNode
-  );
+constructor TDoubleLinkedListNode.Create(d: TData;
+  PreviousNode: TLinkedListNodeData);
 begin
-  inherited Create (d);
+  inherited Create(d);
   
   FPrev:= PreviousNode;
   
@@ -139,13 +145,13 @@ begin
 
 end;
 
-function TDoubleLinkedListNode.Add (AData: TData): TLinkedListNode;
+function TDoubleLinkedListNode.Add(AData: TData): TLinkedListNodeData;
 begin
   if FNext<> nil then
-    Result:= FNext.Add (AData)
+    Result:= FNext.Add(AData)
   else
   begin
-    FNext:= TDoubleLinkedListNode.Create (AData, Self);
+    FNext:= TDoubleLinkedListNode.Create(AData, Self);
     Result:= FNext;
     
   end;
@@ -154,16 +160,16 @@ end;
 
 { TLinkedList }
 
-procedure TLinkedList.AddData (d: TData);
+procedure TLinkedList.AddData(d: TData);
 begin
   if FRoot= nil then
   begin
-    FRoot:= TLinkedListNode.Create (d);
+    FRoot:= TLinkedListNodeData.Create(d);
     FTail:= FRoot;
 
   end
   else
-    FTail:= FRoot.Add (d);
+    FTail:= FRoot.Add(d);
 
 end;
 
@@ -182,10 +188,10 @@ end;
 
 { TDoubleLinkedList }
 
-procedure TDoubleLinkedList.AddData (d: TData);
+procedure TDoubleLinkedList.AddData(d: TData);
 begin
   if FRoot= nil then
-    FRoot:= TDoubleLinkedListNode.Create (d, nil)
+    FRoot:= (specialize TDoubleLinkedListNode<TData>).Create(d, nil)
   else
     inherited AddData(d);
 
