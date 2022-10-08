@@ -3,92 +3,138 @@ unit GenericCollection.UtilsUnit;
 {$mode ObjFPC}{$H+}
 
 interface
+uses
+  classes;
 
 type
   TBytes = array of Byte;
 
-  function Int8ToBytes(n: Int8): TBytes;
-  function Int16ToBytes(n: Int16): TBytes;
-  function Int32ToBytes(n: Int32): TBytes;
-  function Int64ToBytes(n: Int64): TBytes;
-  function UInt8ToBytes(n: UInt8): TBytes;
-  function UInt16ToBytes(n: UInt16): TBytes;
-  function UInt32ToBytes(n: UInt32): TBytes;
-  function UInt64ToBytes(n: uInt64): TBytes;
-  function DataToBytes(bp: PByte; ByteCount: Integer): TBytes;
+  function SaveInt8(n: Int8; Stream: TStream): Boolean;
+  function SaveInt16(n: Int16; Stream: TStream): Boolean;
+  function SaveInt32(n: Int32; Stream: TStream): Boolean;
+  function SaveInt64(n: Int64; Stream: TStream): Boolean;
+  function SaveUInt8(n: UInt8; Stream: TStream): Boolean;
+  function SaveUInt16(n: UInt16; Stream: TStream): Boolean;
+  function SaveUInt32(n: UInt32; Stream: TStream): Boolean;
+  function SaveUInt64(n: uInt64; Stream: TStream): Boolean;
+  function SaveData(bp: PByte; ByteCount: UInt16; Stream: TStream): Boolean;
+
+
+  function LoadUInt64(Stream: TStream): UInt64;
+  function LoadUnsignedData(Stream: TStream; ByteCount: Integer): UInt64;
+  function LoadSignedData(Stream: TStream; ByteCount: Integer): Int64;
 
 implementation
 
-function UIntToBytes(n: uInt64): TBytes;
-begin
-  Result := DataToBytes(PUInt8(@n), 8);
-
-end;
-
-function Int8ToBytes(n: Int8): TBytes;
-begin
-  Result := DataToBytes(PByte(@n), 1);
-
-
-end;
-
-function Int16ToBytes(n: Int16): TBytes;
-begin
-  Result := DataToBytes(PByte(@n), 2);
-
-end;
-
-function Int32ToBytes(n: Int32): TBytes;
-begin
-  Result := DataToBytes(PByte(@n), 4);
-
-end;
-
-function Int64ToBytes(n: Int64): TBytes;
-begin
-  Result := DataToBytes(PByte(@n), 8);
-
-end;
-
-function UInt8ToBytes(n: UInt8): TBytes;
-begin
-  Result := DataToBytes(PUInt8(@n), 1);
-
-end;
-
-function UInt16ToBytes(n: UInt16): TBytes;
-begin
-  Result := DataToBytes(PUInt8(@n), 2);
-
-end;
-
-function UInt32ToBytes(n: UInt32): TBytes;
-begin
-  Result := DataToBytes(PUInt8(@n), 4);
-
-end;
-
-function UInt64ToBytes(n: uInt64): TBytes;
-begin
-  Result := DataToBytes(PUInt8(@n), 8);
-
-end;
-
-function DataToBytes(bp: PUInt8; ByteCount: Integer): TBytes;
+function BytesToSignedData(bp: PByte; ByteCount: Integer): Int64;
 var
+  Ptr: PByte;
   i: Integer;
-  Target: PByte;
 
 begin
-  SetLength(Result, ByteCount);
-  Target := @Result[0];
+  Ptr := @Result;
+  Inc(Ptr, SizeOf(Result));
+
   for i := 1 to ByteCount do
   begin
-    Target^ := bp^;
-    Inc(bp);
-    Inc(Target);
+    Ptr^ := bp^;
+    Dec(Ptr);
+    Dec(bp);
 
   end;
+
+end;
+
+
+function BytesToUnSignedData(bp: PByte; ByteCount: Integer): UInt64;
+var
+  Ptr: PByte;
+  i: Integer;
+
+begin
+  Ptr := @Result;
+  Inc(Ptr, SizeOf(Result));
+
+  for i := 1 to ByteCount do
+  begin
+    Ptr^ := bp^;
+    Dec(Ptr);
+    Dec(bp);
+
+  end;
+
+end;
+
+
+function SaveData(bp: PByte; ByteCount: UInt16; Stream: TStream): Boolean;
+begin
+  Result := Stream.Write(bp^, ByteCount) = ByteCount;
+
+end;
+
+function SaveInt8(n: Int8; Stream: TStream): Boolean;
+begin
+  SaveData(@n, 1, Stream);
+
+end;
+
+function SaveInt16(n: Int16; Stream: TStream): Boolean;
+begin
+  SaveData(@n, 2, Stream);
+
+end;
+
+function SaveInt32(n: Int32; Stream: TStream): Boolean;
+begin
+  SaveData(@n, 4, Stream);
+
+end;
+
+function SaveInt64(n: Int64; Stream: TStream): Boolean;
+begin
+  SaveData(@n, 8, Stream);
+
+end;
+
+function SaveUInt8(n: UInt8; Stream: TStream): Boolean;
+begin
+  SaveData(@n, 1, Stream);
+
+end;
+
+function SaveUInt16(n: UInt16; Stream: TStream): Boolean;
+begin
+  SaveData(@n, 2, Stream);
+
+end;
+
+function SaveUInt32(n: UInt32; Stream: TStream): Boolean;
+begin
+  SaveData(@n, 4, Stream);
+
+end;
+
+function SaveUInt64(n: uInt64; Stream: TStream): Boolean;
+begin
+  SaveData(@n, 8, Stream);
+
+end;
+
+function LoadUInt64(Stream: TStream): UInt64;
+begin
+  Result := LoadUnsignedData(Stream, 8);
+end;
+
+function LoadUnsignedData(Stream: TStream; ByteCount: Integer): UInt64;
+begin
+  Stream.Read(Result, ByteCount);
+
+end;
+
+function LoadSignedData(Stream: TStream; ByteCount: Integer): Int64;
+begin
+  Stream.Read(Result, ByteCount);
+
 end;
 
 end.

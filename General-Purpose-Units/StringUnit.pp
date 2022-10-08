@@ -5,7 +5,10 @@ unit StringUnit;
 interface
 
 uses
-  Classes;
+  Classes, GenericCollectionUnit;
+
+type
+  TWideStringList = specialize TCollection<WideString>;
 
 function IsPrefix(constref Prefix, Str: AnsiString): Boolean;
 function IsSuffix(constref Suffix, Str: AnsiString): Boolean;

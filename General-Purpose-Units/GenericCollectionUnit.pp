@@ -16,13 +16,17 @@ type
     function GetIsEmpty: Boolean; inline;
 
   public type
-    TDumpFunc = function (d: TData): TBytes;
+    TDumpFunc = function (d: TData; Stream: TStream): Boolean;
+    TLoadFunc = function (Stream: TStream): TData;
 
   public
     property IsEmpty: Boolean read GetIsEmpty;
 
     procedure AddAnotherCollection(AnotherCollection: TCollection);
     procedure SaveToStream(Stream: TStream; DumpFunc: TDumpFunc);
+
+    class function LoadFromStream(Stream: TStream; LoadFunc: TLoadFunc): specialize
+      TCollection<TData>;
 
   end;
 
@@ -68,7 +72,7 @@ type
 implementation
 
 uses
-  Generics.Defaults;
+  Generics.Defaults, ALoggerUnit;
 
 { TCollection }
 
@@ -90,19 +94,34 @@ end;
 procedure TCollection.SaveToStream(Stream: TStream; DumpFunc: TDumpFunc);
 var
   it: TCollection.TEnumerator;
-  bs: TBytes;
 
 begin
   it := Self.GetEnumerator;
 
   while it.MoveNext do
   begin
-    bs := DumpFunc(it.Current);
-    Stream.WriteBuffer(bs, Length(bs));
+    if not DumpFunc(it.Current, Stream) then
+      FatalLn('Something went wrong');
 
   end;
 
   it.Free;
+end;
+
+class function TCollection.LoadFromStream(Stream: TStream; LoadFunc: TLoadFunc
+  ): specialize TCollection<TData>;
+var
+  x: TData;
+
+begin
+  Result := (specialize TCollection<TData>).Create;
+
+  while Stream.Position < Stream.Size do
+  begin
+    x := LoadFunc(Stream);
+    Result.Add(x);
+
+  end;
 end;
 
 
