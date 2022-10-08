@@ -12,19 +12,10 @@ function FindStartIndices(Task: TTask): Boolean;
 implementation
 uses
   ParameterManagerUnit, TypesUnit,
-  PathHelperUnit, StreamUnit, Math, ALoggerUnit, OnceUnit;
+  StreamUnit, Math, ALoggerUnit, OnceUnit, SharedUnit;
 
 type
   EEof = class(Exception);
-
-function GetPositionFileName(TaskID: Integer): AnsiString;
-begin
-  Result := JoinPath(
-    GetRunTimeParameterManager.ValueByName['--WorkingDir'].AsAnsiString,
-    Format('PositionFile-%d.bin', [TaskID])
-  );
-
-end;
 
 function FindStartIndices(Task: TTask): Boolean;
 
@@ -55,9 +46,9 @@ var
   Index: Integer;
   Ch: Char;
   Start, Fin: Int64;
+  Last: Boolean;
 
 const
-  PageTag = '<page>';
   BufferSize = 1024 * 1024 * 8;
 
 begin
@@ -80,8 +71,9 @@ begin
   Reader.Read(Buffer[1], BufferSize);
   State := 0;
   Index := 0;
+  Last := False;
 
-  for i := Start to Fin do
+  for i := Start to Size do
   begin
     try
       Ch := GetNextChar(Reader, Buffer, Index);
@@ -108,14 +100,28 @@ begin
 
       State := 0;
 
+      if Fin < i then
+      begin
+        Last := True;
+        Break;
+
+      end;
+
     end;
+
+  end;
+
+  if not Last then
+  begin
+    Positions.Add(Size);
 
   end;
 
   Reader.Free;
 
+  FMTDebugLn('ID: %d PositionsFileName: %s', [Task.ID, GetPositionFileName(Task.ID)]);
   Writer := TFileStream.Create(GetPositionFileName(Task.ID), fmCreate);
-  Positions.SaveToStream(Writer, @UInt64ToBytes);
+  Positions.SaveToStream(Writer, @SaveUInt64);
   Writer.Free;
   FMTDebugLn('ID: %d Positions.Count: %d', [Task.ID, Positions.Count]);
   Positions.Free;

@@ -7,11 +7,10 @@ interface
 uses
   Classes, GenericCollectionUnit;
 
-type
-  TWideStringList = specialize TCollection<WideString>;
-
 function IsPrefix(constref Prefix, Str: AnsiString): Boolean;
+function IsPrefix(constref Prefix, Str: WideString): Boolean;
 function IsSuffix(constref Suffix, Str: AnsiString): Boolean;
+function IsSuffix(constref Suffix, Str: WideString): Boolean;
 function Split(constref Str: AnsiString; Delimiter: AnsiString): TStringList;
 function JoinStrings(const Strings: TStringList; Separator: AnsiString): AnsiString;
 function JoinStrings(const Strings: array of AnsiString; Separator: AnsiString;
@@ -19,9 +18,9 @@ function JoinStrings(const Strings: array of AnsiString; Separator: AnsiString;
 
 implementation
 uses
-  sysutils, StrUtils;
+  sysutils, StrUtils, WideStringUnit;
 
-function IsPrefix(constref Prefix, Str: AnsiString): Boolean;
+generic function GenericIsPrefix<T>(constref Prefix, Str: T): Boolean;
 var
   i: Integer;
 
@@ -38,7 +37,20 @@ begin
 
 end;
 
-function IsSuffix(constref Suffix, Str: AnsiString): Boolean;
+function IsPrefix(constref Prefix, Str: AnsiString): Boolean;
+begin
+  Result := specialize GenericIsPrefix<AnsiString>(Prefix, Str);
+
+end;
+
+function IsPrefix(constref Prefix, Str: WideString): Boolean;
+begin
+  Result := specialize GenericIsPrefix<WideString>(Prefix, Str);
+
+end;
+
+
+generic function GeneralizedIsSuffix<T>(constref Suffix, Str: T): Boolean;
 var
   i: Integer;
   StrPtr, SuffixPtr: PChar;
@@ -60,6 +72,18 @@ begin
   end;
 
   Result := True;
+
+end;
+
+function IsSuffix(constref Suffix, Str: AnsiString): Boolean;
+begin
+  Result := specialize GeneralizedIsSuffix<AnsiString>(Suffix, Str);
+
+end;
+
+function IsSuffix(constref Suffix, Str: WideString): Boolean;
+begin
+  Result := specialize GeneralizedIsSuffix<WideString>(Suffix, Str);
 
 end;
 

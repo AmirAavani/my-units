@@ -8,15 +8,22 @@ uses
   PipelineUnit, Pipeline.TypesUnit;
 
 procedure AddStep1(Pipeline: TPipeline);
+procedure AddStep2(Pipeline: TPipeline);
 
 implementation
 uses
-  FindStartIndicesUnit, TypesUnit, ParameterManagerUnit;
+  FindStartIndicesUnit, TypesUnit, ParameterManagerUnit, ExtractContentUnit;
 
 
 procedure AddStep1(Pipeline: TPipeline);
 begin
   Pipeline.AddNewStep(@FindStartIndices, 64);
+
+end;
+
+procedure AddStep2(Pipeline: TPipeline);
+begin
+  Pipeline.AddNewStep(@ExtractContent, 64);
 
 end;
 

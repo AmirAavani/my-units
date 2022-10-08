@@ -294,8 +294,8 @@ begin
   wg := TWaitGroup(SysArgs[1]);
 
   Result := False;
-  StepID := GetRunTimeParameterManager.ValueByName['Pipeline.StepID'].AsIntegerOrDefault(-1);
-  FromStepID := GetRunTimeParameterManager.ValueByName['Pipeline.FromStepID'].AsIntegerOrDefault(1);
+  StepID := GetRunTimeParameterManager.ValueByName['--Pipeline.StepID'].AsIntegerOrDefault(-1);
+  FromStepID := GetRunTimeParameterManager.ValueByName['--Pipeline.FromStepID'].AsIntegerOrDefault(1);
   ToStepID := ThePipeline.Steps.Count - 1;
   if StepID <> -1 then
   begin

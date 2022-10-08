@@ -8,13 +8,30 @@ uses
   {$ENDIF}
   Classes, PipelineUnit, Pipeline.Utils, Pipeline.TypesUnit, ALoggerUnit,
   HeapUnit, sysutils, StepHandlersUnit, FindStartIndicesUnit, TypesUnit,
-  ParameterManagerUnit, FileHelperUnit, StreamUnit;
+  ParameterManagerUnit, FileHelperUnit, StreamUnit, ExtractContentUnit,
+SharedUnit, WikiParserUnit, WikiDocUnit;
 
 var
   Pipeline: TPipeline;
   Start: Integer;
 
+procedure TestExtractContent;
+var
+  Task: TTask;
+  Step: TPipeline.TStepInfo;
+
 begin
+  Step := TPipeline.TStepInfo.Create(2, 16, nil);
+  Task := TTask.Create(1, Step);
+  ExtractContentUnit.ExtractContent(Task);
+  Step.Free;
+  Task.Free;
+end;
+
+begin
+  TestExtractContent;
+  Exit;
+
   if not DirectoryExists(GetRunTimeParameterManager.ValueByName['--WorkingDir'].AsAnsiString) then
   begin
     FileHelperUnit.CreateDir(
@@ -25,9 +42,10 @@ begin
 
   // Unigram/Bigram Count
   Pipeline := TPipeline.Create('Sample02',
-    TPipelineConfig.DefaultConfig.SetNumberOfThreads(2));
+    TPipelineConfig.DefaultConfig.SetNumberOfThreads(16));
 
   AddStep1(Pipeline);
+  AddStep2(Pipeline);
 
   Start := DateTimeToTimeStamp(Now).Time;
 

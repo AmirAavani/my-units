@@ -203,6 +203,8 @@ var
   LineNumber: Integer;
 
 begin
+  Filename := '';
+  LineNumber := 0;
   GetParentLineInfo(Filename, LineNumber);
   _FatalLn(Filename, LineNumber, Msg);
 

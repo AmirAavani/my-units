@@ -28,6 +28,8 @@ type
     class function LoadFromStream(Stream: TStream; LoadFunc: TLoadFunc): specialize
       TCollection<TData>;
 
+    function Pop: TData; virtual;
+
   end;
 
   { TObjectCollection }
@@ -46,6 +48,8 @@ type
       Deletes the Index-th item from the list and return it.
     }
     function Delete(Index: SizeInt): TData;
+
+    procedure AddAnotherCollection(Another: TListData);
   end;
 
   { TMap }
@@ -122,6 +126,17 @@ begin
     Result.Add(x);
 
   end;
+end;
+
+function TCollection.Pop: TData;
+begin
+  if Count = 0 then
+  begin
+    FmtFatalLn('Count = 0', []);
+  end;
+  Result := Self[Count - 1];
+  Self.Delete(Count - 1);
+
 end;
 
 
@@ -258,6 +273,16 @@ function TObjectCollection.Delete(Index: SizeInt): TData;
 begin
   Result := Self[Index];
   inherited Delete(Index);
+
+end;
+
+procedure TObjectCollection.AddAnotherCollection(Another: TListData);
+var
+  i: Integer;
+
+begin
+  for i := 0 to Another.Count - 1 do
+    Self.Add(Another[i]);
 
 end;
 

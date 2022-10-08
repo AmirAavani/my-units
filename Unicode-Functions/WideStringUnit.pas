@@ -2,17 +2,32 @@ unit WideStringUnit;
 {$mode objfpc}
 
 interface
+uses
+  GenericCollectionUnit;
 
 {
   The function does not change the content of CharPtr but it might increases its value.
 }
 function ReadWideStringFromACharArray(var CharPtr: PChar; Len: Integer): WideString;
-function ReadWideStringFromString(const Source: String): WideString;
+function ReadWideStringFromString(constref Source: AnsiString): WideString;
 function ReadWideString(var FdFile: TextFile): WideString;
-function WideStrPos(SubStr, Str: WideString): Integer; 
-function WideStrCopy(var Str: WideString; Index, Len: Integer): WideString;
+function WideStrPos(constref SubStr, Str: WideString): Integer;
+function WideStrCopy(constref Str: WideString; Index, Len: Integer): WideString;
 procedure WideStrDelete(var Str: WideString; Index, Len: Integer);
-function WideStringCompare(var Str1, Str2: WideString): Integer;
+function WideStringCompare(constref Str1, Str2: WideString): Integer;
+
+function WriteAsUTF8(constref WStr: WideString): AnsiString;
+
+type
+
+  { TWideStringList }
+
+  TWideStringList = class(specialize TCollection<WideString>)
+  private
+  public
+    function JoinStrings: WideString;
+  end;
+
 
 implementation
 uses
@@ -40,9 +55,10 @@ function ReadWideStringFromACharArray(var CharPtr: PChar; Len: Integer): WideStr
       Inc(CharPtr);
       Dec(Len);
       b2:= Ord(c2);
+
       b2:= b2 xor 128;
       b1:= b1 xor(128+ 64);
-      Value:= b2+ b1 shl 6; 
+      Value:= b2+ b1 shl 6;
       Result:= WideChar(Value);
 
     end
@@ -97,16 +113,19 @@ function ReadWideStringFromACharArray(var CharPtr: PChar; Len: Integer): WideStr
 begin
   Result := '';
   while 0 < Len do
+  begin
     Result := Result+ ReadAWideChar;
-    
+
+  end;
+
 end;
 
-function ReadWideStringFromString(const Source: String): WideString;
+function ReadWideStringFromString(constref Source: AnsiString): WideString;
 var
   ChPtr: PChar;
 
 begin
-  ChPtr := @Source [1];
+  ChPtr := @Source[1];
   Result := ReadWideStringFromACharArray(ChPtr, Length(Source));
 
 end;
@@ -186,7 +205,7 @@ begin
 
 end;
 
-function WideStrPos(SubStr, Str: WideString): Integer;
+function WideStrPos(constref SubStr, Str: WideString): Integer;
 var
   i, j, SubStrLen: Integer;
   Flag: Boolean;
@@ -219,7 +238,7 @@ begin
    
 end;
 
-function WideStrCopy(var Str: WideString; Index, Len: Integer): WideString;
+function WideStrCopy(constref Str: WideString; Index, Len: Integer): WideString;
 var
   i: Integer;
   
@@ -234,11 +253,11 @@ end;
 procedure WideStrDelete(var Str: WideString; Index, Len: Integer);
 begin
   Str := WideStrCopy(Str, 1, Index- 1)+
-    WideStrCopy(Str, Index+ Len, Length(Str));
+  WideStrCopy(Str, Index+ Len, Length(Str));
     
 end;
 
-function WideStringCompare(var Str1, Str2: WideString): Integer;
+function WideStringCompare(constref Str1, Str2: WideString): Integer;
 var
   i: Integer;
 
@@ -260,6 +279,38 @@ begin
 
   Result := 0;
 
+end;
+
+function WriteAsUTF8(constref WStr: WideString): AnsiString;
+begin
+  Result := UTF8Encode(WStr);
+
+end;
+
+{ TWideStringList }
+
+function TWideStringList.JoinStrings: WideString;
+const
+  SkipEmptyString: Boolean = False;
+  Separator: WideChar = sLineBreak;
+
+var
+  Str: WideString;
+  i: Integer;
+
+begin
+  Result := '';
+
+  for i := 0 to Self.Count - 1 do
+  begin
+    Str := Self[i];
+    if SkipEmptyString and (Length(Str) = 0) then
+      Continue;
+
+    if Length(Result) <> 0 then
+      Result += Separator;
+    Result += Str;
+  end;
 end;
 
 end.
