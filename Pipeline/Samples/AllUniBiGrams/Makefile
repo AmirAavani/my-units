@@ -28,7 +28,8 @@ Step2:
 	${Binary} --Pipeline.StepID 2 --InputFile ../../../../1BWLM/NLP/Wikidump/fawiki-20221201-pages-articles-multistream.xml --WorkingDir  ../../../../1BWLM/NLP/tmp/ --Debug 0 --DebugIndex $(DebugIndex) --DebugStart $(DebugStart) --DebugEnd $(DebugEnd) 2>&1 
 
 DStep2:
-	${Binary} --Pipeline.StepID 2 --InputFile ../../../../1BWLM/NLP/Wikidump/fawiki-20221201-pages-articles-multistream.xml --WorkingDir  ../../../../1BWLM/NLP/tmp/ --Debug $(Debug) --DebugIndex $(DebugIndex)  2>&1   
+	echo '${Binary} --Pipeline.StepID 2 --InputFile ../../../../1BWLM/NLP/Wikidump/fawiki-20221201-pages-articles-multistream.xml --WorkingDir  ../../../../1BWLM/NLP/tmp/ --Debug $(Debug) --DebugIndex $(DebugIndex)  2>&1   '
+	${Binary} --Pipeline.StepID 2 --InputFile ../../../../1BWLM/NLP/Wikidump/fawiki-20221201-pages-articles-multistream.xml --WorkingDir  ../../../../1BWLM/NLP/tmp/ --Debug $(Debug) --DebugIndex $(DebugIndex)  2>&1
 
 Proto:
 	for f in `ls Protos/*.proto`;\
