@@ -94,7 +94,7 @@ var
 
 begin
   StrArray := SplitString(Str, Delimiter);
-
+  Delimiter.Length;
   Result := TStringList.Create;
   for S in StrArray do
     Result.Add(S);

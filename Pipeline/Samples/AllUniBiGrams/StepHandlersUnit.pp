@@ -5,14 +5,14 @@ unit StepHandlersUnit;
 interface
 
 uses
-  PipelineUnit, Pipeline.TypesUnit;
+  PipelineUnit;
 
 procedure AddStep1(Pipeline: TPipeline);
 procedure AddStep2(Pipeline: TPipeline);
 
 implementation
 uses
-  FindStartIndicesUnit, TypesUnit, ParameterManagerUnit, ExtractContentUnit;
+  FindStartIndicesUnit, ParameterManagerUnit, ExtractContentUnit;
 
 
 procedure AddStep1(Pipeline: TPipeline);

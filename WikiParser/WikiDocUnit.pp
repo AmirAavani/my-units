@@ -5,7 +5,8 @@ unit WikiDocUnit;
 interface
 
 uses
-  Classes, SysUtils, StringUnit, GenericCollectionUnit, WideStringUnit, WikiTypesUnits;
+  Classes, SysUtils, StringUnit, GenericCollectionUnit, WideStringUnit, WikiTypesUnits,
+  Miscellaneous;
 
 type
 
@@ -16,13 +17,13 @@ type
     FNext: TBaseWikiNode;
     FParent: TBaseWikiNode;
     function GetLastNode: TBaseWikiNode;
+    function GetNext: TBaseWikiNode;
   protected
     function _ToXml: AnsiString; virtual;
-    procedure _ExportText(Texts: TWideStringList); virtual;
     procedure SetNext(NextNode: TBaseWikiNode);
 
   public
-    property Next: TBaseWikiNode read FNext write SetNext;
+    property Next: TBaseWikiNode read GetNext write SetNext;
     property Parent: TBaseWikiNode read FParent write FParent;
     property LastNode: TBaseWikiNode read GetLastNode;
 
@@ -30,15 +31,13 @@ type
     function ToXML: AnsiString;
     destructor Destroy; override;
 
-    procedure ExportText(Texts: TWideStringList);
+    procedure ExportText(Unigrams, Bigrams: TWideStringList); virtual;
   end;
 
   { TNodes }
 
   TNodes = class(specialize TObjectCollection<TBaseWikiNode>)
   private
-    procedure ExportText(Texts: TWideStringList);
-
     function ToXML: AnsiString;
   end;
 
@@ -50,12 +49,13 @@ type
     FChildren: TNodes;
 
     function _ToXml: AnsiString; override;
-    procedure _ExportText(Texts: TWideStringList); override;
   public
     property Children: TNodes read FChildren;
 
     constructor Create;
     destructor Destroy; override;
+
+    procedure ExportText(Unigrams, Bigrams: TWideStringList); override;
 
   end;
 
@@ -68,7 +68,6 @@ type
 
   protected
     function _ToXml: AnsiString; override;
-    procedure _ExportText(Texts: TWideStringList); override;
 
   public
     property Content: WideString read GetContent;
@@ -76,21 +75,19 @@ type
     constructor Create(constref Text: WideString);
     destructor Destroy; override;
 
+    procedure ExportText(Unigrams, Bigrams: TWideStringList); override;
   end;
 
   { TTextStyler }
 
-  TTextStyler = class(TBaseWikiNode)
+  TTextStyler = class(TBaseWikiNodeWithChildren)
   private
-    FChildren: TNodes;
     FStyle: TStyle;
 
     function _ToXml: AnsiString; override;
-    procedure _ExportText(Texts: TWideStringList); override;
 
   public
     property Style: TStyle read FStyle;
-    property Children: TNodes read FChildren;
 
     constructor Create(_Style: TStyle);
     class function CreateStyler(constref Text: WideString): TTextStyler;
@@ -127,10 +124,10 @@ type
 
   TCommentWikiEntry = class(TTextWikiEntity)
   protected
-    procedure _ExportText(Texts: TWideStringList); override;
-
   public
     constructor Create(constref Text: WideString);
+
+    procedure ExportText(Unigrams, Bigrams: TWideStringList); override;
 
   end;
 
@@ -138,7 +135,6 @@ type
 
   TSeparatorWikiEntry = class(TTextWikiEntity)
   protected
-    procedure _ExportText(Texts: TWideStringList); override;
   public
     constructor Create(constref Text: WideString);
     destructor Destroy; override;
@@ -154,14 +150,15 @@ type
 
   protected
     function _ToXML: AnsiString; override;
-    procedure _ExportText(Texts: TWideStringList); override;
-
   public
     property TagName: WideString read FTagName;
     property Parameters: TNodes read FParameters;
 
     constructor Create(constref _TagName: WideString; _Parameters: TNodes);
     destructor Destroy; override;
+
+    procedure ExportText(Unigrams, Bigrams: TWideStringList); override;
+
   end;
 
   { THyperLinkEntity }
@@ -174,8 +171,6 @@ type
 
   protected
     function _ToXml: AnsiString; override;
-    procedure _ExportText(Texts: TWideStringList); override;
-
   public
     property Link: TBaseWikiNode read FLink;
     property Text: TBaseWikiNode read FText;
@@ -183,6 +178,9 @@ type
 
     constructor Create(l, t: TBaseWikiNode; p: TNodes);
     destructor Destroy; override;
+
+    procedure ExportText(Unigrams, Bigrams: TWideStringList); override;
+
 
   end;
 
@@ -195,12 +193,12 @@ type
 
   protected
     function _ToXml: AnsiString; override;
-    procedure _ExportText(Texts: TWideStringList); override;
 
   public
     constructor Create(NameNode: TBaseWikiNode; Params: TNodes);
     destructor Destroy; override;
 
+    procedure ExportText(Unigrams, Bigrams: TWideStringList); override;
   end;
 
   { TTable }
@@ -210,6 +208,7 @@ type
 
   end;
 
+  TWideStringListPair = specialize TPair<TWideStringList, TWideStringList>;
   { TWikiPage }
 
   TWikiPage = class(TObject)
@@ -234,16 +233,35 @@ type
     constructor Create;
     destructor Destroy; override;
 
-    function ExportText: TWideStringList;
+    function ExportText: TWideStringListPair;
   end;
 
 
 implementation
 uses
-  ALoggerUnit;
+  ALoggerUnit, QueueUnit;
 
 const
   SingleQuote = #$27;
+var
+  WideStrSplit4Extracts: WideString;
+
+procedure ExtractUnigramsAndBigrams(constref Text: WideString; Unigrams, Bigrams: TWideStringList);
+var
+  TextUnigrams: TWideStringList;
+  i: Integer;
+
+begin
+  if Text = sLineBreak then
+    Exit;
+  TextUnigrams := WideStrSplit(Text, WideStrSplit4Extracts, True);
+  Unigrams.AddAnotherCollection(TextUnigrams);
+  for i := 0 to TextUnigrams.Count - 2 do
+    Bigrams.Add(TextUnigrams[i] + ' ' + TextUnigrams[i + 1]);
+  TextUnigrams.Free;
+
+end;
+
 
 { TBaseWikiNodeWithChildren }
 
@@ -262,13 +280,16 @@ begin
 
 end;
 
-procedure TBaseWikiNodeWithChildren._ExportText(Texts: TWideStringList);
+procedure TBaseWikiNodeWithChildren.ExportText(Unigrams,
+  Bigrams: TWideStringList);
 var
   Child: TBaseWikiNode;
 
 begin
   for Child in Children do
-    Child.ExportText(Texts);
+    Child.ExportText(Unigrams, Bigrams);
+
+  inherited ExportText(Unigrams, Bigrams);
 
 end;
 
@@ -332,21 +353,10 @@ begin
 
 end;
 
-procedure TTextStyler._ExportText(Texts: TWideStringList);
-var
-  Child: TBaseWikiNode;
-
-begin
-  for Child in FChildren do
-    Child.ExportText(Texts);
-
-end;
-
 constructor TTextStyler.Create(_Style: TStyle);
 begin
   inherited Create;
 
-  FChildren := TNodes.Create;
   FStyle := _Style;
 end;
 
@@ -382,7 +392,6 @@ end;
 
 destructor TTextStyler.Destroy;
 begin
-  FChildren.Free;
 
   inherited Destroy;
 end;
@@ -405,7 +414,7 @@ begin
 
 end;
 
-procedure TTemplate._ExportText(Texts: TWideStringList);
+procedure TTemplate.ExportText(Unigrams, Bigrams: TWideStringList);
 begin
   // Do nothing;
 end;
@@ -421,9 +430,7 @@ end;
 
 destructor TTemplate.Destroy;
 begin
-  FMTDebugLn('FTemplateName: %d', [UInt64(FTemplateName)]);
   FTemplateName.Free;
-  FMTDebugLn('FParameters:', []);
   FParameters.Free;
 
   inherited Destroy;
@@ -451,10 +458,10 @@ begin
 
 end;
 
-procedure TTagEntity._ExportText(Texts: TWideStringList);
+procedure TTagEntity.ExportText(Unigrams, Bigrams: TWideStringList);
 begin
   if Self.TagName <> 'ref' then
-    inherited _ExportText(Texts);
+    inherited ExportText(Unigrams, Bigrams);
 
   // Do nothing
 end;
@@ -525,26 +532,22 @@ begin
   inherited Destroy;
 end;
 
-function TWikiPage.ExportText: TWideStringList;
+function TWikiPage.ExportText: TWideStringListPair;
+var
+  Node: TBaseWikiNode;
+
 begin
-  Result := TWideStringList.Create;
-  Result.Add(Self.Title.Content);
-  Content.ExportText(Result);
+  Result.First := TWideStringList.Create;
+  Result.Second := TWideStringList.Create;
+  ExtractUnigramsAndBigrams(Self.Title.Content, Result.First, Result.Second);
+
+  for Node in FContent do
+    Node.ExportText(Result.First, Result.Second);
 
 end;
 
 
 { TNodes }
-
-procedure TNodes.ExportText(Texts: TWideStringList);
-var
-  Node: TBaseWikiNode;
-
-begin
-  for Node in Self do
-    Node.ExportText(Texts);
-
-end;
 
 function TNodes.ToXML: AnsiString;
 var
@@ -605,12 +608,21 @@ begin
 
 end;
 
-procedure THyperLinkEntity._ExportText(Texts: TWideStringList);
-begin
-  //if FLink.ToXML ;
-  if FText <> nil then
-    FText.ExportText(Texts);
+const
+  Parvandeh = 'پرونده:';
 
+procedure THyperLinkEntity.ExportText(Unigrams, Bigrams: TWideStringList);
+begin
+  if (FLink <> nil) and(FLink is TTextWikiEntity) and
+    IsPrefix(Parvandeh, (FLink as TTextWikiEntity).Content) then
+  begin
+    Exit;
+  end;
+
+  if FText <> nil then
+    FText.ExportText(Unigrams, Bigrams);
+
+  inherited ExportText(Unigrams, Bigrams);
 end;
 
 { TSeparatorWikiEntry }
@@ -626,11 +638,6 @@ begin
   inherited Destroy;
 end;
 
-procedure TSeparatorWikiEntry._ExportText(Texts: TWideStringList);
-begin
-
-end;
-
 { TCommentWikiEntry }
 
 constructor TCommentWikiEntry.Create(constref Text: WideString);
@@ -639,9 +646,8 @@ begin
 
 end;
 
-procedure TCommentWikiEntry._ExportText(Texts: TWideStringList);
+procedure TCommentWikiEntry.ExportText(Unigrams, Bigrams: TWideStringList);
 begin
-  Exit;
 
 end;
 
@@ -677,13 +683,10 @@ begin
   inherited Destroy;
 end;
 
-procedure TTextWikiEntity._ExportText(Texts: TWideStringList);
+procedure TTextWikiEntity.ExportText(Unigrams, Bigrams: TWideStringList);
 begin
-  Texts.Add('{{');
-  Texts.Add(FContent);
-
-  inherited _ExportText(Texts);
-  Texts.Add('}}');
+  ExtractUnigramsAndBigrams(Self.FContent, Unigrams, Bigrams);
+  inherited ExportText(Unigrams, Bigrams);
 
 end;
 
@@ -701,6 +704,14 @@ begin
 
 end;
 
+function TBaseWikiNode.GetNext: TBaseWikiNode;
+begin
+  if Self = nil then
+    Exit(nil);
+
+  Result := FNext;
+end;
+
 function TBaseWikiNode._ToXml: AnsiString;
 begin
   FmtFatalLn('%s', [Self.ClassName]);
@@ -708,9 +719,10 @@ begin
 
 end;
 
-procedure TBaseWikiNode._ExportText(Texts: TWideStringList);
+procedure TBaseWikiNode.ExportText(Unigrams, Bigrams: TWideStringList);
 begin
-  FmtFatalLn('%s', [Self.ClassName]);
+  if FNext <> nil then
+    FNext.ExportText(Unigrams, Bigrams);
 
 end;
 
@@ -791,26 +803,8 @@ begin
   inherited Destroy;
 end;
 
-procedure TBaseWikiNode.ExportText(Texts: TWideStringList);
-var
-  n: TBaseWikiNode;
-  Count: Integer;
-begin
-  n := Self;
-  Count := 0;
-
-  while n <> nil do
-  begin
-    Inc(count);
-    if Count = 6472 then
-    begin
-      FMTDebugLn('Texts: %s', [Texts.JoinStrings]);
-    end;
-    n._ExportText(Texts);
-
-    n := n.Next;
-  end;
-end;
+initialization
+  WideStrSplit4Extracts := WideStringUnit.ReadWideStringFromString(' .!?-_(),،');
 
 end.
 

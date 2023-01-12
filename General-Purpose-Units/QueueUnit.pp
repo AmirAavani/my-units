@@ -507,10 +507,12 @@ constructor TGenericQueue.Create;
 begin
   inherited Create;
 
+  FData := TData.Create;
 end;
 
 destructor TGenericQueue.Destroy;
 begin
+  FData.Free;
 
   inherited Destroy;
 

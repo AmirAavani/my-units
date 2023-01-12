@@ -5,19 +5,6 @@ interface
 uses
   GenericCollectionUnit;
 
-{
-  The function does not change the content of CharPtr but it might increases its value.
-}
-function ReadWideStringFromACharArray(var CharPtr: PChar; Len: Integer): WideString;
-function ReadWideStringFromString(constref Source: AnsiString): WideString;
-function ReadWideString(var FdFile: TextFile): WideString;
-function WideStrPos(constref SubStr, Str: WideString): Integer;
-function WideStrCopy(constref Str: WideString; Index, Len: Integer): WideString;
-procedure WideStrDelete(var Str: WideString; Index, Len: Integer);
-function WideStringCompare(constref Str1, Str2: WideString): Integer;
-
-function WriteAsUTF8(constref WStr: WideString): AnsiString;
-
 type
 
   { TWideStringList }
@@ -29,9 +16,27 @@ type
   end;
 
 
+
+{
+  The function does not change the content of CharPtr but it might increases its value.
+}
+function ReadWideStringFromACharArray(var CharPtr: PChar; Len: Integer): WideString;
+function ReadWideStringFromString(constref Source: AnsiString): WideString;
+function ReadWideString(var FdFile: TextFile): WideString;
+function WideStrPos(constref SubStr, Str: WideString): Integer;
+function WideStrCopy(constref Str: WideString; Index, Len: Integer): WideString;
+procedure WideStrDelete(var Str: WideString; Index, Len: Integer);
+function WideStringCompare(constref Str1, Str2: WideString): Integer;
+function WriteAsUTF8(constref WStr: WideString): AnsiString;
+
+function WideStrSplit(
+  constref Str: WideString;
+  constref Delimiters: WideString;
+  KeepDelimiters: Boolean = False): TWideStringList;
+
 implementation
 uses
-  Math;
+  Math, ALoggerUnit;
   
 function ReadWideStringFromACharArray(var CharPtr: PChar; Len: Integer): WideString;
 
@@ -285,6 +290,51 @@ function WriteAsUTF8(constref WStr: WideString): AnsiString;
 begin
   Result := UTF8Encode(WStr);
 
+end;
+
+function WideStrSplit(constref Str: WideString; constref
+  Delimiters: WideString; KeepDelimiters: Boolean): TWideStringList;
+var
+  Start, Current: PWideChar;
+  Tmp: WideString;
+  Delimiter: WideChar;
+begin
+  Result := TWideStringList.Create;
+
+  Start := @Str[1];
+  Current := Start;
+  while Current^ <> #0 do
+  begin
+    for Delimiter in Delimiters do
+    begin
+
+      if Current^ = Delimiter then
+      begin
+        if Start <= Current - 1 then
+        begin
+          SetLength(Tmp, (Current - Start));
+          Move(Start^, Tmp[1], SizeOf(WideChar) * (Current - Start));
+          Result.Add(Tmp);
+
+        end;
+        Start := Current + 1;
+        if KeepDelimiters then
+          Result.Add(Delimiter);
+        Break;
+
+      end;
+
+    end;
+    Inc(Current);
+  end;
+
+  if Start <= Current - 1 then
+  begin
+    SetLength(Tmp, (Current - Start));
+    Move(Start^, Tmp[1], SizeOf(WideChar) * (Current - Start));
+    Result.Add(Tmp);
+
+  end;
 end;
 
 { TWideStringList }

@@ -9,7 +9,8 @@ uses
   Classes, PipelineUnit, Pipeline.Utils, Pipeline.TypesUnit, ALoggerUnit,
   HeapUnit, sysutils, StepHandlersUnit, FindStartIndicesUnit, TypesUnit,
   ParameterManagerUnit, FileHelperUnit, StreamUnit, ExtractContentUnit,
-SharedUnit, WikiParserUnit, WikiDocUnit, Laz2_DOM, WikiTypesUnits;
+  SharedUnit, WikiParserUnit, WikiDocUnit, Laz2_DOM, WikiTypesUnits,
+  WideStringUnit;
 
 var
   Pipeline: TPipeline;

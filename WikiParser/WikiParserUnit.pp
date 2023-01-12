@@ -965,7 +965,7 @@ begin
             Inc(Current)
           else
           begin
-            SetLength(Result.Text, Current - Start + 1);
+            SetLength(Result.Text, (Current - Start + 1));
             Move(Start^, Result.Text[1], SizeOfWideChar * (Current - Start + 1));
             raise EInvalidToken.Create(AnsiString(Result.Text));
 

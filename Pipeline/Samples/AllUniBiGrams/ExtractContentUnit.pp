@@ -13,8 +13,8 @@ implementation
 
 uses
   ParameterManagerUnit, TypesUnit,
-  StreamUnit, ALoggerUnit, SharedUnit, Laz2_DOM, laz2_xmlread,
-  WikiParserUnit, PathHelperUnit, WideStringUnit;
+  ALoggerUnit, SharedUnit, Laz2_DOM, laz2_xmlread,
+  WikiParserUnit, WideStringUnit;
 
 function ProcessData(constref Data: AnsiString): TWikiPage;
 var
@@ -46,6 +46,12 @@ begin
 
 end;
 
+function IsEmptyString(constref Str: WideString): Boolean;
+begin
+  Result := Str = ' ';
+
+end;
+
 function ExtractContent(Task: TTask): Boolean;
 var
   Positions: TPositionList;
@@ -58,7 +64,7 @@ var
   ReadBytes: Integer;
   WikiDoc: TWikiPage;
   DebugIndex, DebugStart, DebugEnd: Int64;
-  Lines: TWideStringList;
+  LineInfo: TWideStringListPair;
 
 begin
   Stream := TFileStream.Create(GetPositionFileName(Task.ID), fmOpenRead);
@@ -118,12 +124,14 @@ begin
 
     if WikiDoc = nil then
       Continue;
-    Lines := WikiDoc.ExportText;
+    LineInfo := WikiDoc.ExportText;
     WikiDoc.Free;
-    WriteLn(Lines.JoinStrings);
+    LineInfo.First.RemoveAllValuesMatching(@IsEmptyString);
 
-    FMTDebugLn('Lines: %s', [WriteAsUTF8(Lines.JoinStrings())]);
-    Lines.Free;
+    FMTDebugLn('Unigrams: %s', [WriteAsUTF8(LineInfo.First.JoinStrings())]);
+    FMTDebugLn('Bigrams: %s', [WriteAsUTF8(LineInfo.Second.JoinStrings())]);
+    LineInfo.First.Free;
+    LineInfo.Second.Free;
 
     if DebugIndex <> -1 then
       Break;
@@ -132,6 +140,8 @@ begin
 
   Positions.Free;
   Reader.Free;
+
+  Result := True;
 end;
 
 end.

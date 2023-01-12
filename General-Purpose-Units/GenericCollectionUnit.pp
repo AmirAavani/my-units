@@ -18,6 +18,7 @@ type
   public type
     TDumpFunc = function (d: TData; Stream: TStream): Boolean;
     TLoadFunc = function (Stream: TStream): TData;
+    TMatcherFunc = function (constref Str: TData): Boolean;
 
   public
     property IsEmpty: Boolean read GetIsEmpty;
@@ -29,6 +30,7 @@ type
       TCollection<TData>;
 
     function Pop: TData; virtual;
+    procedure RemoveAllValuesMatching(Matcher: TMatcherFunc);
 
   end;
 
@@ -136,6 +138,31 @@ begin
   end;
   Result := Self[Count - 1];
   Self.Delete(Count - 1);
+
+end;
+
+procedure TCollection.RemoveAllValuesMatching(Matcher: TMatcherFunc);
+var
+  LastIndex: Integer;
+  Str: TData;
+  it: TCollection.TEnumerator;
+
+begin
+  LastIndex := 0;
+
+  it := Self.GetEnumerator;
+  while it.MoveNext do
+  begin
+    Str := it.Current;
+    if not Matcher(Str) then
+    begin
+      Self[LastIndex] := Str;
+      Inc(LastIndex);
+
+    end;
+  end;
+
+  Self.Count := LastIndex;
 
 end;
 
