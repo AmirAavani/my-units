@@ -22,14 +22,13 @@ AllUniBiGrams-Profiling:
 	valgrind --tool=callgrind ./AllUniBiGrams-Profiling 
 
 Step1:
-	${Binary} --Pipeline.StepID 1 --InputFile ../../../../1BWLM/NLP/Wikidump/fawiki-20221201-pages-articles-multistream.xml --WorkingDir  ../../../../1BWLM/NLP/tmp/ --Debug '15' 2>&1 
+	${Binary} --Pipeline.StepID 1 --InputFile ../../../../1BWLM/NLP/Wikidump/fawiki-20230220-pages-articles-multistream.xml --WorkingDir  ../../../../1BWLM/NLP/tmp/ --Debug '15' 2>&1 
 
 Step2:
-	${Binary} --Pipeline.StepID 2 --InputFile ../../../../1BWLM/NLP/Wikidump/fawiki-20221201-pages-articles-multistream.xml --WorkingDir  ../../../../1BWLM/NLP/tmp/ --Debug 0 --DebugIndex $(DebugIndex) --DebugStart $(DebugStart) --DebugEnd $(DebugEnd) 2>&1 
+	${Binary} --Pipeline.StepID 2 --InputFile ../../../../1BWLM/NLP/Wikidump/fawiki-20230220-pages-articles-multistream.xml --WorkingDir  ../../../../1BWLM/NLP/tmp/ --Debug 33 --DebugIndex $(DebugIndex) --DebugStart $(DebugStart) --DebugEnd $(DebugEnd) 2>&1 
 
 DStep2:
-	echo '${Binary} --Pipeline.StepID 2 --InputFile ../../../../1BWLM/NLP/Wikidump/fawiki-20221201-pages-articles-multistream.xml --WorkingDir  ../../../../1BWLM/NLP/tmp/ --Debug $(Debug) --DebugIndex $(DebugIndex)  2>&1   '
-	${Binary} --Pipeline.StepID 2 --InputFile ../../../../1BWLM/NLP/Wikidump/fawiki-20221201-pages-articles-multistream.xml --WorkingDir  ../../../../1BWLM/NLP/tmp/ --Debug $(Debug) --DebugIndex $(DebugIndex)  2>&1
+	${Binary} --Pipeline.StepID 2 --InputFile ../../../../1BWLM/NLP/Wikidump/fawiki-20230220-pages-articles-multistream.xml --WorkingDir  ../../../../1BWLM/NLP/tmp/ --Debug $(Debug) --DebugIndex $(DebugIndex)  2>&1
 
 Proto:
 	for f in `ls Protos/*.proto`;\

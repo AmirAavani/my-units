@@ -119,8 +119,12 @@ begin
 
   Reader.Free;
 
-  FMTDebugLn('ID: %d PositionsFileName: %s', [Task.ID, GetPositionFileName(Task.ID)]);
-  Writer := TFileStream.Create(GetPositionFileName(Task.ID), fmCreate);
+  FMTDebugLn('ID: %d PositionsFileName: %s', [
+    Task.ID,
+    GetPositionFileName(
+      Task.ID,
+      Task.Count)]);
+  Writer := TFileStream.Create(GetPositionFileName(Task.ID, Task.Count), fmCreate);
   Positions.SaveToStream(Writer, @SaveUInt64);
   Writer.Free;
   FMTDebugLn('ID: %d Positions.Count: %d', [Task.ID, Positions.Count]);

@@ -19,7 +19,7 @@ type
     function GetLastNode: TBaseWikiNode;
     function GetNext: TBaseWikiNode;
   protected
-    function _ToXml: AnsiString; virtual;
+    function _ToXml(constref Indent: AnsiString): AnsiString; virtual;
     procedure SetNext(NextNode: TBaseWikiNode);
 
   public
@@ -28,7 +28,7 @@ type
     property LastNode: TBaseWikiNode read GetLastNode;
 
     constructor Create;
-    function ToXML: AnsiString;
+    function ToXML(constref Indent: AnsiString): AnsiString;
     destructor Destroy; override;
 
     procedure ExportText(Unigrams, Bigrams: TWideStringList); virtual;
@@ -38,7 +38,7 @@ type
 
   TNodes = class(specialize TObjectCollection<TBaseWikiNode>)
   private
-    function ToXML: AnsiString;
+    function ToXML(Indent: AnsiString): AnsiString;
   end;
 
 
@@ -48,7 +48,7 @@ type
   protected
     FChildren: TNodes;
 
-    function _ToXml: AnsiString; override;
+    function _ToXml(constref Indent: AnsiString): AnsiString; override;
   public
     property Children: TNodes read FChildren;
 
@@ -67,7 +67,7 @@ type
     function GetContent: WideString;
 
   protected
-    function _ToXml: AnsiString; override;
+    function _ToXml(constref Indent: AnsiString): AnsiString; override;
 
   public
     property Content: WideString read GetContent;
@@ -84,7 +84,7 @@ type
   private
     FStyle: TStyle;
 
-    function _ToXml: AnsiString; override;
+    function _ToXml(constref Indent: AnsiString): AnsiString; override;
 
   public
     property Style: TStyle read FStyle;
@@ -149,7 +149,7 @@ type
     FTagName: WideString;
 
   protected
-    function _ToXML: AnsiString; override;
+    function _ToXML(constref Indent: AnsiString): AnsiString; override;
   public
     property TagName: WideString read FTagName;
     property Parameters: TNodes read FParameters;
@@ -170,7 +170,7 @@ type
     FParmas: TNodes;
 
   protected
-    function _ToXml: AnsiString; override;
+    function _ToXml(constref Indent: AnsiString): AnsiString; override;
   public
     property Link: TBaseWikiNode read FLink;
     property Text: TBaseWikiNode read FText;
@@ -190,21 +190,46 @@ type
   private
     FTemplateName: TBaseWikiNode;
     FParameters: TNodes;
+    function GetTemplateName: WideString;
 
   protected
-    function _ToXml: AnsiString; override;
+    function _ToXml(constref Indent: AnsiString): AnsiString; override;
 
   public
+    property TemplateName: WideString read GetTemplateName;
+
     constructor Create(NameNode: TBaseWikiNode; Params: TNodes);
     destructor Destroy; override;
 
     procedure ExportText(Unigrams, Bigrams: TWideStringList); override;
   end;
 
+
+  { THeadingSection }
+
+  THeadingSection = class(TBaseWikiNodeWithChildren)
+  private
+    FNumber: Integer;
+
+  protected
+    function _ToXml(constref Indent: AnsiString): AnsiString; override;
+
+  public
+    property Number: Integer read FNumber;
+
+    constructor Create(_Number: Integer);
+
+    procedure ExportText(Unigrams, Bigrams: TWideStringList); override;
+>>>>>>> 64f51e7 (...)
+>>>>>>> 07f476c (...)
+  end;
+
   { TTable }
 
   TTable = class(TBaseWikiNode)
   protected
+    function _ToXml(constref Indent: AnsiString): AnsiString; override;
+
 
   end;
 
@@ -234,6 +259,7 @@ type
     destructor Destroy; override;
 
     function ExportText: TWideStringListPair;
+    function ToXML: AnsiString;
   end;
 
 
@@ -262,10 +288,48 @@ begin
 
 end;
 
+{ HeadingSection }
+
+function THeadingSection._ToXml(constref Indent: AnsiString): AnsiString;
+var
+  Lines: TWideStringList;
+
+begin
+  Lines := TWideStringList.Create;
+  Lines.Add(Format('%s<%s>', [Indent, ClassName]));
+  Lines.Add(inherited _ToXml(Indent + '  '));
+  Lines.Add(Format('%s</%s>', [Indent, ClassName]));
+
+  Result := Lines.JoinStrings;
+  Lines.Free;
+
+end;
+
+constructor THeadingSection.Create(_Number: Integer);
+begin
+  inherited Create;
+
+  FNumber := _Number;
+
+end;
+
+procedure THeadingSection.ExportText(Unigrams, Bigrams: TWideStringList);
+begin
+  inherited ExportText(Unigrams, Bigrams);
+end;
+
+{ TTable }
+
+function TTable._ToXml(constref Indent: AnsiString): AnsiString;
+begin
+  Result := '';
+end;
+
 
 { TBaseWikiNodeWithChildren }
 
-function TBaseWikiNodeWithChildren._ToXml: AnsiString;
+function TBaseWikiNodeWithChildren._ToXml(constref Indent: AnsiString
+  ): AnsiString;
 var
   Child: TBaseWikiNode;
   Lines: TStringList;
@@ -273,7 +337,7 @@ var
 begin
   Lines := TStringList.Create;
   for Child in Children do
-    Lines.Add(Child.ToXML);
+    Lines.Add(Child.ToXML(Indent + '  '));
 
   Result := Lines.Text;
   Lines.Free;
@@ -333,7 +397,7 @@ end;
 
 { TTextStyler }
 
-function TTextStyler._ToXml: AnsiString;
+function TTextStyler._ToXml(constref Indent: AnsiString): AnsiString;
 var
   TagName: AnsiString;
   Child: TBaseWikiNode;
@@ -346,7 +410,7 @@ begin
   Lines.Add(Format('<%s>', [TagName]));
 
   for Child in FChildren do
-    Lines.Add(Child.ToXML);
+    Lines.Add(Child.ToXML(Indent + '  '));
   Lines.Add(Format('</%s>', [TagName]));
 
   Result := Lines.JoinStrings;
@@ -398,15 +462,42 @@ end;
 
 { TTemplate }
 
-function TTemplate._ToXml: AnsiString;
+function TTemplate.GetTemplateName: WideString;
+var
+  Current: TBaseWikiNode;
+  AllContents: TWideStringList;
+
+begin
+  Result := '';
+  AllContents := TWideStringList.Create;
+
+  AllContents.Add((FTemplateName as TTextWikiEntity).Content);
+  for Current in (FTemplateName as TTextWikiEntity).Children do
+  begin
+    if not (Current is TTextWikiEntity) then
+    begin
+      FMTDebugLn('One of FTemplateName.Children is not TTextWikiEntity',  []);
+      Continue;
+
+    end;
+    AllContents.Add((Current as TTextWikiEntity).Content);
+
+  end;
+
+  Result := AllContents.JoinStrings;
+  AllContents.Free;
+
+end;
+
+function TTemplate._ToXml(constref Indent: AnsiString): AnsiString;
 var
   Lines: TStringList;
 
 begin
   Lines := TStringList.Create;
   Lines.Add(Format('<%s>', [ClassName]));
-  Lines.Add(Format('  <Name> %s </Name>', [FTemplateName.ToXML]));
-  Lines.Add(Format('  <Params> %s </Params>', [FParameters.ToXML]));
+  Lines.Add(Format('  <Name> %s </Name>', [FTemplateName.ToXML(Indent)]));
+  Lines.Add(Format('  <Params> %s </Params>', [FParameters.ToXML(Indent)]));
   Lines.Add(Format('</%s>', [ClassName]));
 
   Result := Lines.Text;
@@ -414,9 +505,13 @@ begin
 
 end;
 
+var
+  Goftavard: WideString;
+
 procedure TTemplate.ExportText(Unigrams, Bigrams: TWideStringList);
 begin
-  // Do nothing;
+  Exit;
+
 end;
 
 constructor TTemplate.Create(NameNode: TBaseWikiNode; Params: TNodes);
@@ -424,6 +519,7 @@ begin
   inherited Create;
 
   FTemplateName := NameNode;
+
   FParameters := Params;
 
 end;
@@ -438,20 +534,22 @@ end;
 
 { TTagEntity }
 
-function TTagEntity._ToXML: AnsiString;
+function TTagEntity._ToXML(constref Indent: AnsiString): AnsiString;
 var
   Lines: TStringList;
   Child: TBaseWikiNode;
 begin
   Lines := TStringList.Create;
-  Lines.Add(Format('<%s>', [ClassName]));
-  Lines.Add(Format('  <Name> %s </Name>', [FTagName]));
-  Lines.Add(Format('  <Params> %s </Params>', [FParameters.ToXML]));
-  Lines.Add(Format('  <Children>', []));
+  Lines.Add(Format('%s<%s>', [Indent, ClassName]));
+  Lines.Add(Format('%s  <Name> %s </Name>', [Indent, FTagName]));
+  Lines.Add(Format('%s  <Params>', [Indent]));
+  Lines.Add(Format('%s    %s', [Indent, FParameters.ToXML(Indent)]));
+  Lines.Add(Format('%s  </Params>', [Indent]));
+  Lines.Add(Format('%s  <Children>', [Indent]));
   for Child in Self.Children do
-    Lines.Add(Child.ToXML);
-  Lines.Add(Format('  </Children>', []));
-  Lines.Add(Format('</%s>', [ClassName]));
+    Lines.Add(Child.ToXML(Indent + '  '));
+  Lines.Add(Format('%s  </Children>', [Indent]));
+  Lines.Add(Format('%s</%s>', [Indent, ClassName]));
 
   Result := Lines.Text;
   Lines.Free
@@ -542,14 +640,25 @@ begin
   ExtractUnigramsAndBigrams(Self.Title.Content, Result.First, Result.Second);
 
   for Node in FContent do
+  begin
     Node.ExportText(Result.First, Result.Second);
 
+  end;
+
+end;
+
+function TWikiPage.ToXML: AnsiString;
+begin
+  if Self = nil then
+    Exit('<nil/>');
+
+  Result := FContent.ToXML('');
 end;
 
 
 { TNodes }
 
-function TNodes.ToXML: AnsiString;
+function TNodes.ToXML(Indent: AnsiString): AnsiString;
 var
   Node: TBaseWikiNode;
   Lines: TStringList;
@@ -559,12 +668,15 @@ begin
     Exit('<TNodes/>');
 
   Lines := TStringList.Create;
-  Lines.Add('<TNodes>');
+  Lines.Add(Indent + '<TNodes>');
 
   for Node in Self do
-    Lines.Add(Node.ToXML);
+  begin
+    // FMTDebugLn('Node: %s', [Node.ClassName]);
+    Lines.Add(Node.ToXML(Indent + '  '));
+  end;
 
-  Lines.Add('</TNodes>');
+  Lines.Add(Indent + '</TNodes>');
 
   Result := Lines.Text;
   Lines.Free;
@@ -592,24 +704,27 @@ begin
 
 end;
 
-function THyperLinkEntity._ToXml: AnsiString;
+function THyperLinkEntity._ToXml(constref Indent: AnsiString): AnsiString;
 var
   Lines: TStringList;
 
 begin
   Lines := TStringList.Create;
-  Lines.Add(Format('<%s>', [ClassName]));
-  Lines.Add(Format('  <Link> %s </Link>', [Link.ToXML]));
-  Lines.Add(Format('  <Text> %s </Text>', [Text.ToXML]));
-  Lines.Add(Format('</%s>', [ClassName]));
+  Lines.Add(Format('%s<%s>', [Indent, ClassName]));
+  Lines.Add(Format('%s  <Link>', [Indent]));
+  Lines.Add(Format('%s    %s', [Indent, Link.ToXML((Indent + '  '))]));
+  Lines.Add(Format('%s  </Link>', [Indent]));
+  Lines.Add(Format('%s  <Text>', [Indent]));
+  Lines.Add(Format('%s    %s', [Indent, Text.ToXML((Indent + '  '))]));
+  Lines.Add(Format('%s  </Text>', [Indent]));
+  Lines.Add(Format('%s</%s>', [Indent, ClassName]));
 
   Result := Lines.Text;
   Lines.Free
 
 end;
 
-const
-  Parvandeh = 'پرونده:';
+var Parvandeh: WideString;
 
 procedure THyperLinkEntity.ExportText(Unigrams, Bigrams: TWideStringList);
 begin
@@ -661,12 +776,12 @@ begin
   Result := FContent;
 end;
 
-function TTextWikiEntity._ToXml: AnsiString;
+function TTextWikiEntity._ToXml(constref Indent: AnsiString): AnsiString;
 begin
   if self = nil then
       Exit('');
   Result := Format('<%s>%s</%s>', [ClassName, WriteAsUTF8(FContent), ClassName]);
-  Result += inherited _ToXml;
+  Result += inherited _ToXml(Indent);
 
 end;
 
@@ -712,9 +827,9 @@ begin
   Result := FNext;
 end;
 
-function TBaseWikiNode._ToXml: AnsiString;
+function TBaseWikiNode._ToXml(constref Indent: AnsiString): AnsiString;
 begin
-  FmtFatalLn('%s', [Self.ClassName]);
+  FmtFatalLn('%s %s', [Indent, Self.ClassName]);
   Result := '<ClassName/>';
 
 end;
@@ -744,7 +859,7 @@ begin
 
 end;
 
-function TBaseWikiNode.ToXML: AnsiString;
+function TBaseWikiNode.ToXML(constref Indent: AnsiString): AnsiString;
 var
   n: TBaseWikiNode;
 
@@ -756,7 +871,7 @@ begin
   n := Self;
   while n <> nil do
   begin
-    Result += n._ToXml;
+    Result += n._ToXml(Indent + '  ') + sLineBreak;
     n := n.Next;
 
   end;
@@ -804,7 +919,12 @@ begin
 end;
 
 initialization
-  WideStrSplit4Extracts := WideStringUnit.ReadWideStringFromString(' .!?-_(),،');
+  WideStrSplit4Extracts := WideStringUnit.ReadWideStringFromString(
+    ' .!?-_(),،»«؛');
+  Goftavard := WideStringUnit.ReadWideStringFromString(
+    'گفتاورد');
+  Parvandeh := WideStringUnit.ReadWideStringFromString(
+  'پرونده:');
 
 end.
 

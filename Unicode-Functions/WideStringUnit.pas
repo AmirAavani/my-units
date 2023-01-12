@@ -12,7 +12,8 @@ type
   TWideStringList = class(specialize TCollection<WideString>)
   private
   public
-    function JoinStrings: WideString;
+    function JoinStrings(Separator: WideChar = sLineBreak): WideString;
+
   end;
 
 
@@ -33,6 +34,25 @@ function WideStrSplit(
   constref Str: WideString;
   constref Delimiters: WideString;
   KeepDelimiters: Boolean = False): TWideStringList;
+
+
+{
+  The function does not change the content of CharPtr but it might increases its value.
+}
+function ReadWideStringFromACharArray(var CharPtr: PChar; Len: Integer): WideString;
+function ReadWideStringFromString(constref Source: AnsiString): WideString;
+function ReadWideString(var FdFile: TextFile): WideString;
+function WideStrPos(constref SubStr, Str: WideString): Integer;
+function WideStrCopy(constref Str: WideString; Index, Len: Integer): WideString;
+procedure WideStrDelete(var Str: WideString; Index, Len: Integer);
+function WideStringCompare(constref Str1, Str2: WideString): Integer;
+function WriteAsUTF8(constref WStr: WideString): AnsiString;
+
+function WideStrSplit(
+  constref Str: WideString;
+  constref Delimiters: WideString;
+  KeepDelimiters: Boolean = False): TWideStringList;
+
 
 implementation
 uses
@@ -339,10 +359,9 @@ end;
 
 { TWideStringList }
 
-function TWideStringList.JoinStrings: WideString;
+function TWideStringList.JoinStrings(Separator: WideChar): WideString;
 const
   SkipEmptyString: Boolean = False;
-  Separator: WideChar = sLineBreak;
 
 var
   Str: WideString;

@@ -23,8 +23,10 @@ var
 
 begin
   S := TStringStream.Create(Data);
+  FMTDebugLn('Data: %s', [Data]);
   try
     ReadXMLFile(Doc, S);
+    FMTDebugLn('Doc.URL: %s %s', [Doc.documentURI, Doc.baseURI]);
     Result := ParseWiki(Doc.FirstChild);
     Doc.Free;
     S.Free;
@@ -67,7 +69,11 @@ var
   LineInfo: TWideStringListPair;
 
 begin
-  Stream := TFileStream.Create(GetPositionFileName(Task.ID), fmOpenRead);
+  Stream := TFileStream.Create(
+    GetPositionFileName(
+      Task.ID,
+      Task.Count),
+    fmOpenRead);
   Positions := TPositionList.LoadFromStream(Stream, @LoadUInt64);
   Stream.Free;
   DebugIndex := GetRunTimeParameterManager.ValueByName['--DebugIndex'].AsIntegerOrDefault(-1);
@@ -84,7 +90,9 @@ begin
     GetRunTimeParameterManager.ValueByName['--InputFile'].AsAnsiString,
     fmOpenRead or fmShareDenyNone);
   Writer := TFileStream.Create(
-    GetExtractFileName(Task.ID),
+    GetExtractFileName(
+      Task.ID,
+      Task.Count),
     fmCreate);
 
   Size := Reader.Size;
@@ -93,6 +101,7 @@ begin
   Fin := ((Size + Task.ID - 1) div Task.StepInfo.NumTasks) *
        Task.ID - 1;
   FMTDebugLn('Task.ID: %d Start: %d Fin: %d', [Task.ID, Start, Fin]);
+
   for i := 0 to Positions.Count - 2 do
   begin
     if (DebugStart <> -1) and ((i < DebugStart) or (DebugEnd < i)) then
@@ -116,20 +125,23 @@ begin
 
     try
       WikiDoc := ProcessData(Data);
+      FMTDebugLn('<WikiDoc>%s</WikiDoc>', [WikiDoc.ToXML]);
 
     except
       on e: EBaseWikiParser do
          FMTDebugLn('Failed in Processing Data', []);
     end;
-
     if WikiDoc = nil then
       Continue;
+
+    FMTDebugLn('Title: %s', [WikiDoc.Title.ToXML('')]);
+
     LineInfo := WikiDoc.ExportText;
     WikiDoc.Free;
     LineInfo.First.RemoveAllValuesMatching(@IsEmptyString);
 
     FMTDebugLn('Unigrams: %s', [WriteAsUTF8(LineInfo.First.JoinStrings())]);
-    FMTDebugLn('Bigrams: %s', [WriteAsUTF8(LineInfo.Second.JoinStrings())]);
+    // FMTDebugLn('Bigrams: %s', [WriteAsUTF8(LineInfo.Second.JoinStrings())]);
     LineInfo.First.Free;
     LineInfo.Second.Free;
 

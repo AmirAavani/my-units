@@ -22,7 +22,7 @@ var
   Step: TPipeline.TStepInfo;
 
 begin
-  Step := TPipeline.TStepInfo.Create(2, 16, nil);
+  Step := TPipeline.TStepInfo.Create(2, 64, nil);
   Task := TTask.Create(1, Step);
   ExtractContentUnit.ExtractContent(Task);
   Step.Free;

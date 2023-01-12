@@ -11,27 +11,27 @@ const
   PageTag = '<page>';
   EndPageTag = '</page>';
 
-function GetPositionFileName(TaskID: Integer): AnsiString;
-function GetExtractFileName(TaskID: Integer): AnsiString;
+function GetPositionFileName(TaskID, NumTasks: Integer): AnsiString;
+function GetExtractFileName(TaskID, NumTasks: Integer): AnsiString;
 
 implementation
 uses
   PathHelperUnit, ParameterManagerUnit;
 
-function GetPositionFileName(TaskID: Integer): AnsiString;
+function GetPositionFileName(TaskID, NumTasks: Integer): AnsiString;
 begin
   Result := JoinPath(
     GetRunTimeParameterManager.ValueByName['--WorkingDir'].AsAnsiString,
-    Format('PositionFile-%d.bin', [TaskID])
+    Format('PositionFile-%.5d-of-%.5d.bin', [TaskID, NumTasks])
   );
 
 end;
 
-function GetExtractFileName(TaskID: Integer): AnsiString;
+function GetExtractFileName(TaskID, NumTasks: Integer): AnsiString;
 begin
   Result := JoinPath(
     GetRunTimeParameterManager.ValueByName['--WorkingDir'].AsAnsiString,
-    Format('WikiPageFile-%d.bin', [TaskID])
+    Format('WikiPageFile-%.5d-of-%.5d.bin', [TaskID, NumTasks])
   );
 
 end;

@@ -134,8 +134,10 @@ function TCollection.Pop: TData;
 begin
   if Count = 0 then
   begin
-    FmtFatalLn('Count = 0', []);
+    FatalLn('Count = 0');
+
   end;
+
   Result := Self[Count - 1];
   Self.Delete(Count - 1);
 

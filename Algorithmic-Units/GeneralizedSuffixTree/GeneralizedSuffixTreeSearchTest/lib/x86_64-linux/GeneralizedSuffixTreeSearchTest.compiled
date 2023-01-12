@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CONFIG>
+  <Compiler Value="/usr/bin/fpc" Date="1632228750"/>
+  <Params Value=" -MObjFPC -Scghi -Cg -O1 -g -gl -l -vewnhibq -Fi/home/Khabardar/Projects/NGrams/my-units/Algorithmic-Units/GeneralizedSuffixTree/GeneralizedSuffixTreeSearchTest/lib/x86_64-linux -Fu/home/Khabardar/Projects/NGrams/my-units/Algorithmic-Units/GeneralizedSuffixTree -Fu/home/Khabardar/Projects/NGrams/my-units/General-Purpose-Units -Fu/home/Khabardar/Projects/NGrams/my-units/PB2PAS -Fu/home/Khabardar/Projects/NGrams/my-units/Algorithmic-Units/GeneralizedSuffixTree/GeneralizedSuffixTreeSearchTest/ -FU/home/Khabardar/Projects/NGrams/my-units/Algorithmic-Units/GeneralizedSuffixTree/GeneralizedSuffixTreeSearchTest/lib/x86_64-linux/ -FE/home/Khabardar/Projects/NGrams/my-units/Algorithmic-Units/GeneralizedSuffixTree/GeneralizedSuffixTreeSearchTest/ -o/home/Khabardar/Projects/NGrams/my-units/Algorithmic-Units/GeneralizedSuffixTree/GeneralizedSuffixTreeSearchTest/GeneralizedSuffixTreeSearchTest GeneralizedSuffixTreeSearchTest.lpr"/>
+</CONFIG>
