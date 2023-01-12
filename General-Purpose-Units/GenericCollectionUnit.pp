@@ -29,7 +29,7 @@ type
     class function LoadFromStream(Stream: TStream; LoadFunc: TLoadFunc): specialize
       TCollection<TData>;
 
-    function Pop: TData; virtual;
+    function Pop(n: Integer = 1): TData; virtual;
     procedure RemoveAllValuesMatching(Matcher: TMatcherFunc);
 
   end;
@@ -130,16 +130,21 @@ begin
   end;
 end;
 
-function TCollection.Pop: TData;
+function TCollection.Pop(n: Integer): TData;
 begin
-  if Count = 0 then
+  if Count < n then
   begin
-    FatalLn('Count = 0');
+    FatalLn(Format('Count = %d n: %d', [Count, n]);
 
   end;
 
-  Result := Self[Count - 1];
-  Self.Delete(Count - 1);
+  Result := Self[Count - n];
+  while 0 < n do
+  begin
+    Self.Delete(Count - 1);
+    Dec(n);
+
+  end;
 
 end;
 

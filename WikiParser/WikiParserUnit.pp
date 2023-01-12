@@ -51,12 +51,14 @@ type
     Current: PWideChar;
     LastToken: TToken;
 
+    function GetCurrentToken: TToken;
     function GetNextChar: WideChar;
     function GetNextToken: TToken;
     function _GetNextToken: TToken;
 
   public
     property NextToken: TToken read GetNextToken;
+    property CurrentToken: TToken read GetCurrentToken;
     constructor Create(constref _Data: WideString);
 
   end;
@@ -66,7 +68,14 @@ type
   TTokens = class(specialize TCollection<TToken>)
   end;
 
-  EInvalidToken = class(EBaseWikiParser);
+  { EInvalidToken }
+
+  EInvalidToken = class(EBaseWikiParser)
+  public
+    constructor Create(Visited, Expected: TTokenType);
+    constructor Create(constref Visited: AnsiString);
+
+  end;
 
   { EInvalidEntity }
 
@@ -93,7 +102,7 @@ type
     function ParseEntity(EndTokens: TTokens): TBaseWikiNode;
     function ParseTag(Token: TToken; EndTokens: TTokens): TTagEntity;
     function ParseTextEntity(Token: TToken; EndTokens: TTokens): TTextWikiEntity;
-    function ParseHyperLink(EndTokens: TTokens): THyperLinkEntity;
+    function ParseHyperLink(Token: TToken; EndTokens: TTokens): THyperLinkEntity;
     function ParseTemplate(Token: TToken; EndTokens: TTokens): TTemplate;
     function ParseTable(Token: TToken; EndTokens: TTokens): TTable;
     function ParseHeadingSection(Token: TToken; EndTokens: TTokens): THeadingSection;
@@ -224,6 +233,19 @@ begin
   end;
 end;
 
+{ EInvalidToken }
+
+constructor EInvalidToken.Create(Visited, Expected: TTokenType);
+begin
+  inherited Create(Format('Visited: %s Expected: %s', [Visited, Expected]));
+end;
+
+constructor EInvalidToken.Create(constref Visited: AnsiString);
+begin
+  inherited Create(Visited);
+
+end;
+
 { EInvalidEntity }
 
 constructor EInvalidEntity.Create(_Token: TToken);
@@ -294,10 +316,10 @@ begin
 
 end;
 
-function TWikiParser.ParseEntity(EndTokens: TTokens): TBaseWikiNode;
+function TWikiParser.ParseEntity(EndTokens: TTokens
+  ): TBaseWikiNode;
 var
   Token: TToken;
-
 begin
   if EndTokens = nil then
     FmtFatalLn('done', []);
@@ -307,9 +329,11 @@ begin
   Token := Tokenizer.GetNextToken;
   if IsDone(Token, EndTokens) then
   begin
-    if token.TokenType = ttEOF then
+    if Token.TokenType = ttEOF then
       WriteLn;
-    FMTDebugLn('Token: %s  %s', [Token.Text, TokenTypeToString(Token.TokenType)], 4);
+    FMTDebugLn('Token: %s  %s', [
+      Token.Text,
+      TokenTypeToString(Token.TokenType)], 4);
     Exit(nil);
 
   end;
@@ -330,7 +354,7 @@ begin
   ttComment:
     Result := TCommentWikiEntry.Create(Token.Text);
   ttOpenHyperLink:
-    Result := ParseHyperLink(EndTokens);
+    Result := ParseHyperLink(Token, EndTokens);
   ttBeginTable:
     Result := ParseTable(Token, EndTokens);
   ttOpenBracket:
@@ -471,12 +495,13 @@ begin
     end;
     Inc(c);
 
-    if not (Token.TokenType in [ttText]) then
+    if not (Tokenizer.CurrentToken.TokenType in [ttText]) then
     begin
       Tokenizer.Current := Position;
       Break;
 
     end;
+    Token := Tokenizer.NextToken;
 
     Result.Children.Add(TTextWikiEntity.Create(Token.Text));
   end;
@@ -497,14 +522,23 @@ begin
   EndTokens.Add(MakeToken(nil, nil, ttBar));
   EndTokens.Add(MakeToken(nil, nil, ttNewLine));
 
-  try
-    Current := ParseEntity(EndTokens);
+  Current := Self.ParseEntity(EndTokens);
+  Text := Current;
 
-  except
-    on e: EInvalidEntity do
-    begin
-      EndTokens.Pop(3);
-      Exit(nil);
+  while Current <> nil do
+  begin
+    try
+      Current := Current.LastNode;
+      Current.Next := ParseEntity(EndTokens);
+      Current := Current.Next;
+
+    except
+      on EInvalidEntity do
+      begin
+        EndTokens.Pop(3);
+        FreeAndNil(Result);
+        raise;
+      end;
 
     end;
 
@@ -547,11 +581,11 @@ begin
 
     end;
 
-    if Tokenizer.LastToken.TokenType = ttCloseBracket then
+    if Tokenizer.LastToken.TokenType <> ttCloseHyperLink then
     begin
       FreeAndNil(Parameters);
       FreeAndNil(Result);
-      raise EInvalidEntity.Create(Tokenizer.LastToken);
+      raise EInvalidEntity.Create(Tokenizer.CurrentToken);
     end;
 
     while Parameters.Count <> 0 do
@@ -647,6 +681,8 @@ begin
 
 
   EndTokens.Pop(3);
+  if Tokenizer.LastToken.TokenType <> ttEndTemplate then
+    raise EInvalidToken.Create(Tokenizer.LastToken.TokenType, ttEndTemplate);
 
   Result := TTemplate.Create(Name, Parameters);
 end;
@@ -686,25 +722,33 @@ function TWikiParser.ParseHeadingSection(Token: TToken; EndTokens: TTokens
   ): THeadingSection;
 var
   Current: TBaseWikiNode;
-
+  i: Integer;
 begin
   EndTokens.Add(MakeToken(nil, nil, ttNewLine));
-  EndTokens.Add(
-    MakeToken(
-      @Token.Text[1],
-      @Token.Text[Length(Token.Text)],
-      Token.TokenType
-    )
-  );
+  for i := 1 to Length(Token.Text) do
+  begin
+    EndTokens.Add(
+      MakeToken(
+        @Token.Text[i],
+        @Token.Text[Length(Token.Text) + 1 - i],
+        Token.TokenType
+      )
+    );
+  end;
 
-  Result := THeadingSection.Create(Length(Token.Text));
   Current := ParseEntity(EndTokens);
   while Current <> nil do
   begin
-    Result.Children.Add(Current);
-    Current := ParseEntity(EndTokens);
+    Current.LastNode.Next := ParseEntity(EndTokens);
+    Current := Current.Next;
 
   end;
+  Result := THeadingSection.Create(
+    Length(Token.Text),
+    Current as TTextWikiEntity);
+  if Tokenizer.LastToken.Text <> Token.Text then
+    raise EInvalidToken.Create(Tokenizer.LastToken.Text);
+  EndTokens.Pop(1 + Length(Token.Text));
 
 end;
 
@@ -793,7 +837,7 @@ begin
   end;
   EndTokens.Pop;
 
-  FMTDebugLn('Result: %s', [Result.ToXML('')], -1);
+  FMTDebugLn('Result: %s', [Result.ToXML('')], 1);
 end;
 
 function TWikiParser.ParseNumberedList(Token: TToken; EndTokens: TTokens
@@ -919,13 +963,27 @@ begin
 
 end;
 
+function TWikiTokenizer.GetCurrentToken: TToken;
+var
+  Pos: PWideChar;
+
+begin
+  Pos := Self.Current;
+  Result := GetNextToken;
+  Self.Current := Pos;
+
+end;
+
 var
   it: Integer;
+
 function TWikiTokenizer.GetNextToken: TToken;
 begin
   Result := _GetNextToken;
   LastToken := Result;
-  FMTDebugLn('%d Token: %s  %s', [it, Result.Text, TokenTypeToString(Result.TokenType)], 0);
+  FMTDebugLn('%d Token: %s  %s',
+    [it, Result.Text, TokenTypeToString(Result.TokenType)],
+    4);
   Inc(it);
 
 end;

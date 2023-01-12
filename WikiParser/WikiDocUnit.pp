@@ -210,18 +210,21 @@ type
   THeadingSection = class(TBaseWikiNodeWithChildren)
   private
     FNumber: Integer;
+    FTitle: TTextWikiEntity;
 
   protected
     function _ToXml(constref Indent: AnsiString): AnsiString; override;
 
   public
     property Number: Integer read FNumber;
-
-    constructor Create(_Number: Integer);
+    property Title: TTextWikiEntity read FTitle;
 
     procedure ExportText(Unigrams, Bigrams: TWideStringList); override;
->>>>>>> 64f51e7 (...)
->>>>>>> 07f476c (...)
+
+    constructor Create(_Number: Integer; _Title: TTextWikiEntity);
+    destructor Destroy; override;
+
+    procedure ExportText(Unigrams, Bigrams: TWideStringList); override;
   end;
 
   { TTable }
@@ -230,6 +233,14 @@ type
   protected
     function _ToXml(constref Indent: AnsiString): AnsiString; override;
 
+
+  end;
+
+  TBulletedListEntity = class(TBaseWikiNodeWithChildren)
+
+  end;
+
+  TNumberedListEntity = class(TBaseWikiNodeWithChildren)
 
   end;
 
@@ -297,6 +308,9 @@ var
 begin
   Lines := TWideStringList.Create;
   Lines.Add(Format('%s<%s>', [Indent, ClassName]));
+  Lines.Add(Format('%s  <TITLE>', [Indent]));
+  Lines.Add(Self.Title.ToXML(Indent + '  '));
+  Lines.Add(Format('%s  </TITLE>', [Indent]));
   Lines.Add(inherited _ToXml(Indent + '  '));
   Lines.Add(Format('%s</%s>', [Indent, ClassName]));
 
@@ -305,12 +319,20 @@ begin
 
 end;
 
-constructor THeadingSection.Create(_Number: Integer);
+constructor THeadingSection.Create(_Number: Integer; _Title: TTextWikiEntity);
 begin
   inherited Create;
 
   FNumber := _Number;
+  FTitle := _Title;
 
+end;
+
+destructor THeadingSection.Destroy;
+begin
+  FTitle.Free;
+
+  inherited Destroy;
 end;
 
 procedure THeadingSection.ExportText(Unigrams, Bigrams: TWideStringList);
