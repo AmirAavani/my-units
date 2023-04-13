@@ -224,7 +224,6 @@ type
     constructor Create(_Number: Integer; _Title: TTextWikiEntity);
     destructor Destroy; override;
 
-    procedure ExportText(Unigrams, Bigrams: TWideStringList); override;
   end;
 
   { TTable }

@@ -102,7 +102,7 @@ type
     function ParseEntity(EndTokens: TTokens): TBaseWikiNode;
     function ParseTag(Token: TToken; EndTokens: TTokens): TTagEntity;
     function ParseTextEntity(Token: TToken; EndTokens: TTokens): TTextWikiEntity;
-    function ParseHyperLink(Token: TToken; EndTokens: TTokens): THyperLinkEntity;
+    function ParseHyperLink(EndTokens: TTokens): THyperLinkEntity;
     function ParseTemplate(Token: TToken; EndTokens: TTokens): TTemplate;
     function ParseTable(Token: TToken; EndTokens: TTokens): TTable;
     function ParseHeadingSection(Token: TToken; EndTokens: TTokens): THeadingSection;
@@ -120,6 +120,18 @@ type
     function ParseDoc: TNodes;
 
   end;
+
+function TokenTypeToString(TokenType: TTokenType): AnsiString;
+begin
+  WriteStr(Result, TokenType);
+
+end;
+
+function TokenTypeToString(Token: TToken): AnsiString;
+begin
+  Result := TokenTypeToString(Token.TokenType);
+
+end;
 
 
 const
@@ -237,7 +249,9 @@ end;
 
 constructor EInvalidToken.Create(Visited, Expected: TTokenType);
 begin
-  inherited Create(Format('Visited: %s Expected: %s', [Visited, Expected]));
+  inherited Create(Format('Visited: %s Expected: %s', [
+    TokenTypeToString(Visited),
+    TokenTypeToString(Expected)]));
 end;
 
 constructor EInvalidToken.Create(constref Visited: AnsiString);
@@ -253,18 +267,6 @@ begin
   inherited Create('');
 
   FToken := _Token;
-end;
-
-function TokenTypeToString(TokenType: TTokenType): AnsiString;
-begin
-  WriteStr(Result, TokenType);
-
-end;
-
-function TokenTypeToString(Token: TToken): AnsiString;
-begin
-  Result := TokenTypeToString(Token.TokenType);
-
 end;
 
 function ParseContent(Content: WideString): TNodes;
@@ -354,7 +356,7 @@ begin
   ttComment:
     Result := TCommentWikiEntry.Create(Token.Text);
   ttOpenHyperLink:
-    Result := ParseHyperLink(Token, EndTokens);
+    Result := ParseHyperLink(EndTokens);
   ttBeginTable:
     Result := ParseTable(Token, EndTokens);
   ttOpenBracket:
@@ -388,6 +390,7 @@ var
   Param: TBaseWikiNode;
 
 begin
+  Result := nil;
   if IsSuffix(WideString('/>'), Token.Text) then
     Exit(TTagEntity.Create(Copy(Token.Text, 2, Length(Token.Text) - 3), nil));
 
@@ -408,9 +411,9 @@ begin
     Result := TTagEntity.Create(TagName, Parameters);
     EndTokens.Pop(2);
 
-    if Tokenizer.LastToken.TokenType = ttEndTag then
+    if Tokenizer.LastToken.TokenType <> ttEndTag then
     begin
-      Exit;
+      raise EInvalidToken.Create(Tokenizer.LastToken.TokenType, ttEndTag);
 
     end;
 
@@ -488,22 +491,20 @@ begin
   begin
     Position := Tokenizer.Current;
     Token := Tokenizer.NextToken;
-   FMTDebugLn('%d:Token.Text: %s', [c, Token.Text], 0);
     if c = -1 then
     begin
       FMTDebugLn('Token.Text: %s', [Token.Text]);
     end;
     Inc(c);
 
-    if not (Tokenizer.CurrentToken.TokenType in [ttText]) then
+    if not (Tokenizer.LastToken.TokenType in [ttText]) then
     begin
       Tokenizer.Current := Position;
       Break;
 
     end;
-    Token := Tokenizer.NextToken;
-
     Result.Children.Add(TTextWikiEntity.Create(Token.Text));
+
   end;
 
   FMTDebugLn('TextNode: %s', [Result.ToXML('')], 16);
@@ -520,7 +521,6 @@ var
 begin
   EndTokens.Add(MakeToken(nil, nil, ttCloseHyperLink));
   EndTokens.Add(MakeToken(nil, nil, ttBar));
-  EndTokens.Add(MakeToken(nil, nil, ttNewLine));
 
   Current := Self.ParseEntity(EndTokens);
   Text := Current;
@@ -535,7 +535,7 @@ begin
     except
       on EInvalidEntity do
       begin
-        EndTokens.Pop(3);
+        EndTokens.Pop(2);
         FreeAndNil(Result);
         raise;
       end;
@@ -544,13 +544,11 @@ begin
 
   end;
 
-  Text := Current;
-
   if Tokenizer.LastToken.TokenType = ttCloseHyperLink then
   begin
     Result := THyperLinkEntity.Create(nil, Text, nil);
 
-    EndTokens.Pop(3);
+    EndTokens.Pop(2);
   end
   else if Tokenizer.LastToken.TokenType in [ttBar, ttNewLine] then
   begin
@@ -574,7 +572,7 @@ begin
         on EInvalidEntity do
         begin
           FreeAndNil(Result);
-          EndTokens.Pop(3);
+          EndTokens.Pop(2);
           raise;
         end;
       end;
@@ -597,14 +595,11 @@ begin
     end;
 
     Result := THyperLinkEntity.Create(Link, Text, Parameters);
-    EndTokens.Pop(3);
+    EndTokens.Pop(2);
 
   end;
 
 end;
-
-var
-  TCount: Integer;
 
 function TWikiParser.ParseTemplate(Token: TToken; EndTokens: TTokens
   ): TTemplate;
@@ -614,11 +609,7 @@ var
   Parameters: TNodes;
 
 begin
-  Inc(TCount);
-  FMTDebugLn('TCount: %d', [TCount]);
-  if TCount = 4 then
-    FMTDebugLn('TCount: %d', [TCount]);
-
+  Result := nil;
   EndTokens.Add(MakeToken(nil, nil, ttEndTemplate));
   EndTokens.Add(MakeToken(nil, nil, ttBar));
   EndTokens.Add(MakeToken(nil, nil, ttTableCellSeparator));

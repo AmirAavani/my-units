@@ -134,7 +134,7 @@ function TCollection.Pop(n: Integer): TData;
 begin
   if Count < n then
   begin
-    FatalLn(Format('Count = %d n: %d', [Count, n]);
+    FmtFatalLn('Count = %d n: %d', [Count, n]);
 
   end;
 

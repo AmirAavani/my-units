@@ -35,25 +35,6 @@ function WideStrSplit(
   constref Delimiters: WideString;
   KeepDelimiters: Boolean = False): TWideStringList;
 
-
-{
-  The function does not change the content of CharPtr but it might increases its value.
-}
-function ReadWideStringFromACharArray(var CharPtr: PChar; Len: Integer): WideString;
-function ReadWideStringFromString(constref Source: AnsiString): WideString;
-function ReadWideString(var FdFile: TextFile): WideString;
-function WideStrPos(constref SubStr, Str: WideString): Integer;
-function WideStrCopy(constref Str: WideString; Index, Len: Integer): WideString;
-procedure WideStrDelete(var Str: WideString; Index, Len: Integer);
-function WideStringCompare(constref Str1, Str2: WideString): Integer;
-function WriteAsUTF8(constref WStr: WideString): AnsiString;
-
-function WideStrSplit(
-  constref Str: WideString;
-  constref Delimiters: WideString;
-  KeepDelimiters: Boolean = False): TWideStringList;
-
-
 implementation
 uses
   Math, ALoggerUnit;

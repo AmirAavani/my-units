@@ -141,7 +141,7 @@ begin
     LineInfo.First.RemoveAllValuesMatching(@IsEmptyString);
 
     FMTDebugLn('Unigrams: %s', [WriteAsUTF8(LineInfo.First.JoinStrings())]);
-    // FMTDebugLn('Bigrams: %s', [WriteAsUTF8(LineInfo.Second.JoinStrings())]);
+    FMTDebugLn('Bigrams: %s', [WriteAsUTF8(LineInfo.Second.JoinStrings())]);
     LineInfo.First.Free;
     LineInfo.Second.Free;
 

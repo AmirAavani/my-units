@@ -81,6 +81,7 @@
         <IsPartOfProject Value="True"/>
       </Unit>
       <Unit>
+<<<<<<< Updated upstream
         <Filename Value="Protos/Pb.DataUnit.pp"/>
         <IsPartOfProject Value="True"/>
       </Unit>
@@ -90,6 +91,13 @@
       </Unit>
       <Unit>
         <Filename Value="Protos/Pb.ResponseUnit.pp"/>
+=======
+        <Filename Value="Test03Unit.pp"/>
+        <IsPartOfProject Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="SourcerUnit.pp"/>
+>>>>>>> Stashed changes
         <IsPartOfProject Value="True"/>
       </Unit>
     </Units>
