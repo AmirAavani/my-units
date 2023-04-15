@@ -30,7 +30,9 @@ begin
 end;
 
 begin
+  WriteLn('<A>');
   TestExtractContent;
+  WriteLn('</A>');
   Exit;
 
   if not DirectoryExists(GetRunTimeParameterManager.ValueByName['--WorkingDir'].AsAnsiString) then

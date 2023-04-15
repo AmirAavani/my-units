@@ -251,6 +251,7 @@ type
     FContent: TNodes;
     // FNodes: TNodes;
     FTitle, FNS, FID, FRedirect: TTextWikiEntity;
+    function GetTitle: TTextWikiEntity;
     procedure SetContent(AValue: TNodes);
     procedure SetID(AValue: TTextWikiEntity);
     procedure SetNS(AValue: TTextWikiEntity);
@@ -259,7 +260,7 @@ type
 
   public
     // property Nodes: TNodes read FNodes write SetNodes;
-    property Title: TTextWikiEntity read FTitle write SetTitle;
+    property Title: TTextWikiEntity read GetTitle write SetTitle;
     property NS: TTextWikiEntity read FNS write SetNS;
     property ID: TTextWikiEntity read FID write SetID;
     property Redirect: TTextWikiEntity read FRedirect write SetRedirect;
@@ -610,6 +611,14 @@ begin
   FContent := AValue;
 end;
 
+function TWikiPage.GetTitle: TTextWikiEntity;
+begin
+  if Self = nil then
+    Exit(nil);
+
+  Result := FTitle;
+end;
+
 procedure TWikiPage.SetID(AValue: TTextWikiEntity);
 begin
   FID.Free;
@@ -660,9 +669,13 @@ begin
   Result.Second := TWideStringList.Create;
   ExtractUnigramsAndBigrams(Self.Title.Content, Result.First, Result.Second);
 
-  for Node in FContent do
+  if FContent <> nil then
   begin
-    Node.ExportText(Result.First, Result.Second);
+    for Node in FContent do
+    begin
+      Node.ExportText(Result.First, Result.Second);
+
+    end;
 
   end;
 

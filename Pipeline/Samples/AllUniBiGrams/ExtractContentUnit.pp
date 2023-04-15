@@ -125,7 +125,8 @@ begin
 
     try
       WikiDoc := ProcessData(Data);
-      FMTDebugLn('<WikiDoc>%s</WikiDoc>', [WikiDoc.ToXML]);
+      WriteLn(Format('<WikiDoc Index="%d"><Title>%s</Title>%s</WikiDoc>', [
+        i, WikiDoc.Title.ToXML('  '), WikiDoc.ToXML]));
 
     except
       on e: EBaseWikiParser do
