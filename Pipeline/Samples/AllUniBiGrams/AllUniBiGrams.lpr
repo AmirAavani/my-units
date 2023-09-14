@@ -10,7 +10,7 @@ uses
   HeapUnit, sysutils, StepHandlersUnit, FindStartIndicesUnit, TypesUnit,
   ParameterManagerUnit, FileHelperUnit, StreamUnit, ExtractContentUnit,
   SharedUnit, WikiParserUnit, WikiDocUnit, Laz2_DOM, WikiTypesUnits,
-  WideStringUnit;
+  WideStringUnit, SyncUnit, ProtoHelperUnit;
 
 var
   Pipeline: TPipeline;
@@ -30,9 +30,7 @@ begin
 end;
 
 begin
-  WriteLn('<A>');
   TestExtractContent;
-  WriteLn('</A>');
   Exit;
 
   if not DirectoryExists(GetRunTimeParameterManager.ValueByName['--WorkingDir'].AsAnsiString) then

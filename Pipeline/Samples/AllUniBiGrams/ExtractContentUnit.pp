@@ -23,10 +23,8 @@ var
 
 begin
   S := TStringStream.Create(Data);
-  FMTDebugLn('Data: %s', [Data]);
   try
     ReadXMLFile(Doc, S);
-    FMTDebugLn('Doc.URL: %s %s', [Doc.documentURI, Doc.baseURI]);
     Result := ParseWiki(Doc.FirstChild);
     Doc.Free;
     S.Free;
@@ -125,8 +123,11 @@ begin
 
     try
       WikiDoc := ProcessData(Data);
+      WriteLn('<A>');
       WriteLn(Format('<WikiDoc Index="%d"><Title>%s</Title>%s</WikiDoc>', [
         i, WikiDoc.Title.ToXML('  '), WikiDoc.ToXML]));
+      WriteLn('</A>');
+      Exit;
 
     except
       on e: EBaseWikiParser do

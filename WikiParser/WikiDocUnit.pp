@@ -63,7 +63,7 @@ type
 
   TTextWikiEntity = class(TBaseWikiNodeWithChildren)
   private
-    FContent: WideString;
+    FContent: TWideStringList;
     function GetContent: WideString;
 
   protected
@@ -76,6 +76,8 @@ type
     destructor Destroy; override;
 
     procedure ExportText(Unigrams, Bigrams: TWideStringList); override;
+    procedure AddChild(Child: TBaseWikiNode);
+    procedure Flatten;
   end;
 
   { TTextStyler }
@@ -284,12 +286,26 @@ type
 
 implementation
 uses
-  ALoggerUnit, QueueUnit;
+  ALoggerUnit;
 
 const
   SingleQuote = #$27;
 var
   WideStrSplit4Extracts: WideString;
+
+procedure ExtractUnigramsAndBigrams(constref Text: TWideStringList; Unigrams, Bigrams: TWideStringList);
+var
+  TextUnigrams: TWideStringList;
+  i: Integer;
+
+begin
+  TextUnigrams := WideStrSplit(Text.JoinStrings(' '), WideStrSplit4Extracts, True);
+  Unigrams.AddAnotherCollection(TextUnigrams);
+  for i := 0 to TextUnigrams.Count - 2 do
+    Bigrams.Add(TextUnigrams[i] + ' ' + TextUnigrams[i + 1]);
+  TextUnigrams.Free;
+
+end;
 
 procedure ExtractUnigramsAndBigrams(constref Text: WideString; Unigrams, Bigrams: TWideStringList);
 var
@@ -372,6 +388,9 @@ var
   Lines: TStringList;
 
 begin
+  if Children = nil then
+    Exit('');
+
   Lines := TStringList.Create;
   for Child in Children do
     Lines.Add(Child.ToXML(Indent + '  '));
@@ -517,7 +536,6 @@ end;
 
 procedure TTextStyler.ExportText(Unigrams, Bigrams: TWideStringList);
 begin
-  FMTDebugLn('XML: %s', [Self.ToXML('')]);
   inherited ExportText(Unigrams, Bigrams);
 end;
 
@@ -690,6 +708,9 @@ end;
 
 destructor TWikiPage.Destroy;
 begin
+  if Self = nil then
+    Exit;
+
   FTitle.Free;
   FID.Free;
   FNS.Free;
@@ -717,6 +738,7 @@ begin
       Result.Second);
 
     end;
+  end;
 
   if Title <> nil then
   begin
@@ -874,19 +896,73 @@ begin
   if Self = nil then
     Exit('');
 
-  Result := FContent;
+  Result := FContent.JoinStrings(' ');
   for Child in Children do
     Result += ' ' + (Child as TTextWikiEntity).GetContent;
 
 end;
 
+
 function TTextWikiEntity._ToXml(constref Indent: AnsiString): AnsiString;
+var
+  S: WideString;
+
 begin
   if self = nil then
       Exit('');
-  Result := Format('<%s content="%s">' + sLineBreak, [ClassName, WriteAsUTF8(FContent)]);
+  S := FContent.JoinStrings(' ');
+  S := WideStringReplace(S, sLineBreak, WideString('[LINEBREAK]'), [rfReplaceAll]);
+  S := WideStringReplace(S, '&', WideString('&amp;'), [rfReplaceAll]);
+  S := WideStringReplace(S, '"', WideString('&quot;'), [rfReplaceAll]);
+
+  Result := Format('<%s content="%s">' + sLineBreak, [ClassName, WriteAsUTF8(S)]);
   Result += inherited _ToXml(Indent + '  ');
   Result += Format(sLineBreak+'</%s>', [ClassName]);
+
+end;
+
+procedure TTextWikiEntity.Flatten;
+var
+  Child: TBaseWikiNode;
+  TextChild: TTextWikiEntity;
+  i: Integer;
+  MyChildren: TNodes;
+
+begin
+  MyChildren := TNodes.Create;
+  i := 0;
+  while i < Self.Children.Count do
+  begin
+    Child := Self.Children[0];
+    FMTDebugLn('Child.ClassName: %s', [Child.ClassName]);
+
+    if Child.ClassName = TTextWikiEntity.ClassName then
+    begin
+      TextChild := Child as TTextWikiEntity;
+      Self.FContent.AddAnotherCollection(TextChild.FContent);
+      Self.Children.Delete(0);
+      if TextChild.Children.Count <> 0 then
+      begin
+        if MyChildren = nil then
+          MyChildren := TNodes.Create;
+        MyChildren.AddAnotherCollection(TextChild.Children);
+      end;
+      TextChild.Children.Clear;
+      TextChild.Free;
+
+    end
+    else
+    begin
+      Break;
+
+    end;
+
+  end;
+
+  MyChildren.AddAnotherCollection(self.Children);
+  Self.Children.Clear;
+  Self.Children.Free;
+  Self.FChildren := MyChildren;
 
 end;
 
@@ -894,12 +970,15 @@ constructor TTextWikiEntity.Create(constref Text: WideString);
 begin
   inherited Create;
 
-  FContent := Text;
+  FContent := TWideStringList.Create;
+  FContent.Add(Text);
 
 end;
 
 destructor TTextWikiEntity.Destroy;
 begin
+  FContent.Free;
+
   inherited Destroy;
 end;
 
@@ -924,6 +1003,14 @@ begin
 
   end;
 
+end;
+
+procedure TTextWikiEntity.AddChild(Child: TBaseWikiNode);
+begin
+  if (Child is TTextWikiEntity) and (Self.Children.Count = 0) then
+    Self.Children.Add(Child as TTextWikiEntity)
+  else
+    self.Children.Add(Child);
 end;
 
 { TBaseWikiNode }

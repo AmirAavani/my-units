@@ -41,9 +41,14 @@ type
     type
       TListData = specialize TList<TData>;
 
+  protected
+    function GetCount: SizeInt;
+
   public
-    constructor Create(aList: TListData);
+    property Count: SizeInt read GetCount write SetCount;
+
     constructor Create;
+    constructor Create(aList: TListData);
     destructor Destroy; override;
 
     {
@@ -285,6 +290,14 @@ begin
 
 end;
 
+function TObjectCollection.GetCount: SizeInt;
+begin
+  if Self = nil then
+    Exit(0);
+
+  Result := Self.FLength;
+end;
+
 constructor TObjectCollection.Create;
 begin
   inherited Create;
@@ -305,7 +318,6 @@ end;
 
 function TObjectCollection.Delete(Index: SizeInt): TData;
 begin
-  Result := Self[Index];
   inherited Delete(Index);
 
 end;
