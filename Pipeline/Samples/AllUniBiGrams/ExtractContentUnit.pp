@@ -119,15 +119,34 @@ begin
     if ReadBytes <> Positions[i + 1] - Positions[i] then
       FmtFatalLn('ReadBytes: %d Expected: %d', [ReadBytes, Positions[i + 1] - Positions[i]]);
     if DebugIndex <> -1 then
-      FMTDebugLn('Data(%d): %s', [Length(Data), Data]);
+      FMTDebugLn('Data(%d): %s',
+        [Length(Data), Data],
+        1);
 
     try
       WikiDoc := ProcessData(Data);
-      WriteLn('<A>');
-      WriteLn(Format('<WikiDoc Index="%d"><Title>%s</Title>%s</WikiDoc>', [
-        i, WikiDoc.Title.ToXML('  '), WikiDoc.ToXML]));
-      WriteLn('</A>');
-      Exit;
+      if DebugIndex <> -1 then
+      begin
+        WriteLn('<B>');
+        WriteLn(Format('<WikiDoc Index="%d"><Title>%s</Title>%s</WikiDoc>', [
+          i, WikiDoc.Title.ToXML('  '), WikiDoc.ToXML]));
+        WriteLn('</B>');
+
+        LineInfo := WikiDoc.ExportText;
+        LineInfo.First.RemoveAllValuesMatching(@IsEmptyString);
+
+        FMTDebugLn('Unigrams: %s', [WriteAsUTF8(LineInfo.First.JoinStrings())]);
+        FMTDebugLn('Bigrams: %s', [WriteAsUTF8(LineInfo.Second.JoinStrings())]);
+        LineInfo.First.Free;
+        LineInfo.Second.Free;
+
+        WikiDoc.Free;
+        Writer.Free;
+        Positions.Free;
+
+        Exit;
+
+      end;
 
     except
       on e: EBaseWikiParser do
@@ -154,6 +173,7 @@ begin
 
   Positions.Free;
   Reader.Free;
+  Writer.Free;
 
   Result := True;
 end;

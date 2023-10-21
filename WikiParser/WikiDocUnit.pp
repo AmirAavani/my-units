@@ -22,6 +22,8 @@ type
     function _ToXml(constref Indent: AnsiString): AnsiString; virtual;
     procedure SetNext(NextNode: TBaseWikiNode);
 
+    procedure DoExportText(Unigrams, Bigrams: TWideStringList); virtual;
+
   public
     property Next: TBaseWikiNode read GetNext write SetNext;
     property Parent: TBaseWikiNode read FParent write FParent;
@@ -31,7 +33,8 @@ type
     function ToXML(constref Indent: AnsiString): AnsiString;
     destructor Destroy; override;
 
-    procedure ExportText(Unigrams, Bigrams: TWideStringList); virtual;
+    procedure ExportText(Unigrams, Bigrams: TWideStringList);
+
   end;
 
   { TNodes }
@@ -49,13 +52,13 @@ type
     FChildren: TNodes;
 
     function _ToXml(constref Indent: AnsiString): AnsiString; override;
+    procedure DoExportText(Unigrams, Bigrams: TWideStringList); override;
+
   public
     property Children: TNodes read FChildren;
 
     constructor Create;
     destructor Destroy; override;
-
-    procedure ExportText(Unigrams, Bigrams: TWideStringList); override;
 
   end;
 
@@ -68,6 +71,7 @@ type
 
   protected
     function _ToXml(constref Indent: AnsiString): AnsiString; override;
+    procedure DoExportText(Unigrams, Bigrams: TWideStringList); override;
 
   public
     property Content: WideString read GetContent;
@@ -75,7 +79,6 @@ type
     constructor Create(constref Text: WideString);
     destructor Destroy; override;
 
-    procedure ExportText(Unigrams, Bigrams: TWideStringList); override;
     procedure AddChild(Child: TBaseWikiNode);
     procedure Flatten;
   end;
@@ -87,6 +90,8 @@ type
     FStyle: TStyle;
 
     function _ToXml(constref Indent: AnsiString): AnsiString; override;
+    procedure DoExportText(Unigrams, Bigrams: TWideStringList); override;
+
 
   public
     property Style: TStyle read FStyle;
@@ -94,8 +99,6 @@ type
     constructor Create(_Style: TStyle);
     class function CreateStyler(constref Text: WideString): TTextStyler;
     destructor Destroy; override;
-
-    procedure ExportText(Unigrams, Bigrams: TWideStringList); override;
 
   end;
 
@@ -128,10 +131,10 @@ type
 
   TCommentWikiEntry = class(TTextWikiEntity)
   protected
+    procedure DoExportText(Unigrams, Bigrams: TWideStringList); override;
+
   public
     constructor Create(constref Text: WideString);
-
-    procedure ExportText(Unigrams, Bigrams: TWideStringList); override;
 
   end;
 
@@ -154,14 +157,14 @@ type
 
   protected
     function _ToXML(constref Indent: AnsiString): AnsiString; override;
+    procedure DoExportText(Unigrams, Bigrams: TWideStringList); override;
+
   public
     property TagName: WideString read FTagName;
     property Parameters: TNodes read FParameters;
 
     constructor Create(constref _TagName: WideString; _Parameters: TNodes);
     destructor Destroy; override;
-
-    procedure ExportText(Unigrams, Bigrams: TWideStringList); override;
 
   end;
 
@@ -175,6 +178,8 @@ type
 
   protected
     function _ToXml(constref Indent: AnsiString): AnsiString; override;
+    procedure DoExportText(Unigrams, Bigrams: TWideStringList); override;
+
   public
     property Link: TBaseWikiNode read FLink;
     property Text: TBaseWikiNode read FText;
@@ -183,7 +188,6 @@ type
     constructor Create(l, t: TBaseWikiNode; p: TNodes);
     destructor Destroy; override;
 
-    procedure ExportText(Unigrams, Bigrams: TWideStringList); override;
 
 
   end;
@@ -198,6 +202,7 @@ type
 
   protected
     function _ToXml(constref Indent: AnsiString): AnsiString; override;
+    procedure DoExportText(Unigrams, Bigrams: TWideStringList); override;
 
   public
     property TemplateName: WideString read GetTemplateName;
@@ -205,7 +210,6 @@ type
     constructor Create(NameNode: TBaseWikiNode; Params: TNodes);
     destructor Destroy; override;
 
-    procedure ExportText(Unigrams, Bigrams: TWideStringList); override;
   end;
 
 
@@ -218,12 +222,12 @@ type
 
   protected
     function _ToXml(constref Indent: AnsiString): AnsiString; override;
+    procedure DoExportText(Unigrams, Bigrams: TWideStringList); override;
 
   public
     property Number: Integer read FNumber;
     property Title: TBaseWikiNode read FTitle;
 
-    procedure ExportText(Unigrams, Bigrams: TWideStringList); override;
 
     constructor Create(_Number: Integer; _Title: TBaseWikiNode);
     destructor Destroy; override;
@@ -290,6 +294,9 @@ uses
 
 const
   SingleQuote = #$27;
+  WideStringSpace = WideString(' ');
+  WideStringNewLine = WideString(#$0A);
+
 var
   WideStrSplit4Extracts: WideString;
 
@@ -297,12 +304,31 @@ procedure ExtractUnigramsAndBigrams(constref Text: TWideStringList; Unigrams, Bi
 var
   TextUnigrams: TWideStringList;
   i: Integer;
+  Uni: WideString;
+
 
 begin
-  TextUnigrams := WideStrSplit(Text.JoinStrings(' '), WideStrSplit4Extracts, True);
+  TextUnigrams := WideStrSplit(
+    Text.JoinStrings(' '),
+    WideStrSplit4Extracts,
+    True);
+  i := 0;
+  for Uni in TextUnigrams do
+  begin
+    if (Uni = WideStringSpace) or (Uni = WideStringNewLine) then
+      continue;
+    TextUnigrams[i] := Uni;
+    Inc(i);
+  end;
+
+  TextUnigrams.Count := i;
   Unigrams.AddAnotherCollection(TextUnigrams);
+
   for i := 0 to TextUnigrams.Count - 2 do
+  begin
     Bigrams.Add(TextUnigrams[i] + ' ' + TextUnigrams[i + 1]);
+
+  end;
   TextUnigrams.Free;
 
 end;
@@ -327,10 +353,10 @@ end;
 
 function THeadingSection._ToXml(constref Indent: AnsiString): AnsiString;
 var
-  Lines: TWideStringList;
+  Lines: TStringList;
 
 begin
-  Lines := TWideStringList.Create;
+  Lines := TStringList.Create;
   Lines.Add(Format('%s<%s>', [Indent, ClassName]));
   Lines.Add(Format('%s  <TITLE>', [Indent]));
   Lines.Add(Self.Title.ToXML(Indent + '  '));
@@ -338,7 +364,7 @@ begin
   Lines.Add(inherited _ToXml(Indent + '  '));
   Lines.Add(Format('%s</%s>', [Indent, ClassName]));
 
-  Result := Lines.JoinStrings;
+  Result := Lines.Text;
   Lines.Free;
 
 end;
@@ -359,9 +385,10 @@ begin
   inherited Destroy;
 end;
 
-procedure THeadingSection.ExportText(Unigrams, Bigrams: TWideStringList);
+procedure THeadingSection.DoExportText(Unigrams, Bigrams: TWideStringList);
 begin
-  inherited ExportText(Unigrams, Bigrams);
+  Title.ExportText(Unigrams, Bigrams);
+
 end;
 
 { TTable }
@@ -400,34 +427,42 @@ begin
 
 end;
 
-procedure TBaseWikiNodeWithChildren.ExportText(Unigrams,
+procedure TBaseWikiNodeWithChildren.DoExportText(Unigrams,
   Bigrams: TWideStringList);
 var
   Child: TBaseWikiNode;
   CurrentUnigrams, CurrentBigrams: TWideStringList;
-  LastUnigrams: TWideStringList;
+  LastUnigrams: WideString;
 
 begin
-  inherited ExportText(Unigrams, Bigrams);
+  inherited DoExportText(Unigrams, Bigrams);
 
   if Children.Count = 0 then
     Exit;
 
-
   CurrentBigrams := TWideStringList.Create;
   CurrentUnigrams := TWideStringList.Create;
-  LastUnigrams := nil;
+  LastUnigrams := '';
 
   for Child in Children do
   begin
+    CurrentBigrams.Clear;
+    CurrentUnigrams.Clear;
+
     Child.ExportText(CurrentUnigrams, CurrentBigrams);
     Unigrams.AddAnotherCollection(CurrentUnigrams);
-    if (LastUnigrams <> nil) and not CurrentUnigrams.IsEmpty then
-      Bigrams.Add(LastUnigrams.Last + WideString(' ') + CurrentUnigrams.First);
+    if (LastUnigrams <> '') and not CurrentUnigrams.IsEmpty then
+      Bigrams.Add(LastUnigrams + WideString(' ') + CurrentUnigrams.First);
     Bigrams.AddAnotherCollection(CurrentBigrams);
-    LastUnigrams := Unigrams;
+
+    LastUnigrams := '';
+    if not Unigrams.IsEmpty then
+      LastUnigrams := Unigrams[0];
 
   end;
+  CurrentBigrams.Free;
+  CurrentUnigrams.Free;
+
 
 end;
 
@@ -475,19 +510,20 @@ function TTextStyler._ToXml(constref Indent: AnsiString): AnsiString;
 var
   TagName: WideString;
   Child: TBaseWikiNode;
-  Lines: TWideStringList;
+  Lines: TStringList;
 
 begin
   WriteStr(TagName, Self.Style);
 
-  Lines := TWideStringList.Create;
+  Lines := TStringList.Create;
   Lines.Add(Format('<%s>', [WriteAsUTF8(TagName)]));
 
   for Child in FChildren do
     Lines.Add(Child.ToXML(Indent + '  '));
   Lines.Add(Format('</%s>', [TagName]));
 
-  Result := Lines.JoinStrings;
+  Result := Lines.Text;
+  Lines.Free;
 
 end;
 
@@ -534,9 +570,9 @@ begin
   inherited Destroy;
 end;
 
-procedure TTextStyler.ExportText(Unigrams, Bigrams: TWideStringList);
+procedure TTextStyler.DoExportText(Unigrams, Bigrams: TWideStringList);
 begin
-  inherited ExportText(Unigrams, Bigrams);
+  inherited DoExportText(Unigrams, Bigrams);
 end;
 
 { TTemplate }
@@ -587,7 +623,7 @@ end;
 var
   Goftavard: WideString;
 
-procedure TTemplate.ExportText(Unigrams, Bigrams: TWideStringList);
+procedure TTemplate.DoExportText(Unigrams, Bigrams: TWideStringList);
 begin
   Exit;
 
@@ -617,6 +653,7 @@ function TTagEntity._ToXML(constref Indent: AnsiString): AnsiString;
 var
   Lines: TStringList;
   Child: TBaseWikiNode;
+
 begin
   Lines := TStringList.Create;
   Lines.Add(Format('%s<%s>', [Indent, ClassName]));
@@ -635,10 +672,10 @@ begin
 
 end;
 
-procedure TTagEntity.ExportText(Unigrams, Bigrams: TWideStringList);
+procedure TTagEntity.DoExportText(Unigrams, Bigrams: TWideStringList);
 begin
   if Self.TagName <> 'ref' then
-    inherited ExportText(Unigrams, Bigrams);
+    inherited DoExportText(Unigrams, Bigrams);
 
   // Do nothing
 end;
@@ -722,20 +759,41 @@ end;
 
 function TWikiPage.ExportText: TWideStringListPair;
 var
+  UCount, BCount: SizeInt;
   Node: TBaseWikiNode;
   PairForTitle: TWideStringListPair;
+  NewBigram: WideString;
 
 begin
   Result := NewTWideStringListPair;
+  if Self = nil then
+    Exit;
+
   PairForTitle := NewTWideStringListPair;
 
   if FContent <> nil then
   begin
     for Node in FContent do
     begin
+      UCount := Result.First.Count;
+      BCount := Result.Second.Count;
+
       Node.ExportText(
-      Result.First, 
-      Result.Second);
+        Result.First,
+        Result.Second);
+
+      if Node is THeadingSection then
+        Continue;
+
+      if (UCount <> 0) and (UCount < Result.First.Count) then
+      begin
+        NewBigram := Result.First[UCount - 1] + WideString(' ') + Result.First[UCount];
+        if BCount < Result.Second.Count then
+          Result.Second.Insert(BCount, NewBigram)
+        else
+          Result.Second.Add(NewBigram);
+
+      end;
 
     end;
   end;
@@ -831,9 +889,13 @@ var
 begin
   Lines := TStringList.Create;
   Lines.Add(Format('%s<%s>', [Indent, ClassName]));
-  Lines.Add(Format('%s  <Link>', [Indent]));
-  Lines.Add(Format('%s    %s', [Indent, Link.ToXML((Indent + '  '))]));
-  Lines.Add(Format('%s  </Link>', [Indent]));
+  if Link <> nil then
+  begin
+    Lines.Add(Format('%s  <Link>', [Indent]));
+    Lines.Add(Format('%s    %s', [Indent, Link.ToXML((Indent + '  '))]));
+    Lines.Add(Format('%s  </Link>', [Indent]));
+  end;
+
   Lines.Add(Format('%s  <Text>', [Indent]));
   Lines.Add(Format('%s    %s', [Indent, Text.ToXML((Indent + '  '))]));
   Lines.Add(Format('%s  </Text>', [Indent]));
@@ -846,7 +908,7 @@ end;
 
 var Parvandeh: WideString;
 
-procedure THyperLinkEntity.ExportText(Unigrams, Bigrams: TWideStringList);
+procedure THyperLinkEntity.DoExportText(Unigrams, Bigrams: TWideStringList);
 begin
   if (FLink <> nil) and(FLink is TTextWikiEntity) and
     IsPrefix(Parvandeh, (FLink as TTextWikiEntity).Content) then
@@ -857,7 +919,7 @@ begin
   if FText <> nil then
     FText.ExportText(Unigrams, Bigrams);
 
-  inherited ExportText(Unigrams, Bigrams);
+  inherited DoExportText(Unigrams, Bigrams);
 end;
 
 { TSeparatorWikiEntry }
@@ -881,7 +943,7 @@ begin
 
 end;
 
-procedure TCommentWikiEntry.ExportText(Unigrams, Bigrams: TWideStringList);
+procedure TCommentWikiEntry.DoExportText(Unigrams, Bigrams: TWideStringList);
 begin
 
 end;
@@ -925,16 +987,13 @@ procedure TTextWikiEntity.Flatten;
 var
   Child: TBaseWikiNode;
   TextChild: TTextWikiEntity;
-  i: Integer;
   MyChildren: TNodes;
 
 begin
   MyChildren := TNodes.Create;
-  i := 0;
-  while i < Self.Children.Count do
+  while 0 < Self.Children.Count do
   begin
     Child := Self.Children[0];
-    FMTDebugLn('Child.ClassName: %s', [Child.ClassName]);
 
     if Child.ClassName = TTextWikiEntity.ClassName then
     begin
@@ -942,11 +1001,8 @@ begin
       Self.FContent.AddAnotherCollection(TextChild.FContent);
       Self.Children.Delete(0);
       if TextChild.Children.Count <> 0 then
-      begin
-        if MyChildren = nil then
-          MyChildren := TNodes.Create;
         MyChildren.AddAnotherCollection(TextChild.Children);
-      end;
+
       TextChild.Children.Clear;
       TextChild.Free;
 
@@ -971,7 +1027,8 @@ begin
   inherited Create;
 
   FContent := TWideStringList.Create;
-  FContent.Add(Text);
+  if Length(Text) <> 0 then
+    FContent.Add(Text);
 
 end;
 
@@ -982,7 +1039,7 @@ begin
   inherited Destroy;
 end;
 
-procedure TTextWikiEntity.ExportText(Unigrams, Bigrams: TWideStringList);
+procedure TTextWikiEntity.DoExportText(Unigrams, Bigrams: TWideStringList);
 var
   UCount, BCount: Integer;
   NewBigram: WideString;
@@ -991,7 +1048,9 @@ begin
   ExtractUnigramsAndBigrams(Self.FContent, Unigrams, Bigrams);
   UCount := Unigrams.Count;
   BCount := Bigrams.Count;
-  inherited ExportText(Unigrams, Bigrams);
+
+  inherited DoExportText(Unigrams, Bigrams);
+
 
   if (UCount <> 0) and (UCount < Unigrams.Count) then
   begin
@@ -1042,10 +1101,32 @@ begin
 
 end;
 
+var
+  c: Integer;
 procedure TBaseWikiNode.ExportText(Unigrams, Bigrams: TWideStringList);
+var
+  UCount, BCount: Integer;
+  NewBigram: WideString;
+
+
 begin
+  Inc(c);
+  Self.DoExportText(Unigrams, Bigrams);
+
+  UCount := Unigrams.Count;
+  BCount := Bigrams.Count;
   if FNext <> nil then
     FNext.ExportText(Unigrams, Bigrams);
+
+  if (UCount <> 0) and (UCount < Unigrams.Count) then
+  begin
+    NewBigram := Unigrams[UCount - 1] + WideString(' ') + Unigrams[UCount];
+    if BCount < Bigrams.Count then
+      Bigrams.Insert(BCount, NewBigram)
+    else
+      Bigrams.Add(NewBigram);
+
+  end;
 
 end;
 
@@ -1057,6 +1138,11 @@ begin
   FNext := NextNode;
   NextNode.FParent := Self;
 
+end;
+
+procedure TBaseWikiNode.DoExportText(Unigrams, Bigrams: TWideStringList);
+begin
+  // Do nothing;
 end;
 
 constructor TBaseWikiNode.Create;
@@ -1090,34 +1176,21 @@ destructor TBaseWikiNode.Destroy;
 var
   Last: TBaseWikiNode;
   LastParent: TBaseWikiNode;
-  Count: Integer;
   Tmp: TWideStringList;
 
 begin
   Last := Self;
-  Count:= 0;
   while Last.FNext <> nil do
   begin
-    Inc(Count);
-    if Count mod 1000 = 0 then
-      FMTDebugLn('Count: %d', [Count]);
     Last := Last.Next;
   end;
 
-  if 6500 < Count then
-  begin
-    Tmp := TWideStringList.Create();
-    FMTDebugLn('Self.ClassName: %s', [Self.ClassName]);
-  end;
-  Count := 0;
+
   while Last <> Self do
   begin
     Last.FNext := nil;
     LastParent := Last.Parent;
     Last.Free;
-    Inc(Count);
-    if Count mod 100 = 0 then
-      FMTDebugLn('Count: %d', [Count]);
     Last := LastParent;
 
   end;

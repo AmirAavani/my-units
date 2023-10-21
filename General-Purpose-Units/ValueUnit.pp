@@ -307,7 +307,7 @@ begin
       end;
       itInteger:
       begin
-        Self.ValuePtr := New(PInteger);
+        Self.ValuePtr := New(PInt64);
         PInt64(ValuePtr)^ := StrToInt64(NewValue);
       end;
       itUInteger:

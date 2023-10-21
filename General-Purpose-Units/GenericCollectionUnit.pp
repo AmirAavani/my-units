@@ -173,6 +173,7 @@ begin
 
     end;
   end;
+  it.Free;
 
   Self.Count := LastIndex;
 

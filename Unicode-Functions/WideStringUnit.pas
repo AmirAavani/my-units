@@ -12,7 +12,7 @@ type
   TWideStringList = class(specialize TCollection<WideString>)
   private
   public
-    function JoinStrings(Separator: WideChar = sLineBreak): WideString;
+    function JoinStrings(Separator: WideString = sLineBreak): WideString;
 
   end;
 
@@ -340,7 +340,7 @@ end;
 
 { TWideStringList }
 
-function TWideStringList.JoinStrings(Separator: WideChar): WideString;
+function TWideStringList.JoinStrings(Separator: WideString): WideString;
 const
   SkipEmptyString: Boolean = False;
 
