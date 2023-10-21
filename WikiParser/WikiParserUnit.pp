@@ -24,7 +24,8 @@ type
   ttIdentifier, ttEqualSign, ttString, ttNewLine,
   ttBeginTemplate, ttEndTemplate,
   ttComment,
-  ttHeadingSection,
+  ttOpenHeadingSection,
+  ttCloseHeadingSection,
   ttOpenBracket, ttCloseBracket,
   ttOpenCurlyBrace, ttCloseCurlyBrace,
   ttOpenHyperLink, ttCloseHyperLink,
@@ -116,6 +117,7 @@ type
     function ParseBulletList(Token: TToken; EndTokens: TTokens): TBaseWikiNode;
     function ParseNumberedList(Token: TToken; EndTokens: TTokens): TBaseWikiNode;
 
+    function ParseUntilNil(Current: TBaseWikiNode; EndTokens: TTokens): TBaseWikiNode;
   public
     constructor Create(_Tokenizer: TWikiTokenizer);
     destructor Destroy; override;
@@ -200,6 +202,23 @@ end;
 
 function ParseContent(Content: WideString): TNodes; forward;
 
+const
+  TitlePrefixesToBeSkipped: array of AnsiString = (
+  'مدیاویکی:'
+  );
+
+function CanNotParse(TitleNode: TTextWikiEntity): Boolean;
+var
+  Prefix: AnsiString;
+
+begin
+  for Prefix in TitlePrefixesToBeSkipped do
+    if IsPrefix(Prefix, WriteAsUTF8(TitleNode.Content)) then
+      Exit(True);
+
+  Result := False;
+end;
+
 function ParseWikiNode(Node: TDOMNode; var WikiPage: TWikiPage): Boolean;
 var
   WikiEntry: TBaseWikiNode;
@@ -213,6 +232,12 @@ begin
   begin
     WikiEntry := TTextWikiEntity.Create(ReadWideStringFromString(Node.TextContent));
     WikiPage.Title := WikiEntry as TTextWikiEntity;
+    if CanNotParse(WikiPage.Title) then
+    begin
+      FMTDebugLn('Skipping %s', [WriteAsUTF8(WikiPage.Title.Content)]);
+      Exit(False);
+
+    end;
 
 
   end
@@ -306,7 +331,6 @@ end;
 
 constructor EInvalidToken.Create(constref Visited: AnsiString);
 begin
-  FatalLn('Done');
   inherited Create(Visited);
 
 end;
@@ -419,7 +443,7 @@ begin
       Result := ParseTable(EndTokens);
     ttOpenBracket:
       Result := ParseSeparatorOrHyperLink(Token, EndTokens);
-    ttHeadingSection:
+    ttOpenHeadingSection:
       Result := ParseHeadingSection(Token, EndTokens);
     ttBar, ttEqualSign, ttMinus, ttLessThan, ttGreaterThan,
     ttBeginTableRow, ttTableCaption, ttEndTable, ttOpenCurlyBrace,
@@ -497,23 +521,20 @@ begin
     EndTokens.Add(EndTagToken);
     EndTokens.Add(MakeToken(nil, nil, ttBar));
 
-    while IsUnacceptable(Tokenizer.LastToken.TokenType, [ttEndTag, ttHeadingSection]) do
+{    while IsUnacceptable(Tokenizer.LastToken.TokenType,
+      [ttEndTag, ttOpenHeadingSection]) do
     begin
       Tokenizer.NextToken;
       Current := ParseEntity(EndTokens);
       Parameters.Add(Current);
 
-      while Current <> nil do
-      begin
-        Current := Current.LastNode;
-        if Tokenizer.LastToken.TokenType = ttEndTag then
-          Break;
-        Current.Next := ParseEntity(EndTokens);
-
-        Current := Current.Next;
-      end;
+      Current := ParseUntilNil(Current, EndTokens);
 
     end;
+    }
+    Current := ParseEntity(EndTokens);
+    Parameters.Add(Current);
+    Current := ParseUntilNil(Current, EndTokens);
   except on e: EInvalidEntity do
   begin
     FMTDebugLn('Name: %s', [TagName]);
@@ -554,7 +575,7 @@ begin
     'TokenType: %s',
     [TokenTypeToString(Token)]
     );
-  EndTokens.Add(MakeToken(nil, nil, ttHeadingSection));
+  EndTokens.Add(MakeToken(nil, nil, ttOpenHeadingSection));
 
   if Token.TokenType = ttSingleQuote then
   begin
@@ -634,18 +655,7 @@ begin
     end;
 
     Parameters.Add(Current);
-    while Current <> nil do
-    begin
-      Current := Current.LastNode;
-
-      try
-        Current.Next := ParseEntity(EndTokens);
-
-      finally
-      end;
-      Current := Current.Next;
-
-    end;
+    Current := ParseUntilNil(Current, EndTokens);
     if Tokenizer.LastToken.TokenType = ttCloseHyperLink then
       Break;
     Tokenizer.NextToken;
@@ -653,9 +663,15 @@ begin
   end;
 
   Tokenizer.NextToken;
-  Text := Parameters.Last;
+  Text := nil;
+  if Parameters.Count <> 0 then
+  begin
+    Text := Parameters.Last;
+    Parameters.Delete(Parameters.Count - 1);
+
+  end;
+
   Link := nil;
-  Parameters.Delete(Parameters.Count - 1);
   if Parameters.Count <> 0 then
   begin
     Link := Parameters.First;
@@ -681,16 +697,17 @@ begin
   EndTokens.Add(MakeToken(nil, nil, ttEndTemplate));
   EndTokens.Add(MakeToken(nil, nil, ttBar));
   EndTokens.Add(MakeToken(nil, nil, ttTableCellSeparator));
-  EndTokens.Add(MakeToken(nil, nil, ttHeadingSection));
+  EndTokens.Add(MakeToken(nil, nil, ttOpenHeadingSection));
 
   Current := Self.ParseEntity(EndTokens);
   Name := Current as TTextWikiEntity;
   Parameters := TNodes.Create;
 
   while IsUnAcceptable(Tokenizer.LastToken.TokenType,
-    [ttBar, ttTableCellSeparator, ttNewLine, ttEndTemplate, ttHeadingSection]) do
+    [ttBar, ttTableCellSeparator,
+      ttNewLine, ttEndTemplate, ttOpenHeadingSection]) do
   begin
-    if Tokenizer.LastToken.TokenType in [ttEndTemplate, ttHeadingSection] then
+    if Tokenizer.LastToken.TokenType in [ttEndTemplate, ttCloseHeadingSection] then
       Break;
     Current := Current.LastNode;
     try
@@ -710,7 +727,8 @@ begin
   end;
 
   try
-    while IsUnacceptable(Tokenizer.LastToken.TokenType, [ttEndTemplate, ttHeadingSection]) do
+    while IsUnacceptable(Tokenizer.LastToken.TokenType, [ttEndTemplate,
+      ttOpenHeadingSection]) do
     begin
       Tokenizer.NextToken;
       Current := ParseEntity(EndTokens);
@@ -800,13 +818,18 @@ begin
       MakeToken(
         @Token.Text[i],
         @Token.Text[Length(Token.Text) + 1 - i],
-        Token.TokenType
+        ttCloseHeadingSection
       )
     );
   end;
 
   try
     Current := ParseEntity(EndTokens);
+    Result := THeadingSection.Create(
+      Length(Token.Text),
+      Current);
+
+    Current := ParseUntilNil(Current, EndTokens);
   except
     on EInvalidEntity do
     begin
@@ -814,20 +837,12 @@ begin
       FreeAndNil(Result);
       raise;
     end;
-  end;
-  Result := THeadingSection.Create(
-    Length(Token.Text),
-    Current);
-  while Current <> nil do
-  begin
-    Current := Current.LastNode;
-    Current.Next := ParseEntity(EndTokens);
-    Current := Current.Next;
 
   end;
 
-  if Tokenizer.LastToken.TokenType <> ttHeadingSection then
+  if Tokenizer.LastToken.TokenType <> ttCloseHeadingSection then
   begin
+    FMTDebugLn('Result: %s', [Result.ToXML('')], 64);
     FreeAndNil(Result);
     raise EInvalidToken.Create(WriteAsUTF8(Tokenizer.LastToken.Text));
 
@@ -955,6 +970,19 @@ begin
 }
 end;
 
+function TWikiParser.ParseUntilNil(Current: TBaseWikiNode; EndTokens: TTokens): TBaseWikiNode;
+begin
+  Result := Current;
+  Result := Result.LastNode;
+  while Result <> nil do
+  begin
+    Result.Next := ParseEntity(EndTokens);
+    Result := Result.Next.LastNode;
+
+  end;
+
+end;
+
 function TWikiParser.ParseEntityWithSingleQuoteToken(AToken: TToken;
   EndTokens: TTokens): TTextWikiEntity;
 
@@ -980,7 +1008,7 @@ begin
 
   Result := TTextStyler.CreateStyler(AToken.Text);
   EndTokens.Add(MakeToken(nil, nil, ttNewLine));
-  EndTokens.Add(MakeToken(nil, nil, ttHeadingSection));
+  EndTokens.Add(MakeToken(nil, nil, ttOpenHeadingSection));
   if InitialCount = 2 then
     EndTokens.Add(MakeToken(@AToken.Text[1], @AToken.Text[2], ttSingleQuote))
   else if InitialCount = 3 then
@@ -998,9 +1026,8 @@ begin
   begin
     Child := Self.ParseEntity(EndTokens);
     if Child <> nil then
-      Result.Children.Add(Child);
-
-    if IsAnEndToken(Tokenizer.LastToken) then
+      Result.Children.Add(Child)
+    else
       Break;
 
   end;
@@ -1280,7 +1307,13 @@ begin
       end
       else if 2 <= Length(Result.Text) then
       begin
-        Result.TokenType := ttHeadingSection;
+        if LastToken.TokenType = ttNewLine then
+           Result.TokenType := ttOpenHeadingSection
+        else
+        begin
+           Result.TokenType := ttCloseHeadingSection;
+
+        end;
 
       end;
 

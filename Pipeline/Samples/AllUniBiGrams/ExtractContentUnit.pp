@@ -22,27 +22,34 @@ var
   S: TStream;
 
 begin
+  Doc := nil;
   S := TStringStream.Create(Data);
   try
     ReadXMLFile(Doc, S);
     Result := ParseWiki(Doc.FirstChild);
-    Doc.Free;
-    S.Free;
 
   except
     on e: EBaseWikiParser do
     begin
       FMTDebugLn('Failed in Parsing %', [Doc.FirstChild.TextContent]);
+      S.Free;
+      Doc.Free;
       raise;
 
     end;
     on e: EDOMError do
     begin
       Result := nil;
+      S.Free;
+      Doc.Free;
       FMTDebugLn('Error: %s Data: %s', [e.Message, Data])
 
     end;
+
   end;
+
+  S.Free;
+  Doc.Free;
 
 end;
 

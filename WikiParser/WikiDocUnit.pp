@@ -760,7 +760,7 @@ end;
 function TWikiPage.ExportText: TWideStringListPair;
 var
   UCount, BCount: SizeInt;
-  Node: TBaseWikiNode;
+  PrevNode, Node: TBaseWikiNode;
   PairForTitle: TWideStringListPair;
   NewBigram: WideString;
 
@@ -773,6 +773,7 @@ begin
 
   if FContent <> nil then
   begin
+    PrevNode := nil;
     for Node in FContent do
     begin
       UCount := Result.First.Count;
@@ -783,9 +784,13 @@ begin
         Result.Second);
 
       if Node is THeadingSection then
+      begin
+        PrevNode := Node;
         Continue;
+      end;
 
-      if (UCount <> 0) and (UCount < Result.First.Count) then
+      if (UCount <> 0) and (UCount < Result.First.Count) and
+          not (PrevNode is THeadingSection) then
       begin
         NewBigram := Result.First[UCount - 1] + WideString(' ') + Result.First[UCount];
         if BCount < Result.Second.Count then
@@ -794,6 +799,7 @@ begin
           Result.Second.Add(NewBigram);
 
       end;
+      PrevNode := Node;
 
     end;
   end;

@@ -23,14 +23,30 @@ var
 
 begin
   Step := TPipeline.TStepInfo.Create(2, 64, nil);
-  Task := TTask.Create(1, Step);
+  Task := TTask.Create(2, Step);
   ExtractContentUnit.ExtractContent(Task);
   Step.Free;
   Task.Free;
 end;
 
+procedure TestExtractContentWithPipeline;
+begin
+  Pipeline := TPipeline.Create('Sample02',
+    TPipelineConfig.DefaultConfig.SetNumberOfThreads(1));
+
+  Pipeline.AddNewStep(nil, 64);
+  Pipeline.AddNewStep(@ExtractContent, 64);
+  if Pipeline.Run then
+    ALoggerUnit.FMTDebugLn('Success! [in %dms]', [DateTimeToTimeStamp(Now).Time - Start])
+  else
+    ALoggerUnit.FatalLn('Failed!');
+
+  Pipeline.Free;
+end;
+
 begin
   TestExtractContent;
+//  TestExtractContentWithPipeline;
   Exit;
 
   if not DirectoryExists(GetRunTimeParameterManager.ValueByName['--WorkingDir'].AsAnsiString) then
