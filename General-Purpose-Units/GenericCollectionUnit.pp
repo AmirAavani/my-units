@@ -16,7 +16,7 @@ type
     function GetIsEmpty: Boolean; inline;
 
   public type
-    TDumpFunc = function (d: TData; Stream: TStream): Boolean;
+    TDumpFunc = function (constref d: TData; Stream: TStream): Boolean;
     TLoadFunc = function (Stream: TStream): TData;
     TMatcherFunc = function (constref Str: TData): Boolean;
 

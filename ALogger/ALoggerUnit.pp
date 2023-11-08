@@ -73,7 +73,6 @@ begin
     Filename := Parts[Parts.Count - 1];
   Parts.Free;
   Mutex4LineInfo.Unlock();
-
 end;
 
 var

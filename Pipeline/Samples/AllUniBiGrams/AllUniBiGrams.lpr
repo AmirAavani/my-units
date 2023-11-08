@@ -20,13 +20,20 @@ procedure TestExtractContent;
 var
   Task: TTask;
   Step: TPipeline.TStepInfo;
+  id: Integer;
 
 begin
-  Step := TPipeline.TStepInfo.Create(2, 64, nil);
-  Task := TTask.Create(2, Step);
-  ExtractContentUnit.ExtractContent(Task);
-  Step.Free;
-  Task.Free;
+  for id := 13 to 13 do
+  begin
+    FMTDebugLn('id: %d', [id]);
+    Step := TPipeline.TStepInfo.Create(0, 64, nil);
+    Task := TTask.Create(id, Step);
+    ExtractContentUnit.ExtractContent(Task);
+    Step.Free;
+    Task.Free;
+    FMTDebugLn('id: %d', [id]);
+
+  end;
 end;
 
 procedure TestExtractContentWithPipeline;
@@ -37,7 +44,7 @@ begin
   Pipeline.AddNewStep(nil, 64);
   Pipeline.AddNewStep(@ExtractContent, 64);
   if Pipeline.Run then
-    ALoggerUnit.FMTDebugLn('Success! [in %dms]', [DateTimeToTimeStamp(Now).Time - Start])
+    ALoggerUnit.FMTDebugLn('Success! [in %dms]', [DateTimeToTimeStamp(Now).Time -        Start])
   else
     ALoggerUnit.FatalLn('Failed!');
 
@@ -45,9 +52,9 @@ begin
 end;
 
 begin
-  TestExtractContent;
-//  TestExtractContentWithPipeline;
-  Exit;
+  //TestExtractContent;
+  //TestExtractContentWithPipeline;
+  //Exit;
 
   if not DirectoryExists(GetRunTimeParameterManager.ValueByName['--WorkingDir'].AsAnsiString) then
   begin

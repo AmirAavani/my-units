@@ -63,7 +63,7 @@ function ExtractContent(Task: TTask): Boolean;
 var
   Positions: TPositionList;
   Stream: TFileStream;
-  Reader, Writer: TStream;
+  Reader, UniWriter, BiWriter: TStream;
   i: Integer;
   Size: Int64;
   Start, Fin: Int64;
@@ -94,8 +94,13 @@ begin
   Reader := TFileStream.Create(
     GetRunTimeParameterManager.ValueByName['--InputFile'].AsAnsiString,
     fmOpenRead or fmShareDenyNone);
-  Writer := TFileStream.Create(
-    GetExtractFileName(
+  UniWriter := TFileStream.Create(
+    GetExtractUnigramsFileName(
+      Task.ID,
+      Task.Count),
+    fmCreate);
+  BiWriter := TFileStream.Create(
+    GetExtractBigramsFileName(
       Task.ID,
       Task.Count),
     fmCreate);
@@ -114,7 +119,8 @@ begin
     if (i <> DebugIndex) and (DebugIndex <> -1) then
       Continue;
 
-    FMTDebugLn('*****%d*****', [i]);
+    FMTDebugLn('*****%d/%d*****', [i, Positions.Count - 2]);
+    FMTDebugLn('+Task.ID: %5d i:%5d', [Task.ID, i]);
 
     Reader.Position := Positions[i];
     FMTDebugLn(
@@ -132,6 +138,12 @@ begin
 
     try
       WikiDoc := ProcessData(Data);
+      LineInfo := WikiDoc.ExportText;
+      LineInfo.First.RemoveAllValuesMatching(@IsEmptyString);
+
+      LineInfo.First.SaveToStream(UniWriter, @SaveWideString);
+      LineInfo.Second.SaveToStream(BiWriter, @SaveWideString);
+
       if DebugIndex <> -1 then
       begin
         WriteLn('<B>');
@@ -139,16 +151,16 @@ begin
           i, WikiDoc.Title.ToXML('  '), WikiDoc.ToXML]));
         WriteLn('</B>');
 
-        LineInfo := WikiDoc.ExportText;
-        LineInfo.First.RemoveAllValuesMatching(@IsEmptyString);
 
         FMTDebugLn('Unigrams: %s', [WriteAsUTF8(LineInfo.First.JoinStrings())]);
         FMTDebugLn('Bigrams: %s', [WriteAsUTF8(LineInfo.Second.JoinStrings())]);
+
         LineInfo.First.Free;
         LineInfo.Second.Free;
 
         WikiDoc.Free;
-        Writer.Free;
+        UniWriter.Free;
+        biWriter.Free;
         Positions.Free;
 
         Exit;
@@ -157,22 +169,30 @@ begin
 
     except
       on e: EBaseWikiParser do
+      begin
          FMTDebugLn('Failed in Processing Data', []);
+       end;
     end;
+    FMTDebugLn('-Task.ID: %5d i:%5d', [Task.ID, i]);
     if WikiDoc = nil then
+    begin
+        WriteLn(Format('Task.ID: %d i: %d is nil',
+          [Task.ID, i]));
       Continue;
+    end;
 
-    FMTDebugLn('Title: %s', [WikiDoc.Title.ToXML('')]);
+    FMTDebugLn('ID: %d i: %d Title: %s', [Task.ID, i, WikiDoc.Title.ToXML('')]);
 
     LineInfo := WikiDoc.ExportText;
     WikiDoc.Free;
     LineInfo.First.RemoveAllValuesMatching(@IsEmptyString);
 
-    FMTDebugLn('Unigrams: %s', [WriteAsUTF8(LineInfo.First.JoinStrings())]);
-    FMTDebugLn('Bigrams: %s', [WriteAsUTF8(LineInfo.Second.JoinStrings())]);
+    //FMTDebugLn('Unigrams: %s', [WriteAsUTF8(LineInfo.First.JoinStrings())]);
+    //FMTDebugLn('Bigrams: %s', [WriteAsUTF8(LineInfo.Second.JoinStrings())]);
     LineInfo.First.Free;
     LineInfo.Second.Free;
 
+    FMTDebugLn('~Task.ID: %5d i:%5d', [Task.ID, i]);
     if DebugIndex <> -1 then
       Break;
 
@@ -180,7 +200,8 @@ begin
 
   Positions.Free;
   Reader.Free;
-  Writer.Free;
+  UniWriter.Free;
+  BiWriter.Free;
 
   Result := True;
 end;

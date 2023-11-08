@@ -59,6 +59,7 @@ type
 
     constructor Create;
     destructor Destroy; override;
+    procedure AddChild(Child: TBaseWikiNode);
 
   end;
 
@@ -79,7 +80,6 @@ type
     constructor Create(constref Text: WideString);
     destructor Destroy; override;
 
-    procedure AddChild(Child: TBaseWikiNode);
     procedure Flatten;
   end;
 
@@ -917,7 +917,7 @@ var Parvandeh: WideString;
 procedure THyperLinkEntity.DoExportText(Unigrams, Bigrams: TWideStringList);
 begin
   if (FLink <> nil) and(FLink is TTextWikiEntity) and
-    IsPrefix(Parvandeh, (FLink as TTextWikiEntity).Content) then
+    IsPrefix(Parvandeh, (FLink as TTextWikiEntity).FContent.JoinStrings('')) then
   begin
     Exit;
   end;
@@ -966,7 +966,8 @@ begin
 
   Result := FContent.JoinStrings(' ');
   for Child in Children do
-    Result += ' ' + (Child as TTextWikiEntity).GetContent;
+    if Child is TTextWikiEntity then
+      Result += ' ' + (Child as TTextWikiEntity).GetContent;
 
 end;
 
@@ -1070,12 +1071,9 @@ begin
 
 end;
 
-procedure TTextWikiEntity.AddChild(Child: TBaseWikiNode);
+procedure TBaseWikiNodeWithChildren.AddChild(Child: TBaseWikiNode);
 begin
-  if (Child is TTextWikiEntity) and (Self.Children.Count = 0) then
-    Self.Children.Add(Child as TTextWikiEntity)
-  else
-    self.Children.Add(Child);
+  self.Children.Add(Child);
 end;
 
 { TBaseWikiNode }
