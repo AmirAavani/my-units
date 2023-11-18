@@ -119,12 +119,12 @@ begin
     if (i <> DebugIndex) and (DebugIndex <> -1) then
       Continue;
 
-    FMTDebugLn('*****%d/%d*****', [i, Positions.Count - 2]);
-    FMTDebugLn('+Task.ID: %5d i:%5d', [Task.ID, i]);
+    FMTDebugLn('*****%05d/%05d*****', [i, Positions.Count - 2]);
+    FMTDebugLn('+Task.ID: %05d i:%05d', [Task.ID, i]);
 
     Reader.Position := Positions[i];
     FMTDebugLn(
-      'Task.ID: %d i: %d Start: %d Fin: %d',
+      'Task.ID: %05d i: %05d Start: %05d Fin: %05d',
       [Task.ID, i, Positions[i], Positions[i + 1]]);
 
     SetLength(Data, Positions[i + 1] - Positions[i]);
@@ -138,6 +138,29 @@ begin
 
     try
       WikiDoc := ProcessData(Data);
+      if (WikiDoc = nil) or (WikiDoc.IsADisambiguationPage) or (WikiDoc.Redirect <> nil) then
+      begin
+        FMTDebugLn('-Task.ID: %05d i:%05d', [Task.ID, i]);
+        if WikiDoc <> nil then
+        begin
+          FMTDebugLn('Skipped Task.ID: %05d i: %05d %s', [
+          Task.ID,
+          i,
+          WikiDoc.Title.ToXML('')]);
+        end;
+
+        WikiDoc.Free;
+        Continue;
+
+      end;
+      if DebugIndex <> -1 then
+      begin
+        WriteLn('<B>');
+        WriteLn(Format('<WikiDoc Index="%d"><Title>%s</Title>%s</WikiDoc>', [
+          i, WikiDoc.Title.ToXML('  '), WikiDoc.ToXML]));
+        WriteLn('</B>');
+
+      end;
       LineInfo := WikiDoc.ExportText;
       LineInfo.First.RemoveAllValuesMatching(@IsEmptyString);
 
@@ -146,12 +169,7 @@ begin
 
       if DebugIndex <> -1 then
       begin
-        WriteLn('<B>');
-        WriteLn(Format('<WikiDoc Index="%d"><Title>%s</Title>%s</WikiDoc>', [
-          i, WikiDoc.Title.ToXML('  '), WikiDoc.ToXML]));
-        WriteLn('</B>');
-
-
+        FMTDebugLn('--: %d, %d', [LineInfo.First.Count, LineInfo.Second.Count]);
         FMTDebugLn('Unigrams: %s', [WriteAsUTF8(LineInfo.First.JoinStrings())]);
         FMTDebugLn('Bigrams: %s', [WriteAsUTF8(LineInfo.Second.JoinStrings())]);
 
@@ -176,19 +194,22 @@ begin
     FMTDebugLn('-Task.ID: %5d i:%5d', [Task.ID, i]);
     if WikiDoc = nil then
     begin
+      LineInfo.First.Free;
+      LineInfo.Second.Free;
         WriteLn(Format('Task.ID: %d i: %d is nil',
           [Task.ID, i]));
       Continue;
     end;
 
-    FMTDebugLn('ID: %d i: %d Title: %s', [Task.ID, i, WikiDoc.Title.ToXML('')]);
+    FMTDebugLn('ID: %d i: %d Title: (%s %d, %d)', [
+      Task.ID,
+      i,
+      WikiDoc.Title.ToXML(''),
+      LineInfo.First.Count,
+      LineInfo.Second.Count]);
 
-    LineInfo := WikiDoc.ExportText;
     WikiDoc.Free;
-    LineInfo.First.RemoveAllValuesMatching(@IsEmptyString);
 
-    //FMTDebugLn('Unigrams: %s', [WriteAsUTF8(LineInfo.First.JoinStrings())]);
-    //FMTDebugLn('Bigrams: %s', [WriteAsUTF8(LineInfo.Second.JoinStrings())]);
     LineInfo.First.Free;
     LineInfo.Second.Free;
 
@@ -198,6 +219,7 @@ begin
 
   end;
 
+  FMTDebugLn('~Task.ID: %5d', [Task.ID]);
   Positions.Free;
   Reader.Free;
   UniWriter.Free;

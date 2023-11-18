@@ -60,6 +60,10 @@
         <Filename Value="../../../WikiParser/WikiDocUnit.pp"/>
         <IsPartOfProject Value="True"/>
       </Unit>
+      <Unit>
+        <Filename Value="../../../WikiParser/WikiParserUnit.pp"/>
+        <IsPartOfProject Value="True"/>
+      </Unit>
     </Units>
   </ProjectOptions>
   <CompilerOptions>

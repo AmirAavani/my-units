@@ -285,6 +285,8 @@ type
 
     function ExportText: TWideStringListPair;
     function ToXML: AnsiString;
+
+    function IsADisambiguationPage: Boolean;
   end;
 
 
@@ -673,11 +675,21 @@ begin
 end;
 
 procedure TTagEntity.DoExportText(Unigrams, Bigrams: TWideStringList);
-begin
-  if Self.TagName <> 'ref' then
-    inherited DoExportText(Unigrams, Bigrams);
+const
+  ToBeProcessedTag: array of WideString = ();
 
-  // Do nothing
+var
+  TName: WideString;
+
+begin
+  for TName in ToBeProcessedTag do
+    if Self.TagName = TName then
+    begin
+      inherited DoExportText(Unigrams, Bigrams);
+      Break;
+
+    end;
+
 end;
 
 constructor TTagEntity.Create(constref _TagName: WideString; _Parameters: TNodes
@@ -757,7 +769,38 @@ begin
   inherited Destroy;
 end;
 
+const
+  TerminatorHeadings: array of AnsiString = (
+  'جستارهای وابسته',
+  'منابع',
+  'پیوند به بیرون'
+  );
+
 function TWikiPage.ExportText: TWideStringListPair;
+
+  function IsTerminatorHeadings(const Node: TBaseWikiNode): Boolean;
+  var
+    S: AnsiString;
+
+  begin
+    Result := True;
+
+    if (Node is THeadingSection) and ((Node as THeadingSection).Number = 2) then
+    begin
+      if not ((Node as THeadingSection).Title is TTextWikiEntity) then
+        Exit(False);
+
+      for S in TerminatorHeadings do
+        if WideStringUnit.WriteAsUTF8(
+          ((Node as THeadingSection).Title as TTextWikiEntity).Content) = S then
+        begin
+          Exit;
+        end;
+    end;
+
+    Result := False;
+  end;
+
 var
   UCount, BCount: SizeInt;
   PrevNode, Node: TBaseWikiNode;
@@ -776,6 +819,9 @@ begin
     PrevNode := nil;
     for Node in FContent do
     begin
+      if IsTerminatorHeadings(Node) then
+        break;
+
       UCount := Result.First.Count;
       BCount := Result.Second.Count;
 
@@ -801,9 +847,11 @@ begin
       end;
       PrevNode := Node;
 
-    end;
-  end;
+      end;
 
+    end;
+
+  {
   if Title <> nil then
   begin
     ExtractUnigramsAndBigrams(
@@ -812,16 +860,7 @@ begin
       PairForTitle.Second);
 
   end;
-
-  if FContent <> nil then
-  begin
-    for Node in FContent do
-    begin
-      Node.ExportText(Result.First, Result.Second);
-
-    end;
-
-  end;
+  }
 
   Result.First.AddAnotherCollection(PairForTitle.First);
   Result.Second.AddAnotherCollection(PairForTitle.Second);
@@ -837,6 +876,52 @@ begin
     Exit('<nil/>');
 
   Result := FContent.ToXML('');
+end;
+
+const
+  AbhamzodaeeTemplate: AnsiString = 'ابهام‌زدایی';
+
+function TWikiPage.IsADisambiguationPage: Boolean;
+
+  function dfs(Node: TBaseWikiNode): Boolean;
+  var
+    Child: TBaseWikiNode;
+
+  begin
+    if Node is TTemplate then
+      if WideStringUnit.WriteAsUTF8((
+        Node as TTemplate).TemplateName) = AbhamzodaeeTemplate then
+          Exit(True);
+
+    if not (Node is TBaseWikiNodeWithChildren) then
+      Exit(False);
+
+    for Child in (Node as TBaseWikiNodeWithChildren).Children do
+      if dfs(Child) then
+        Exit(True);
+
+    Result := False;
+
+  end;
+
+var
+  Node: TBaseWikiNode;
+
+begin
+  if Self = nil then
+    Exit(False);
+
+  if Self.FContent = nil then
+    Exit(False);
+
+  for Node in FContent do
+  begin
+    if dfs(Node) then
+      Exit(True);
+
+  end;
+
+  Result := False;
 end;
 
 

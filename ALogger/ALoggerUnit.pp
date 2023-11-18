@@ -18,6 +18,9 @@ type
 
   end;
 
+  TOneParamFunction = function (x: TObject): AnsiString;
+
+procedure FMTDebugLn(constref Fmt: AnsiString; constref Args: array of TOneParamFunction; Verbosity: Integer = 0);
 procedure DebugLn(constref Msg: AnsiString; Verbosity: Integer = 0);
 procedure FMTDebugLn(constref Fmt: AnsiString; constref Args: array of const ; Verbosity: Integer = 0);
 procedure DebugLnEveryN(N: Integer; constref Msg: AnsiString; Verbosity: Integer = 0);
@@ -102,6 +105,11 @@ begin
 
 end;
 
+procedure FMTDebugLn(constref Fmt: AnsiString; constref
+  Args: array of TOneParamFunction; Verbosity: Integer);
+begin
+
+end;
 
 procedure DebugLn(constref Msg: AnsiString; Verbosity: Integer);
 var

@@ -23,7 +23,7 @@ var
   id: Integer;
 
 begin
-  for id := 13 to 13 do
+  id := GetRunTimeParameterManager.ValueByName['--TaskID'].AsInteger;
   begin
     FMTDebugLn('id: %d', [id]);
     Step := TPipeline.TStepInfo.Create(0, 64, nil);
@@ -52,9 +52,18 @@ begin
 end;
 
 begin
-  //TestExtractContent;
-  //TestExtractContentWithPipeline;
-  //Exit;
+  if GetRunTimeParameterManager.ValueByName['--Mode'].AsAnsiString = 'TestExtractContent' then
+  begin
+    TestExtractContent;
+    Exit;
+
+  end
+  else if GetRunTimeParameterManager.ValueByName['--Mode'].AsAnsiString = 'TestExtractContent' then
+  begin
+    TestExtractContentWithPipeline;
+    Exit;
+
+  end;
 
   if not DirectoryExists(GetRunTimeParameterManager.ValueByName['--WorkingDir'].AsAnsiString) then
   begin
