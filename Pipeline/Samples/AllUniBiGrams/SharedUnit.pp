@@ -16,12 +16,12 @@ function GetExtractBigramsFileName(TaskID, NumTasks: Integer): AnsiString;
 
 implementation
 uses
-  PathHelperUnit, ParameterManagerUnit;
+  PathHelperUnit, ParamUnit;
 
 function GetPositionFileName(TaskID, NumTasks: Integer): AnsiString;
 begin
   Result := JoinPath(
-    GetRunTimeParameterManager.ValueByName['--WorkingDir'].AsAnsiString,
+    ParamUnit.GetParams.WorkingDir.Value,
     Format('PositionFile-%.5d-of-%.5d.bin', [TaskID, NumTasks])
   );
 
@@ -30,7 +30,7 @@ end;
 function GetExtractUnigramsFileName(TaskID, NumTasks: Integer): AnsiString;
 begin
   Result := JoinPath(
-    GetRunTimeParameterManager.ValueByName['--WorkingDir'].AsAnsiString,
+    ParamUnit.GetParams.WorkingDir.Value,
     Format('WikiPageFile-Uni-%.5d-of-%.5d.bin', [TaskID, NumTasks])
   );
 
@@ -39,7 +39,7 @@ end;
 function GetExtractBigramsFileName(TaskID, NumTasks: Integer): AnsiString;
 begin
   Result := JoinPath(
-    GetRunTimeParameterManager.ValueByName['--WorkingDir'].AsAnsiString,
+    ParamUnit.GetParams.WorkingDir.Value,
     Format('WikiPageFile-Bi-%.5d-of-%.5d.bin', [TaskID, NumTasks])
   );
 

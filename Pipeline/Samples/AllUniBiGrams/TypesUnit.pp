@@ -43,7 +43,7 @@ type
 implementation
 
 uses
-  ParameterManagerUnit, ALoggerUnit, PipelineUnit;
+  ALoggerUnit;
 
 { TObjectString }
 

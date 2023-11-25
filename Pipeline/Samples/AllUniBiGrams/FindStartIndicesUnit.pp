@@ -5,14 +5,13 @@ unit FindStartIndicesUnit;
 interface
 
 uses
-  Classes, SysUtils, PipelineUnit, GenericCollection.UtilsUnit;
+  Classes, SysUtils, PipelineUnit, GenericCollection.UtilsUnit, ParamUnit;
 
 function FindStartIndices(Task: TTask): Boolean;
 
 implementation
 uses
-  ParameterManagerUnit, TypesUnit,
-  ALoggerUnit, SharedUnit;
+  TypesUnit, ALoggerUnit, SharedUnit;
 
 type
   EEof = class(Exception);
@@ -54,9 +53,9 @@ const
 
 begin
   ALoggerUnit.GetLogger.FMTDebugLn('In FindStartIndices: "%s"', [
-  GetRunTimeParameterManager.ValueByName['--InputFile'].AsAnsiString]);
+  ParamUnit.GetParams.InputFile.Value]);
   Reader := TFileStream.Create(
-    GetRunTimeParameterManager.ValueByName['--InputFile'].AsAnsiString,
+    ParamUnit.GetParams.InputFile.Value,
     fmOpenRead or fmShareDenyNone);
   Size := Reader.Size;
   ALoggerUnit.GetLogger.FMTDebugLn('Reader.Size: %d', [Size]);

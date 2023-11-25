@@ -23,7 +23,7 @@ var
   i, id: Integer;
 
 begin
-  id := GetRunTimeParameterManager.ValueByName['--TaskID'].AsInteger;
+  id := Integer(ParamUnit.GetParams.Pipeline.TasKID.Value);
   for i := 1 to 64 do
   begin
     if (id <> -1) and (i <> id) then
@@ -61,7 +61,7 @@ var
   id: Integer;
 
 begin
-  id := GetRunTimeParameterManager.ValueByName['--TaskID'].AsInteger;
+  id := Integer(ParamUnit.GetParams.Pipeline.TaskID.Value);
   begin
     ALoggerUnit.GetLogger.FMTDebugLn('id: %d', [id]);
     Step := TPipeline.TStepInfo.Create(0, 64, nil);
@@ -75,30 +75,31 @@ begin
 end;
 
 begin
+  ALoggerUnit.GetLogger.Debug := ParamUnit.GetParams.Debug.Value;
 
-  if GetRunTimeParameterManager.ValueByName['--Mode'].AsAnsiString = 'TestExtractContent' then
+  if ParamUnit.GetParams.Mode.Value = 'TestExtractContent' then
   begin
     TestExtractContent;
     Exit;
 
   end
-  else if GetRunTimeParameterManager.ValueByName['--Mode'].AsAnsiString = 'TestExtractContentWithPipeline;' then
+  else if ParamUnit.GetParams.Mode.Value = 'TestExtractContentWithPipeline;' then
   begin
     TestExtractContentWithPipeline;
     Exit;
 
   end
-  else if GetRunTimeParameterManager.ValueByName['--Mode'].AsAnsiString = 'TestFindStartIndices' then
+  else if ParamUnit.GetParams.Mode.Value = 'TestFindStartIndices' then
   begin
     TestFindStartIndices;
     Exit;
 
   end;
 
-  if not DirectoryExists(GetRunTimeParameterManager.ValueByName['--WorkingDir'].AsAnsiString) then
+  if not DirectoryExists(ParamUnit.GetParams.WorkingDir.Value) then
   begin
     FileHelperUnit.CreateDir(
-      GetRunTimeParameterManager.ValueByName['--WorkingDir'].AsAnsiString,
+      ParamUnit.GetParams.WorkingDir.Value,
       True
     );
   end;
@@ -112,7 +113,7 @@ begin
 
   Start := DateTimeToTimeStamp(Now).Time;
 
-  if Pipeline.Run then
+  if Pipeline.Run(ParamUnit.GetParams.Pipeline.StepID.Value)  then
     ALoggerUnit.GetLogger.FMTDebugLn('Success! [in %ums]', [DateTimeToTimeStamp(Now).Time - Start])
   else
     ALoggerUnit.FmtFatalLnIFFalse(False, 'Failed!', []);

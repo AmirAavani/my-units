@@ -12,7 +12,7 @@ function ExtractContent(Task: TTask): Boolean;
 implementation
 
 uses
-  ParameterManagerUnit, TypesUnit,
+  ParamUnit, TypesUnit,
   ALoggerUnit, SharedUnit, Laz2_DOM, laz2_xmlread,
   WikiParserUnit, WideStringUnit;
 
@@ -60,7 +60,7 @@ begin
       Result := nil;
       S.Free;
       Doc.Free;
-      ALoggerUnit.GetLogger.FMTDebugLn(
+      ALoggerUnit.GetLogger.FMTWriteLn(
         'ERRORR: %s Data: %s',
         [e.Message, Data]);
       FmtFatalLnIFFalse(False, '%s', [e.Message]);
@@ -68,7 +68,7 @@ begin
     end;
     on e: Exception do
     begin
-      ALoggerUnit.GetLogger.FMTDebugLn('ERRORR %s', [e.Message]);
+      ALoggerUnit.GetLogger.FMTWriteLn('ERRORR %s', [e.Message]);
       FmtFatalLnIFFalse(False, '%s', [e.Message]);
     end;
 
@@ -100,10 +100,10 @@ var
   LineInfo: TWideStringListPair;
 
 begin
-  if (GetRunTimeParameterManager.ValueByName['--TaskID'].AsIntegerOrDefault(-1) <> -1) and
-  (GetRunTimeParameterManager.ValueByName['--TaskID'].AsIntegerOrDefault(-1) <> Task.ID) then
+  if (ParamUnit.GetParams.Pipeline.TaskID.Value <> -1) and
+  (ParamUnit.GetParams.Pipeline.TasKID.Value <> Task.ID) then
   begin
-    ALoggerUnit.GetLogger.FMTDebugLn('Exiting Task: %d', [Task.ID]);
+    ALoggerUnit.GetLogger.FMTWriteLn('Exiting Task: %d', [Task.ID]);
     Exit(True);
 
   end;
@@ -115,20 +115,20 @@ begin
     fmOpenRead);
   Positions := TPositionList.LoadFromStream(Stream, @LoadUInt64);
   Stream.Free;
-  DebugIndex := GetRunTimeParameterManager.ValueByName['--DebugIndex'].AsIntegerOrDefault(-1);
-  DebugStart := GetRunTimeParameterManager.ValueByName['--DebugStart'].AsIntegerOrDefault(-1);
-  DebugEnd := GetRunTimeParameterManager.ValueByName['--DebugEnd'].AsIntegerOrDefault(-1);
-  ALoggerUnit.GetLogger.FMTDebugLn(
+  DebugIndex := ParamUnit.GetParams.DebugIndex.Value;
+  DebugStart := ParamUnit.GetParams.DebugStart.Value;
+  DebugEnd := ParamUnit.GetParams.DebugEnd.Value;
+  ALoggerUnit.GetLogger.FMTWriteLn(
     'DebugIndex: %d DebugStart: %d DebugEnd: %d',
     [DebugIndex, DebugStart, DebugEnd]);
 
 
-  ALoggerUnit.GetLogger.FMTDebugLn(
+  ALoggerUnit.GetLogger.FMTWriteLn(
     'Task.ID: %d Position.Count: %d',
     [Task.ID, Positions.Count]
   );
   Reader := TFileStream.Create(
-    GetRunTimeParameterManager.ValueByName['--InputFile'].AsAnsiString,
+    ParamUnit.GetParams.InputFile.Value,
     fmOpenRead or fmShareDenyNone);
   UniWriter := TFileStream.Create(
     GetExtractUnigramsFileName(
@@ -146,7 +146,7 @@ begin
        (Task.ID - 1);
   Fin := ((Size + Task.ID - 1) div Task.StepInfo.NumTasks) *
        Task.ID - 1;
-  ALoggerUnit.GetLogger.FMTDebugLn(
+  ALoggerUnit.GetLogger.FMTWriteLn(
     'Task.ID: %d Start: %d Fin: %d',
     [Task.ID, Start, Fin]);
 
@@ -157,13 +157,13 @@ begin
     if (i <> DebugIndex) and (DebugIndex <> -1) then
       Continue;
 
-    ALoggerUnit.GetLogger.FMTDebugLn('*****%05d/%05d*****', [i, Positions.Count - 2], -1);
-    ALoggerUnit.GetLogger.FMTDebugLn('+Task.ID: %05d i:%05d', [Task.ID, i], -1);
+    ALoggerUnit.GetLogger.FMTWriteLn('*****%05d/%05d*****', [i, Positions.Count - 2]);
+    ALoggerUnit.GetLogger.FMTWriteLn('+Task.ID: %05d i:%05d', [Task.ID, i]);
 
     Reader.Position := Positions[i];
-    ALoggerUnit.GetLogger.FMTDebugLn(
+    ALoggerUnit.GetLogger.FMTWriteLn(
       'Task.ID: %05d i: %05d Start: %05d Fin: %05d',
-      [Task.ID, i, Positions[i], Positions[i + 1]], -1);
+      [Task.ID, i, Positions[i], Positions[i + 1]]);
 
     SetLength(Data, Positions[i + 1] - Positions[i]);
     ReadBytes := Reader.Read(Data[1], Positions[i + 1] - Positions[i]);
@@ -180,17 +180,16 @@ begin
       WikiDoc := ProcessData(Data);
       if (WikiDoc = nil) or (WikiDoc.IsADisambiguationPage) or (WikiDoc.Redirect <> nil) then
       begin
-        ALoggerUnit.GetLogger.FMTDebugLn(
+        ALoggerUnit.GetLogger.FMTWriteLn(
           '-Task.ID: %05d i:%05d',
-          [Task.ID, i],
-          -1);
+          [Task.ID, i]);
         if WikiDoc <> nil then
         begin
-          ALoggerUnit.GetLogger.FMTDebugLn(
+          ALoggerUnit.GetLogger.FMTWriteLn(
             'Skipped Task.ID: %05d i: %05d %s', [
             Task.ID,
             i,
-            WikiDoc.Title.ToXML('')], -1);
+            WikiDoc.Title.ToXML('')]);
         end;
 
         WikiDoc.Free;
@@ -232,14 +231,14 @@ begin
     except
       on e: EBaseWikiParser do
       begin
-         ALoggerUnit.GetLogger.FMTDebugLn('Failed in Processing Data', []);
+         ALoggerUnit.GetLogger.FMTWriteLn('Failed in Processing Data', []);
       end;
       on e: Exception do
       begin
-        ALoggerUnit.GetLogger.FMTDebugLn('Random Errror', []);
+        ALoggerUnit.GetLogger.FMTWriteLn('Random Errror', []);
       end;
     end;
-    ALoggerUnit.GetLogger.FMTDebugLn('-Task.ID: %5d i:%5d', [Task.ID, i], -1);
+    ALoggerUnit.GetLogger.FMTWriteLn('-Task.ID: %5d i:%5d', [Task.ID, i]);
     if WikiDoc = nil then
     begin
       LineInfo.First.Free;
@@ -249,26 +248,26 @@ begin
       Continue;
     end;
 
-    ALoggerUnit.GetLogger.FMTDebugLn(
+    ALoggerUnit.GetLogger.FMTWriteLn(
       'ID: %d i: %d Title: (%s) -> (%d, %d)', [
       Task.ID,
       i,
       WikiDoc.Title.ToXML(''),
       LineInfo.First.Count,
-      LineInfo.Second.Count], -1);
+      LineInfo.Second.Count]);;
 
     WikiDoc.Free;
 
     LineInfo.First.Free;
     LineInfo.Second.Free;
 
-    ALoggerUnit.GetLogger.FMTDebugLn('~Task.ID: %5d i:%5d', [Task.ID, i], -1);
+    ALoggerUnit.GetLogger.FMTWriteLn('~Task.ID: %5d i:%5d', [Task.ID, i]);
     if DebugIndex <> -1 then
       Break;
 
   end;
 
-  ALoggerUnit.GetLogger.FMTDebugLn('~Task.ID: %5d', [Task.ID], -1);
+  ALoggerUnit.GetLogger.FMTWriteLn('~Task.ID: %5d', [Task.ID]);
   Positions.Free;
   Reader.Free;
   UniWriter.Free;
