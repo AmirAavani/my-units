@@ -24,11 +24,18 @@ AllUniBiGrams-Profiling:
 
 
 Step1:
-	echo ${Binary} --Pipeline.StepID 1 --InputFile ../../../../1BWLM/NLP/Wikidump/fawiki-20230220-pages-articles-multistream.xml --WorkingDir  ../../../../1BWLM/NLP/tmp/ --Debug '15' 2>&1 
+	${Binary} --Pipeline.StepID 1 --InputFile ../../../../1BWLM/NLP/Wikidump/fawiki-20230220-pages-articles-multistream.xml --WorkingDir  ../../../../1BWLM/NLP/tmp/ --Debug '15' 2>&1 
 
 Step2:
 	${Binary} --Pipeline.StepID 2 --InputFile ../../../../1BWLM/NLP/Wikidump/fawiki-20230220-pages-articles-multistream.xml --WorkingDir  ../../../../1BWLM/NLP/tmp/ --Debug ${Debug} --DebugIndex $(DebugIndex) --DebugStart $(DebugStart) --DebugEnd $(DebugEnd) 
 
+<<<<<<< HEAD
+=======
+TestFindStartIndices:
+	${Binary} --Mode TestFindStartIndices --InputFile ../../../../1BWLM/NLP/Wikidump/fawiki-20230220-pages-articles-multistream.xml --WorkingDir  ../../../../1BWLM/NLP/tmp/   --TaskID $(TaskID)
+
+
+>>>>>>> bf15520 (...)
 TestExtractContent:
 	${Binary} --Mode TestExtractContent --InputFile ../../../../1BWLM/NLP/Wikidump/fawiki-20230220-pages-articles-multistream.xml --WorkingDir  ../../../../1BWLM/NLP/tmp/ --Debug ${Debug} --DebugIndex $(DebugIndex) --DebugStart $(DebugStart) --DebugEnd $(DebugEnd)  --TaskID $(TaskID)
 

@@ -9,7 +9,6 @@ uses
 
 const
   PageTag = '<page>';
-  EndPageTag = '</page>';
 
 function GetPositionFileName(TaskID, NumTasks: Integer): AnsiString;
 function GetExtractUnigramsFileName(TaskID, NumTasks: Integer): AnsiString;

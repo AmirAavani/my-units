@@ -189,7 +189,11 @@ begin
       on e: EBaseWikiParser do
       begin
          FMTDebugLn('Failed in Processing Data', []);
-       end;
+      end;
+      on e: Exception do
+      begin
+        FMTDebugLn('Random Errror', []);
+      end;
     end;
     FMTDebugLn('-Task.ID: %5d i:%5d', [Task.ID, i]);
     if WikiDoc = nil then

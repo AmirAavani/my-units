@@ -51,7 +51,30 @@ begin
   Pipeline.Free;
 end;
 
+procedure TestFindStartIndices;
+var
+  Task: TTask;
+  Step: TPipeline.TStepInfo;
+  id: Integer;
+
 begin
+<<<<<<< HEAD
+=======
+  id := GetRunTimeParameterManager.ValueByName['--TaskID'].AsInteger;
+  begin
+    FMTDebugLn('id: %d', [id]);
+    Step := TPipeline.TStepInfo.Create(0, 64, nil);
+    Task := TTask.Create(id, Step);
+    FindStartIndicesUnit.FindStartIndices(Task);
+    Step.Free;
+    Task.Free;
+    FMTDebugLn('id: %d', [id]);
+
+  end;
+end;
+
+begin
+>>>>>>> bf15520 (...)
   if GetRunTimeParameterManager.ValueByName['--Mode'].AsAnsiString = 'TestExtractContent' then
   begin
     TestExtractContent;
@@ -63,6 +86,15 @@ begin
     TestExtractContentWithPipeline;
     Exit;
 
+<<<<<<< HEAD
+=======
+  end
+  else if GetRunTimeParameterManager.ValueByName['--Mode'].AsAnsiString = 'TestFindStartIndices' then
+  begin
+    TestFindStartIndices;
+    Exit;
+
+>>>>>>> bf15520 (...)
   end;
 
   if not DirectoryExists(GetRunTimeParameterManager.ValueByName['--WorkingDir'].AsAnsiString) then

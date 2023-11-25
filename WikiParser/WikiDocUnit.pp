@@ -561,7 +561,8 @@ begin
       TTextWikiEntity.Create(SingleQuote));
   end
   else
-    FmtFatalLn('Length(Text): %d', [Length(Text)]);
+    FMTDebugLn('Invalid Style: Length(Text): %d ->%s', [Length(Text), Text]);
+    Result := nil;
 
   end;
 end;

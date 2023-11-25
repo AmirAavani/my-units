@@ -12,7 +12,7 @@ function FindStartIndices(Task: TTask): Boolean;
 implementation
 uses
   ParameterManagerUnit, TypesUnit,
-  StreamUnit, Math, ALoggerUnit, OnceUnit, SharedUnit;
+  ALoggerUnit, SharedUnit;
 
 type
   EEof = class(Exception);
@@ -21,13 +21,13 @@ function FindStartIndices(Task: TTask): Boolean;
 
   function GetNextChar(
     Reader: TStream;
-    var Buffer: AnsiString;
+    var Buffer: array of Char;
     var Index: Integer): Char;
   begin
     if Index = Length(Buffer) then
     begin
-      Index := 0;
-      Reader.Read(Buffer[1], Length(Buffer));
+      Reader.Read(Buffer[0], Length(Buffer));
+      Index := 0
 
     end;
 
@@ -41,12 +41,13 @@ var
   State: Integer;
   Reader, Writer: TStream;
   Size: Int64;
-  Buffer: AnsiString;
+  Buffer: array of Char;
   i: Uint64;
   Index: Integer;
   Ch: Char;
   Start, Fin: Int64;
   Last: Boolean;
+  Content: AnsiString;
 
 const
   BufferSize = 1024 * 1024 * 8;
@@ -68,15 +69,17 @@ begin
 
   Positions := TPositionList.Create;
   SetLength(Buffer, BufferSize);
-  Reader.Read(Buffer[1], BufferSize);
+  Reader.Read(Buffer[0], BufferSize);
   State := 0;
   Index := 0;
   Last := False;
 
+  Content := '';
   for i := Start to Size do
   begin
     try
       Ch := GetNextChar(Reader, Buffer, Index);
+      Content += Ch;
 
     except
       on e: EEof do
@@ -92,9 +95,13 @@ begin
     if State = Length(PageTag)  then
     begin
       Positions.Add(i - Length(PageTag));
+      Content := '';
       if Positions.Count mod 10000 = 0 then
       begin
-        FMTDebugLn('ID: %d Position: %d', [Task.ID, Positions.Last]);
+        FMTDebugLn('ID: %d Index: %d Position: %d', [
+          Task.ID,
+          Positions.Count,
+          Positions.Last]);
 
       end;
 
@@ -119,11 +126,12 @@ begin
 
   Reader.Free;
 
-  FMTDebugLn('ID: %d PositionsFileName: %s', [
+  FMTDebugLn('ID: %d PositionsFileName: %s Count: %d', [
     Task.ID,
     GetPositionFileName(
       Task.ID,
-      Task.Count)]);
+      Task.Count),
+      Positions.Count]);
   Writer := TFileStream.Create(GetPositionFileName(Task.ID, Task.Count), fmCreate);
   Positions.SaveToStream(Writer, @SaveUInt64);
   Writer.Free;

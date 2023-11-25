@@ -5,8 +5,7 @@ unit WikiParserUnit;
 interface
 
 uses
-  Classes, SysUtils, Laz2_DOM, GenericCollectionUnit, WikiDocUnit,
-  StringUnit;
+  Classes, SysUtils, Laz2_DOM, WikiDocUnit;
 
 type
 
@@ -21,7 +20,8 @@ function ParseWiki(Node: TDOMNode): TWikiPage;
 
 implementation
 uses
-  ALoggerUnit, WideStringUnit;
+  ALoggerUnit, WideStringUnit, ParameterManagerUnit, GenericCollectionUnit,
+  StringUnit;
 
 type
   TTokenType = (ttNone, ttHeading, ttText, ttLessThan, ttGreaterThan,
@@ -228,7 +228,12 @@ const
   'ویکی‌پدیا:',
   'پرونده:',
   'درگاه:',
+<<<<<<< HEAD
   'رده'
+=======
+  'رده:',
+  'الگو:'
+>>>>>>> bf15520 (...)
   );
   TitleSuffixesToBeSkipped: array of AnsiString = (
   );
@@ -508,7 +513,9 @@ begin
     end;
   end;
 
-  FMTDebugLn('Result: %s', [Result.ToXML('')], 2);
+  if ParameterManagerUnit.GetRunTimeParameterManager.ValueByName['--Debug'].AsInteger and 2 <> 0 then
+    FMTDebugLn('Result: %s', [Result.ToXML('')], 2);
+
 end;
 
 function TWikiParser.ParseTag(Token: TToken; EndTokens: TTokens): TTagEntity;
@@ -1074,6 +1081,9 @@ begin
     Exit(TTextWikiEntity.Create(AToken.Text));
 
   Result := TTextStyler.CreateStyler(AToken.Text);
+  if Result = nil then
+    raise EInvalidEntity.Create(MakeToken(nil, nil, ttNone));
+
   EndTokens.Add(MakeToken(nil, nil, ttNewLine));
   EndTokens.Add(MakeToken(nil, nil, ttOpenHeadingSection));
   if InitialCount = 2 then
