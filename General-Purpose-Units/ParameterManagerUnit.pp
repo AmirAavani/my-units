@@ -8,7 +8,6 @@ uses
   ValueUnit, Classes, SysUtils, GenericCollectionUnit;
 
 type
-
   { TRunTimeParameterManager }
 
   TRunTimeParameterManager = class(TObject)

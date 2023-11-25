@@ -24,6 +24,9 @@ AllUniBiGrams-Profiling:
 	fpc -O3 -gv -g -gl AllUniBiGrams.lpr -Fu$(MyUnitPath)/Pipeline -Fu$(MyUnitPath)/General-Purpose-Units -Fu$(MyUnitPath)/Unicode-Functions -Fu$(MyUnitPath)/ALogger -Fu$(MyUnitPath)/Threading -Fu$(MyUnitPath)/PB2PAS -Fu$(MyUnitPath)/Algorithmic-Units -Fu$(MyUnitPath)/WikiParser  -Fu$(ModulesPath) -Fu. -Fu../../  -Fu/usr/local/share/lazarus/components/*/ -FU/tmp/AllUniBiGrams-Profiling  -oAllUniBiGrams-Profiling
 	valgrind --tool=callgrind --dump-instr=yes --collect-jumps=yes  ./AllUniBiGrams-Profiling Pipeline.StepID=2 InputFile=../../../../1BWLM/NLP/Wikidump/fawiki-20230220-pages-articles-multistream.xml WorkingDir=../../../../1BWLM/NLP/tmp/ Debug=${Debug} DebugIndex=$(DebugIndex) DebugStart=$(DebugStart) DebugEnd=$(DebugEnd)  Pipeline.TaskID=${TaskID} 
 
+MemLeak: AllUniBiGrams-MemLeak
+	./AllUniBiGrams-MemLeak Pipeline.StepID=2 InputFile=../../../../1BWLM/NLP/Wikidump/fawiki-20230220-pages-articles-multistream.xml WorkingDir=../../../../1BWLM/NLP/tmp/ Debug=${Debug} DebugIndex=$(DebugIndex) DebugStart=$(DebugStart) DebugEnd=$(DebugEnd)  Pipeline.TaskID=${TaskID} 
+
 
 Step1:
 	${Binary} Pipeline.StepID=1 InputFile=../../../../1BWLM/NLP/Wikidump/fawiki-20230220-pages-articles-multistream.xml WorkingDir=../../../../1BWLM/NLP/tmp/ Debug=$(Debug) 2>&1 

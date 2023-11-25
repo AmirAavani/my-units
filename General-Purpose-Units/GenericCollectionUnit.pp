@@ -119,6 +119,7 @@ var
 
 begin
   it := Self.GetEnumerator;
+  Stream.WriteDWord(Self.Count);
 
   while it.MoveNext do
   begin
@@ -134,19 +135,18 @@ class function TCollection.LoadFromStream(Stream: TStream; LoadFunc: TLoadFunc
   ): specialize TCollection<TData>;
 var
   x: TCollection.TInt64TDataPair;
-  CurrentPosition: Int64;
-  StreamSize: Int64;
+  i: Integer;
 
 begin
   Result := (specialize TCollection<TData>).Create;
+  Result.Count := Stream.ReadDWord;
 
-  StreamSize := Stream.Size;
-  CurrentPosition := Stream.Position;
-  while CurrentPosition < StreamSize do
+  i := 0;
+  while i < Result.Count do
   begin
     x := LoadFunc(Stream);
-    Result.Add(x.Second);
-    Inc(CurrentPosition, x.First);
+    Result[i] := x.Second;
+    Inc(i);
 
   end;
 end;

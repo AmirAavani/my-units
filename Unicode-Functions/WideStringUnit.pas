@@ -144,14 +144,18 @@ begin
 end;
 
 function ReadWideStringFromString(constref Source: AnsiString): WideString;
+{
 var
   ChPtr: PChar;
-
+}
 begin
+  Result := UTF8Decode(Source);
+  Exit;
+{
   ChPtr  :=  @Source[1];
   Result := '';
   ReadWideStringFromACharArrayProc(ChPtr, Length(Source), Result);
-
+}
 end;
 
 function ReadWideString(var FdFile: TextFile): WideString;
@@ -174,7 +178,7 @@ function ReadWideString(var FdFile: TextFile): WideString;
       b2  :=  Ord(c2);
       b2  :=  b2 xor 128;
       b1  :=  b1 xor(128+ 64);
-      Value  :=  b2+ b1 shl 6;
+      Value  :=  b2 + b1 shl 6;
       Result  :=  WideChar(Value);
 
     end

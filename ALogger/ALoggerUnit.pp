@@ -16,7 +16,7 @@ type
 
   public
     property Debug: Integer read FDebug write FDebug;
-    constructor Create;
+    constructor Create(DbgLevel: Integer);
     destructor Destroy; override;
 
 
@@ -37,6 +37,7 @@ procedure FmtFatalLnIFFalse(
   constref Args: array of const);
 
 function GetLogger: TALogger;
+function InitLogger(DebugLvl: Integer): TALogger;
 
 implementation
 
@@ -275,11 +276,11 @@ end;
 
 { TALogger }
 
-constructor TALogger.Create;
+constructor TALogger.Create(DbgLevel: Integer);
 begin
   inherited Create;
 
-  FDebug := -1;
+  FDebug := DbgLevel;
 end;
 
 destructor TALogger.Destroy;
@@ -318,6 +319,12 @@ begin
   Result := Logger;
 end;
 
+function InitLogger(DebugLvl: Integer): TALogger;
+begin
+  Logger := TALogger.Create(DebugLvl);
+
+end;
+
 procedure PrintError(Arguments: TPtrArray);
 begin
   WriteLn(StdErr, 'Please make sure the code is compiled with -g');
@@ -330,8 +337,7 @@ initialization
   MutexWriteLn := TMutex.Create;
   Counters := TLineInfoIntegerMap.Create;
   PrintOnce := TOnce.Create(@PrintError, nil);
-
-  Logger := TALogger.Create;
+  Logger := nil;
 
 finalization
   Logger.Free;

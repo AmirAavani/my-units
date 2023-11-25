@@ -10,7 +10,7 @@ uses
   HeapUnit, sysutils, StepHandlersUnit, FindStartIndicesUnit, TypesUnit,
   FileHelperUnit, StreamUnit, ExtractContentUnit, SharedUnit, WikiParserUnit,
   WikiDocUnit, Laz2_DOM, WikiTypesUnits, WideStringUnit, SyncUnit,
-  ProtoHelperUnit, ParamUnit;
+  ProtoHelperUnit, ParamManagerUnit, ParamUnit;
 
 var
   Pipeline: TPipeline;
@@ -23,7 +23,7 @@ var
   i, id: Integer;
 
 begin
-  id := Integer(ParamUnit.GetParams.Pipeline.TasKID.Value);
+  id := Integer(ParamUnit.GetParams.Pipeline.TaskID.Value);
   for i := 1 to 64 do
   begin
     if (id <> -1) and (i <> id) then
@@ -75,7 +75,7 @@ begin
 end;
 
 begin
-  ALoggerUnit.GetLogger.Debug := ParamUnit.GetParams.Debug.Value;
+  ALoggerUnit.InitLogger(ParamUnit.GetParams.Debug.Value);
 
   if ParamUnit.GetParams.Mode.Value = 'TestExtractContent' then
   begin

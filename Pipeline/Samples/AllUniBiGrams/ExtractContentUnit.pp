@@ -157,14 +157,17 @@ begin
     if (i <> DebugIndex) and (DebugIndex <> -1) then
       Continue;
 
-    ALoggerUnit.GetLogger.FMTWriteLn('*****%05d/%05d*****', [i, Positions.Count - 2]);
-    ALoggerUnit.GetLogger.FMTWriteLn('+Task.ID: %05d i:%05d', [Task.ID, i]);
+    // ALoggerUnit.GetLogger.FMTWriteLn('*****%05d/%05d*****', [i, Positions.Count - 2]);
+    // ALoggerUnit.GetLogger.FMTWriteLn('+Task.ID: %05d i:%05d', [Task.ID, i]);
+    // WriteLn(Format('+Task.ID: %05d i:%05d', [Task.ID, i]));
+    Flush(Output);
 
     Reader.Position := Positions[i];
+    {
     ALoggerUnit.GetLogger.FMTWriteLn(
       'Task.ID: %05d i: %05d Start: %05d Fin: %05d',
       [Task.ID, i, Positions[i], Positions[i + 1]]);
-
+    }
     SetLength(Data, Positions[i + 1] - Positions[i]);
     ReadBytes := Reader.Read(Data[1], Positions[i + 1] - Positions[i]);
     if ReadBytes <> Positions[i + 1] - Positions[i] then
@@ -173,8 +176,8 @@ begin
         'ReadBytes: %d Expected: %d',
         [ReadBytes, Positions[i + 1] - Positions[i]]);
     if DebugIndex <> -1 then
-      WriteLn(Format('Data(%d): %s',
-        [Length(Data), Data]));
+      ALoggerUnit.GetLogger.FMTDebugLn('Data(%d): %s',
+        [Length(Data), Data]);
 
     try
       WikiDoc := ProcessData(Data);
@@ -183,6 +186,7 @@ begin
         ALoggerUnit.GetLogger.FMTWriteLn(
           '-Task.ID: %05d i:%05d',
           [Task.ID, i]);
+
         if WikiDoc <> nil then
         begin
           ALoggerUnit.GetLogger.FMTWriteLn(
@@ -233,21 +237,33 @@ begin
       begin
          ALoggerUnit.GetLogger.FMTWriteLn('Failed in Processing Data', []);
       end;
-      on e: Exception do
+     { on e: Exception do
       begin
         ALoggerUnit.GetLogger.FMTWriteLn('Random Errror', []);
       end;
+      }
     end;
-    ALoggerUnit.GetLogger.FMTWriteLn('-Task.ID: %5d i:%5d', [Task.ID, i]);
+    // ALoggerUnit.GetLogger.FMTWriteLn('-Task.ID: %5d i:%5d', [Task.ID, i]);
     if WikiDoc = nil then
     begin
       LineInfo.First.Free;
       LineInfo.Second.Free;
-        WriteLn(Format('Task.ID: %d i: %d is nil',
+      {WriteLn(Format('Task.ID: %d i: %d is nil',
           [Task.ID, i]));
+      }
       Continue;
     end;
 
+    WriteLn(Format(
+      'ID: %d i: %d Title: (%s) -> (%d, %d)', [
+      Task.ID,
+      i,
+      WikiDoc.Title.ToXML(''),
+      LineInfo.First.Count,
+      LineInfo.Second.Count])
+    );
+
+    {
     ALoggerUnit.GetLogger.FMTWriteLn(
       'ID: %d i: %d Title: (%s) -> (%d, %d)', [
       Task.ID,
@@ -255,7 +271,7 @@ begin
       WikiDoc.Title.ToXML(''),
       LineInfo.First.Count,
       LineInfo.Second.Count]);;
-
+    }
     WikiDoc.Free;
 
     LineInfo.First.Free;

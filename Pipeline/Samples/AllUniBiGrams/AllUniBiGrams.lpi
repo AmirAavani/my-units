@@ -72,6 +72,10 @@
         <Filename Value="ParamUnit.pp"/>
         <IsPartOfProject Value="True"/>
       </Unit>
+      <Unit>
+        <Filename Value="../../../../Modules/ParamManager/ParamManagerUnit.pp"/>
+        <IsPartOfProject Value="True"/>
+      </Unit>
     </Units>
   </ProjectOptions>
   <CompilerOptions>
@@ -81,7 +85,7 @@
     </Target>
     <SearchPaths>
       <IncludeFiles Value="$(ProjOutDir)"/>
-      <OtherUnitFiles Value="../..;../../../General-Purpose-Units;../../../Unicode-Functions;../../../ALogger;../../../Threading;../../../PB2PAS;../../../Algorithmic-Units;../../../WikiParser;/usr/lib64/lazarus/components/lazutils/"/>
+      <OtherUnitFiles Value="../..;../../../General-Purpose-Units;../../../Unicode-Functions;../../../ALogger;../../../Threading;../../../PB2PAS;../../../Algorithmic-Units;../../../WikiParser;/usr/lib64/lazarus/components/lazutils/;../../../../Modules/ParamManager"/>
       <UnitOutputDirectory Value="lib/$(TargetCPU)-$(TargetOS)"/>
     </SearchPaths>
     <Linking>
