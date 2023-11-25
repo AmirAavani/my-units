@@ -1,6 +1,8 @@
 unit WikiParserUnit;
 
 {$mode ObjFPC}{$H+}
+{$modeswitch ADVANCEDRECORDS}
+
 
 interface
 
@@ -20,7 +22,7 @@ function ParseWiki(Node: TDOMNode): TWikiPage;
 
 implementation
 uses
-  ALoggerUnit, WideStringUnit, ParameterManagerUnit, GenericCollectionUnit,
+  ALoggerUnit, WideStringUnit, GenericCollectionUnit,
   StringUnit;
 
 type
@@ -43,10 +45,17 @@ type
   ttMinus, ttBar,
   ttBulletedList, ttNumberedList,
   ttSlash, ttEOF);
+
+  { TToken }
+
   TToken = record
     TokenType: TTokenType;
-    Text: WideString;
+    TokenStart, TokenLast: PWideChar;
+    // Text: WideString;
 
+    function IsEmpty: Boolean;
+    function IsSame(constref OtherToken: TToken): Boolean;
+    function Text: WideString;
   end;
 
   { TWikiTokenizer }
@@ -99,7 +108,6 @@ type
   TWikiParser = class(TObject)
   private
     FTokenizer: TWikiTokenizer;
-    Debug: Integer;
     property Tokenizer: TWikiTokenizer read FTokenizer;
 
 
@@ -197,13 +205,16 @@ const
 
 function MakeToken(Start, Last: PWideChar; TokenType: TTokenType): TToken;
 begin
-  Result.Text := '';
+  FillChar(Result, SizeOf(Result), 0);
   if Start <> nil then
   begin
-    SetLength(Result.Text, Last - Start + 1);
-    Move(Start^, Result.Text[1], SizeOfWideChar * (Last - Start + 1));
+    Result.TokenStart:= Start;
+    Result.TokenLast := Last;
 
   end;
+  if (Result.TokenStart = nil) xor (Result.TokenStart = nil) then
+    WriteLn('Somethign is not right!');
+
   Result.TokenType := TokenType;
 
 end;
@@ -362,6 +373,33 @@ begin
   end;
 end;
 
+function TToken.IsEmpty: Boolean;
+begin
+  Result := Self.TokenStart = nil;
+
+end;
+
+function TToken.IsSame(constref OtherToken: TToken): Boolean;
+begin
+  Result := (OtherToken.TokenStart = Self.TokenStart) and
+    (OtherToken.TokenLast = Self.TokenLast) and
+    (OtherToken.TokenType = Self.TokenType);
+
+end;
+
+function TToken.Text: WideString;
+begin
+  if (Self.TokenStart = nil) then
+    Exit(EmptyWideStr);
+
+  SetLength(Result, Self.TokenLast - Self.TokenStart + 1);
+  Move(
+    Self.TokenStart^,
+    Result[1],
+    SizeOfWideChar * (Self.TokenLast - Self.TokenStart + 1)
+  );
+end;
+
 { EInvalidToken }
 
 constructor EInvalidToken.Create(Visited, Expected: TTokenType);
@@ -431,14 +469,14 @@ begin
   begin
     if Token.TokenType <> p.Current^.TokenType then
       Continue;
-    if p.Current^.Text = '' then
+    if p.Current^.IsEmpty then
     begin
       Result := True;
       Break;
 
     end;
 
-    if Token.Text = p.Current^.Text then
+    if Token.IsSame(p.Current^) then
     begin
       Result := True;
       Break;
@@ -542,9 +580,6 @@ begin
       raise;
     end;
   end;
-
-  if (Self.Debug and 2) <> 0 then
-    ALoggerUnit.GetLogger.FMTDebugLn('Result: %s', [Result.ToXML('')], 2);
 
 end;
 
@@ -922,8 +957,8 @@ begin
   begin
     EndTokens.Add(
       MakeToken(
-        @Token.Text[i],
-        @Token.Text[Length(Token.Text) + 1 - i],
+        Token.TokenStart + i - 1,
+        Token.TokenStart + Length(Token.Text) - i,
         ttCloseHeadingSection
       )
     );
@@ -1130,14 +1165,14 @@ begin
   EndTokens.Add(MakeToken(nil, nil, ttNewLine));
   EndTokens.Add(MakeToken(nil, nil, ttOpenHeadingSection));
   if InitialCount = 2 then
-    EndTokens.Add(MakeToken(@AToken.Text[1], @AToken.Text[2], ttSingleQuote))
+    EndTokens.Add(MakeToken(AToken.TokenStart, AToken.TokenStart + 1, ttSingleQuote))
   else if InitialCount = 3 then
-    EndTokens.Add(MakeToken(@AToken.Text[1], @AToken.Text[3], ttSingleQuote))
+    EndTokens.Add(MakeToken(AToken.TokenStart, AToken.TokenStart + 2, ttSingleQuote))
   else if InitialCount = 4 then
-    EndTokens.Add(MakeToken(@AToken.Text[1], @AToken.Text[4], ttSingleQuote))
+    EndTokens.Add(MakeToken(AToken.TokenStart, AToken.TokenStart + 3, ttSingleQuote))
   else if (InitialCount = 5) or (InitialCount = 6) then
   begin
-    EndTokens.Add(MakeToken(@AToken.Text[1], @AToken.Text[5], ttSingleQuote))
+    EndTokens.Add(MakeToken(AToken.TokenStart, AToken.TokenStart + 4, ttSingleQuote))
 
   end;
 
@@ -1171,8 +1206,6 @@ begin
   inherited Create;
 
   FTokenizer := _Tokenizer;
-  Self.Debug := ParameterManagerUnit.GetRunTimeParameterManager.
-    ValueByName['--Debug'].AsIntegerOrDefault(0);
 
 end;
 
@@ -1276,22 +1309,14 @@ function MaybeGroupSamePatternToken(
   var Current: PWideChar;
   TargetWChar: WideChar;
   ThenTokenType: TTokenType): TToken;
-var
-  i: Integer;
-
 begin
-  SetLength(Result.Text, 8);
-  i := 1;
+  Result.TokenStart := Current;
   while Current^ = TargetWChar do
   begin
-    Result.Text[i] := Current^;
+    Result.TokenLast := Current;
     Inc(Current);
-    Inc(i);
-    if Length(Result.Text) < i then
-      Break;
 
   end;
-  SetLength(Result.Text, i - 1) ;
 
   Result.TokenType := ThenTokenType;
 end;
@@ -1363,8 +1388,7 @@ begin
   case Current^ of
     #0:
     begin
-      Result.Text := '';
-      Result.TokenType:= ttEOF;
+      Result := MakeToken(nil, nil, ttEOF);
 
     end;
     '<':
@@ -1409,8 +1433,7 @@ begin
             Inc(Current)
           else
           begin
-            SetLength(Result.Text, (Current - Start + 1));
-            Move(Start^, Result.Text[1], SizeOfWideChar * (Current - Start + 1));
+            Result := MakeToken(Start, Current, ttBeginTag);
             raise EInvalidToken.Create(AnsiString(Result.Text));
 
           end;

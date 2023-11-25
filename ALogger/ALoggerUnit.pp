@@ -12,13 +12,15 @@ type
 
   TALogger = class(TObject)
   private
-    Debug: Integer;
+    FDebug: Integer;
 
   public
+    property Debug: Integer read FDebug write FDebug;
     constructor Create;
     destructor Destroy; override;
 
 
+    procedure FMTWriteLn(constref Fmt: AnsiString; constref Args: array of const);
     procedure FMTDebugLn(constref Fmt: AnsiString; constref Args: array of const ; Verbosity: Integer = 0);
     procedure DebugLn(constref Msg: AnsiString; Verbosity: Integer = 0);
     procedure DebugLnEveryN(N: Integer; constref Msg: AnsiString; Verbosity: Integer = 0);
@@ -39,7 +41,7 @@ function GetLogger: TALogger;
 implementation
 
 uses
-  ParameterManagerUnit, StringUnit, WideStringUnit, SyncUnit, OnceUnit, lnfodwrf,
+  StringUnit, WideStringUnit, SyncUnit, OnceUnit, lnfodwrf,
   GenericCollectionUnit;
 
 var
@@ -277,12 +279,19 @@ constructor TALogger.Create;
 begin
   inherited Create;
 
-  Debug := RunTimeParameterManager.ValueByName['--Debug'].AsIntegerOrDefault(-1);
+  FDebug := -1;
 end;
 
 destructor TALogger.Destroy;
 begin
   inherited Destroy;
+
+end;
+
+procedure TALogger.FMTWriteLn(constref Fmt: AnsiString; constref
+  Args: array of const);
+begin
+  System.WriteLn(Format(Fmt, Args));
 
 end;
 

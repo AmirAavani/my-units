@@ -78,7 +78,7 @@ type
       NumTasks: Integer;
       Arguments: TObjectList = nil);
 
-    function Run: Boolean;
+    function Run(StepID: Integer = -1): Boolean;
   end;
 
   { TTask }
@@ -100,7 +100,7 @@ type
 
 implementation
 uses
-  SyncUnit, StringUnit, ALoggerUnit, RunInAThreadUnit, ParameterManagerUnit,
+  SyncUnit, StringUnit, ALoggerUnit, RunInAThreadUnit,
   Pipeline.Utils;
 
 { TPipelineConfig }
@@ -303,9 +303,7 @@ begin
   wg := TWaitGroup(SysArgs[1]);
 
   Result := False;
-  StepID := GetRunTimeParameterManager.ValueByName['--Pipeline.StepID'].AsIntegerOrDefault(-1);
-  FromStepID := GetRunTimeParameterManager.ValueByName['--Pipeline.FromStepID'].AsIntegerOrDefault(1);
-  ToStepID := ThePipeline.Steps.Count - 1;
+  StepID := Integer(Pointer(SysArgs[2]));
   if StepID <> -1 then
   begin
     FromStepID := StepID;
@@ -322,16 +320,18 @@ begin
 
 end;
 
-function TPipeline.Run: Boolean;
+function TPipeline.Run(StepID: Integer): Boolean;
 var
   SysArgs: TObjectList;
   wg: TWaitGroup;
 
 begin
+  // TODO: Change SysArgs from TOjectList to TPointerList.
   SysArgs := TObjectList.Create;
   SysArgs.Add(Self);
   wg := TWaitGroup.Create;
   SysArgs.Add(wg);
+  SysArgs.Add(TObject(Pointer(StepID)));
 
   Result := False;
   wg.Add(1);

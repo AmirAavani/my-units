@@ -776,7 +776,8 @@ const
   TerminatorHeadings: array of AnsiString = (
   'جستارهای وابسته',
   'منابع',
-  'پیوند به بیرون'
+  'پیوند به بیرون',
+  'پانویس'
   );
 
 function TWikiPage.ExportText: TWideStringListPair;
