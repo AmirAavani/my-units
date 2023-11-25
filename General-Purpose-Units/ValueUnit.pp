@@ -233,7 +233,10 @@ begin
     itUInteger:
       Dispose(PUInt64(ValuePtr))
     else
-      FmtFatalLn('Unknown Type %d', [Ord(InputType)]);
+      ALoggerUnit.GetLogger.FmtFatalLn(
+        'Unknown Type %d',
+        [Ord(InputType)]
+      );
 
   end;
 

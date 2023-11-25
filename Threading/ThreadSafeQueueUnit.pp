@@ -68,7 +68,10 @@ end;
 
 constructor EInsertion.Create;
 begin
-  FatalLn('You cannot create this object out of this unit');
+  FmtFatalLnIFFalse(
+    False,
+    'You cannot create this object out of this unit',
+    []);
 
 end;
 

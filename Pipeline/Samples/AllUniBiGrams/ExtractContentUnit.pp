@@ -23,15 +23,33 @@ var
 
 begin
   Doc := nil;
+  Result := nil;
   S := TStringStream.Create(Data);
   try
     ReadXMLFile(Doc, S);
+
+  except
+    on e: Exception do
+    begin
+      S.Free;
+      Exit;
+
+    end;
+
+  end;
+  if (Doc = nil) or (Doc.FirstChild = nil) then
+    Exit;
+
+  try
     Result := ParseWiki(Doc.FirstChild);
 
   except
     on e: EBaseWikiParser do
     begin
-      FMTDebugLn('Failed in Parsing %', [Doc.FirstChild.TextContent]);
+      FmtFatalLnIFFalse(
+        False,
+        'Failed in Parsing %',
+        [Doc.FirstChild.TextContent]);
       S.Free;
       Doc.Free;
       raise;
@@ -42,8 +60,16 @@ begin
       Result := nil;
       S.Free;
       Doc.Free;
-      FMTDebugLn('Error: %s Data: %s', [e.Message, Data])
+      ALoggerUnit.GetLogger.FMTDebugLn(
+        'ERRORR: %s Data: %s',
+        [e.Message, Data]);
+      FmtFatalLnIFFalse(False, '%s', [e.Message]);
 
+    end;
+    on e: Exception do
+    begin
+      ALoggerUnit.GetLogger.FMTDebugLn('ERRORR %s', [e.Message]);
+      FmtFatalLnIFFalse(False, '%s', [e.Message]);
     end;
 
   end;
@@ -74,6 +100,14 @@ var
   LineInfo: TWideStringListPair;
 
 begin
+  if (GetRunTimeParameterManager.ValueByName['--TaskID'].AsIntegerOrDefault(-1) <> -1) and
+  (GetRunTimeParameterManager.ValueByName['--TaskID'].AsIntegerOrDefault(-1) <> Task.ID) then
+  begin
+    ALoggerUnit.GetLogger.FMTDebugLn('Exiting Task: %d', [Task.ID]);
+    Exit(True);
+
+  end;
+
   Stream := TFileStream.Create(
     GetPositionFileName(
       Task.ID,
@@ -84,10 +118,12 @@ begin
   DebugIndex := GetRunTimeParameterManager.ValueByName['--DebugIndex'].AsIntegerOrDefault(-1);
   DebugStart := GetRunTimeParameterManager.ValueByName['--DebugStart'].AsIntegerOrDefault(-1);
   DebugEnd := GetRunTimeParameterManager.ValueByName['--DebugEnd'].AsIntegerOrDefault(-1);
-  FMTDebugLn('DebugIndex: %d DebugStart: %d DebugEnd: %d', [DebugIndex, DebugStart, DebugEnd]);
+  ALoggerUnit.GetLogger.FMTDebugLn(
+    'DebugIndex: %d DebugStart: %d DebugEnd: %d',
+    [DebugIndex, DebugStart, DebugEnd]);
 
 
-  FMTDebugLn(
+  ALoggerUnit.GetLogger.FMTDebugLn(
     'Task.ID: %d Position.Count: %d',
     [Task.ID, Positions.Count]
   );
@@ -110,7 +146,9 @@ begin
        (Task.ID - 1);
   Fin := ((Size + Task.ID - 1) div Task.StepInfo.NumTasks) *
        Task.ID - 1;
-  FMTDebugLn('Task.ID: %d Start: %d Fin: %d', [Task.ID, Start, Fin]);
+  ALoggerUnit.GetLogger.FMTDebugLn(
+    'Task.ID: %d Start: %d Fin: %d',
+    [Task.ID, Start, Fin]);
 
   for i := 0 to Positions.Count - 2 do
   begin
@@ -119,34 +157,40 @@ begin
     if (i <> DebugIndex) and (DebugIndex <> -1) then
       Continue;
 
-    FMTDebugLn('*****%05d/%05d*****', [i, Positions.Count - 2]);
-    FMTDebugLn('+Task.ID: %05d i:%05d', [Task.ID, i]);
+    ALoggerUnit.GetLogger.FMTDebugLn('*****%05d/%05d*****', [i, Positions.Count - 2], -1);
+    ALoggerUnit.GetLogger.FMTDebugLn('+Task.ID: %05d i:%05d', [Task.ID, i], -1);
 
     Reader.Position := Positions[i];
-    FMTDebugLn(
+    ALoggerUnit.GetLogger.FMTDebugLn(
       'Task.ID: %05d i: %05d Start: %05d Fin: %05d',
-      [Task.ID, i, Positions[i], Positions[i + 1]]);
+      [Task.ID, i, Positions[i], Positions[i + 1]], -1);
 
     SetLength(Data, Positions[i + 1] - Positions[i]);
     ReadBytes := Reader.Read(Data[1], Positions[i + 1] - Positions[i]);
     if ReadBytes <> Positions[i + 1] - Positions[i] then
-      FmtFatalLn('ReadBytes: %d Expected: %d', [ReadBytes, Positions[i + 1] - Positions[i]]);
+      FmtFatalLnIFFalse(
+        False,
+        'ReadBytes: %d Expected: %d',
+        [ReadBytes, Positions[i + 1] - Positions[i]]);
     if DebugIndex <> -1 then
-      FMTDebugLn('Data(%d): %s',
-        [Length(Data), Data],
-        1);
+      WriteLn(Format('Data(%d): %s',
+        [Length(Data), Data]));
 
     try
       WikiDoc := ProcessData(Data);
       if (WikiDoc = nil) or (WikiDoc.IsADisambiguationPage) or (WikiDoc.Redirect <> nil) then
       begin
-        FMTDebugLn('-Task.ID: %05d i:%05d', [Task.ID, i]);
+        ALoggerUnit.GetLogger.FMTDebugLn(
+          '-Task.ID: %05d i:%05d',
+          [Task.ID, i],
+          -1);
         if WikiDoc <> nil then
         begin
-          FMTDebugLn('Skipped Task.ID: %05d i: %05d %s', [
-          Task.ID,
-          i,
-          WikiDoc.Title.ToXML('')]);
+          ALoggerUnit.GetLogger.FMTDebugLn(
+            'Skipped Task.ID: %05d i: %05d %s', [
+            Task.ID,
+            i,
+            WikiDoc.Title.ToXML('')], -1);
         end;
 
         WikiDoc.Free;
@@ -169,9 +213,9 @@ begin
 
       if DebugIndex <> -1 then
       begin
-        FMTDebugLn('--: %d, %d', [LineInfo.First.Count, LineInfo.Second.Count]);
-        FMTDebugLn('Unigrams: %s', [WriteAsUTF8(LineInfo.First.JoinStrings())]);
-        FMTDebugLn('Bigrams: %s', [WriteAsUTF8(LineInfo.Second.JoinStrings())]);
+        WriteLn(Format('--: %d, %d', [LineInfo.First.Count, LineInfo.Second.Count]));
+        WriteLn(Format('Unigrams: %s', [WriteAsUTF8(LineInfo.First.JoinStrings())]));
+        WriteLn(Format('Bigrams: %s', [WriteAsUTF8(LineInfo.Second.JoinStrings())]));
 
         LineInfo.First.Free;
         LineInfo.Second.Free;
@@ -195,7 +239,7 @@ begin
         FMTDebugLn('Random Errror', []);
       end;
     end;
-    FMTDebugLn('-Task.ID: %5d i:%5d', [Task.ID, i]);
+    ALoggerUnit.GetLogger.FMTDebugLn('-Task.ID: %5d i:%5d', [Task.ID, i], -1);
     if WikiDoc = nil then
     begin
       LineInfo.First.Free;
@@ -205,25 +249,26 @@ begin
       Continue;
     end;
 
-    FMTDebugLn('ID: %d i: %d Title: (%s %d, %d)', [
+    ALoggerUnit.GetLogger.FMTDebugLn(
+      'ID: %d i: %d Title: (%s) -> (%d, %d)', [
       Task.ID,
       i,
       WikiDoc.Title.ToXML(''),
       LineInfo.First.Count,
-      LineInfo.Second.Count]);
+      LineInfo.Second.Count], -1);
 
     WikiDoc.Free;
 
     LineInfo.First.Free;
     LineInfo.Second.Free;
 
-    FMTDebugLn('~Task.ID: %5d i:%5d', [Task.ID, i]);
+    ALoggerUnit.GetLogger.FMTDebugLn('~Task.ID: %5d i:%5d', [Task.ID, i], -1);
     if DebugIndex <> -1 then
       Break;
 
   end;
 
-  FMTDebugLn('~Task.ID: %5d', [Task.ID]);
+  ALoggerUnit.GetLogger.FMTDebugLn('~Task.ID: %5d', [Task.ID], -1);
   Positions.Free;
   Reader.Free;
   UniWriter.Free;

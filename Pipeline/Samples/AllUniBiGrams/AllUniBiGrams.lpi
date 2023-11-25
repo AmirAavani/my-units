@@ -64,6 +64,10 @@
         <Filename Value="../../../WikiParser/WikiParserUnit.pp"/>
         <IsPartOfProject Value="True"/>
       </Unit>
+      <Unit>
+        <Filename Value="../../../General-Purpose-Units/ParameterManagerUnit_V2.pp"/>
+        <IsPartOfProject Value="True"/>
+      </Unit>
     </Units>
   </ProjectOptions>
   <CompilerOptions>
@@ -98,6 +102,9 @@
       </Item>
       <Item>
         <Name Value="EInvalidToken"/>
+      </Item>
+      <Item>
+        <Name Value="EXMLReadError"/>
       </Item>
     </Exceptions>
   </Debugging>

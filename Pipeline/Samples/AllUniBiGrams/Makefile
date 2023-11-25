@@ -2,6 +2,7 @@ MyUnitPath=../../../../my-units
 DebugIndex?=-1
 DebugStart?=-1
 DebugEnd?=-1
+TaskID?=-1
 Debug?=0
 
 AllUniBiGrams-Release:
@@ -27,7 +28,11 @@ Step1:
 	${Binary} --Pipeline.StepID 1 --InputFile ../../../../1BWLM/NLP/Wikidump/fawiki-20230220-pages-articles-multistream.xml --WorkingDir  ../../../../1BWLM/NLP/tmp/ --Debug '15' 2>&1 
 
 Step2:
-	${Binary} --Pipeline.StepID 2 --InputFile ../../../../1BWLM/NLP/Wikidump/fawiki-20230220-pages-articles-multistream.xml --WorkingDir  ../../../../1BWLM/NLP/tmp/ --Debug ${Debug} --DebugIndex $(DebugIndex) --DebugStart $(DebugStart) --DebugEnd $(DebugEnd) 
+	${Binary} --Pipeline.StepID 2 --InputFile ../../../../1BWLM/NLP/Wikidump/fawiki-20230220-pages-articles-multistream.xml --WorkingDir  ../../../../1BWLM/NLP/tmp/ --Debug ${Debug} --DebugIndex $(DebugIndex) --DebugStart $(DebugStart) --DebugEnd $(DebugEnd)  --TaskID $(TaskID)
+
+TestFindStartIndices:
+	${Binary} --Mode TestFindStartIndices --InputFile ../../../../1BWLM/NLP/Wikidump/fawiki-20230220-pages-articles-multistream.xml --WorkingDir  ../../../../1BWLM/NLP/tmp/   --TaskID $(TaskID)
+
 
 <<<<<<< HEAD
 =======

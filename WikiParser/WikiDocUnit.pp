@@ -89,6 +89,7 @@ type
   private
     FStyle: TStyle;
 
+  protected
     function _ToXml(constref Indent: AnsiString): AnsiString; override;
     procedure DoExportText(Unigrams, Bigrams: TWideStringList); override;
 
@@ -174,7 +175,6 @@ type
   private
     FLink, FText: TBaseWikiNode;
     FParams: TNodes;
-    FParmas: TNodes;
 
   protected
     function _ToXml(constref Indent: AnsiString): AnsiString; override;
@@ -561,7 +561,7 @@ begin
       TTextWikiEntity.Create(SingleQuote));
   end
   else
-    FMTDebugLn('Invalid Style: Length(Text): %d ->%s', [Length(Text), Text]);
+    ALoggerUnit.GetLogger.FMTDebugLn('Invalid Style: Length(Text): %d ->%s', [Length(Text), Text]);
     Result := nil;
 
   end;
@@ -594,7 +594,9 @@ begin
   begin
     if not (Current is TTextWikiEntity) then
     begin
-      FMTDebugLn('One of FTemplateName.Children is not TTextWikiEntity',  []);
+      ALoggerUnit.GetLogger.FMTDebugLn(
+        'One of FTemplateName.Children is not TTextWikiEntity',
+        []);
       Continue;
 
     end;
@@ -1186,13 +1188,14 @@ end;
 
 function TBaseWikiNode._ToXml(constref Indent: AnsiString): AnsiString;
 begin
-  FmtFatalLn('%s %s', [Indent, Self.ClassName]);
+  ALoggerUnit.FmtFatalLnIFFalse(False, '%s %s', [Indent, Self.ClassName]);
   Result := '<ClassName/>';
 
 end;
 
 var
   c: Integer;
+
 procedure TBaseWikiNode.ExportText(Unigrams, Bigrams: TWideStringList);
 var
   UCount, BCount: Integer;
@@ -1201,6 +1204,9 @@ var
 
 begin
   Inc(c);
+  if Self = nil then
+    Exit;
+
   Self.DoExportText(Unigrams, Bigrams);
 
   UCount := Unigrams.Count;
@@ -1266,7 +1272,6 @@ destructor TBaseWikiNode.Destroy;
 var
   Last: TBaseWikiNode;
   LastParent: TBaseWikiNode;
-  Tmp: TWideStringList;
 
 begin
   Last := Self;

@@ -5,7 +5,7 @@ unit StringUnit;
 interface
 
 uses
-  Classes, GenericCollectionUnit;
+  Classes;
 
 function IsPrefix(constref Prefix, Str: AnsiString): Boolean;
 function IsPrefix(constref Prefix, Str: WideString): Boolean;
@@ -18,7 +18,7 @@ function JoinStrings(const Strings: array of AnsiString; Separator: AnsiString;
 
 implementation
 uses
-  sysutils, StrUtils, WideStringUnit;
+  sysutils, StrUtils;
 
 generic function GenericIsPrefix<T>(constref Prefix, Str: T): Boolean;
 var

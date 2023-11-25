@@ -32,7 +32,7 @@ type
 
     function Pop(n: Integer = 1): TData; virtual;
     procedure RemoveAllValuesMatching(Matcher: TMatcherFunc);
-    function GetPtrEnumerator: TPointerEnumerator; override;
+    function GetPtrEnumerator: TPointerEnumerator;
 
 
   end;

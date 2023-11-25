@@ -189,7 +189,7 @@ begin
   Value -= k;
 
   if Value < 0 then
-     FmtFatalLn('Value(%d) < 0', [Value]);
+     ALoggerUnit.GetLogger.FmtFatalLn('Value(%d) < 0', [Value]);
 
   if Value = 0 then
     for i := 1 to BlockQueue.Count do
@@ -252,7 +252,7 @@ begin
 
   New(Sem);
   if sem_init(Sem, 0, v) <> 0 then
-    FmtFatalLn('Failed in sem_init, (err: %d)', [fpgeterrno]);
+    ALoggerUnit.GetLogger.FmtFatalLn('Failed in sem_init, (err: %d)', [fpgeterrno]);
 end;
 
 destructor TSemaphore.Destroy;
@@ -268,7 +268,7 @@ procedure TSemaphore.Inc;
 begin
   if sem_post(Sem) <> 0 then
   begin
-    FmtFatalLn('Failed in getting value, (err: %d)', [fpgeterrno]);
+    ALoggerUnit.GetLogger.FmtFatalLn('Failed in getting value, (err: %d)', [fpgeterrno]);
   end;
 
 end;
@@ -277,7 +277,8 @@ procedure TSemaphore.Dec;
 begin
   if sem_wait(Sem) <> 0 then
   begin
-    FatalLn(Format('Failed in getting value, (err: %d)', [fpgeterrno]));
+    ALoggerUnit.GetLogger.FatalLn(
+      Format('Failed in getting value, (err: %d)', [fpgeterrno]));
   end;
 end;
 

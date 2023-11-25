@@ -445,8 +445,6 @@ begin
 
   end;
 
-  p.Free;
-
   if Token.TokenType in [
     ttCloseHyperLink,
     ttCloseHeadingSection,
@@ -454,9 +452,8 @@ begin
     ttEndTag,
     ttEndTable
     ] then
-  begin
-    Exit(True);
-  end;
+    Exit;
+  Result := False;
 
 end;
 

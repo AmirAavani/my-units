@@ -263,7 +263,9 @@ begin
     Lines.Add(S);
     if Lines.Count mod 10000 = 0 then
     begin
-      DebugLn(Format('StreamUnit %d: %d', [Lines.Count, (100 * TargetStream.Position) div TargetStream.Size]));
+      ALoggerUnit.GetLogger.FMTDebugLn(
+        'StreamUnit %d: %d',
+        [Lines.Count, (100 * TargetStream.Position) div TargetStream.Size]);
       Break;
     end;
 

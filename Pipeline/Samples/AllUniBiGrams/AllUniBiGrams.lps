@@ -1,0 +1,614 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CONFIG>
+  <ProjectSession>
+    <Version Value="12"/>
+    <BuildModes Active="Default"/>
+    <Units>
+      <Unit>
+        <Filename Value="AllUniBiGrams.lpr"/>
+        <IsPartOfProject Value="True"/>
+        <UsageCount Value="200"/>
+        <Loaded Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="../../PipelineUnit.pp"/>
+        <IsPartOfProject Value="True"/>
+        <EditorIndex Value="9"/>
+        <TopLine Value="329"/>
+        <CursorPos X="5" Y="356"/>
+        <UsageCount Value="200"/>
+        <Loaded Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="../../../General-Purpose-Units/StreamUnit.pas"/>
+        <IsPartOfProject Value="True"/>
+        <EditorIndex Value="16"/>
+        <TopLine Value="247"/>
+        <CursorPos X="75" Y="268"/>
+        <UsageCount Value="200"/>
+        <Loaded Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="../../../Unicode-Functions/WideStringUnit.pas"/>
+        <IsPartOfProject Value="True"/>
+        <EditorIndex Value="19"/>
+        <TopLine Value="145"/>
+        <CursorPos X="44" Y="153"/>
+        <UsageCount Value="200"/>
+        <Loaded Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="../../../ALogger/ALoggerUnit.pp"/>
+        <IsPartOfProject Value="True"/>
+        <EditorIndex Value="12"/>
+        <TopLine Value="127"/>
+        <CursorPos X="3" Y="134"/>
+        <UsageCount Value="200"/>
+        <Loaded Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="../../../Threading/SyncUnit.pp"/>
+        <IsPartOfProject Value="True"/>
+        <EditorIndex Value="11"/>
+        <TopLine Value="259"/>
+        <CursorPos X="17" Y="280"/>
+        <UsageCount Value="200"/>
+        <Loaded Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="../../../PB2PAS/ProtoHelperUnit.pp"/>
+        <IsPartOfProject Value="True"/>
+        <EditorIndex Value="-1"/>
+        <UsageCount Value="200"/>
+      </Unit>
+      <Unit>
+        <Filename Value="../../../Algorithmic-Units/HeapUnit.pp"/>
+        <IsPartOfProject Value="True"/>
+        <EditorIndex Value="-1"/>
+        <UsageCount Value="200"/>
+      </Unit>
+      <Unit>
+        <Filename Value="../../../WikiParser/WikiDocUnit.pp"/>
+        <IsPartOfProject Value="True"/>
+        <EditorIndex Value="21"/>
+        <TopLine Value="1171"/>
+        <CursorPos X="40" Y="1191"/>
+        <UsageCount Value="200"/>
+        <Bookmarks Count="1">
+          <Item0 Y="1143" ID="4"/>
+        </Bookmarks>
+        <Loaded Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="../../../WikiParser/WikiParserUnit.pp"/>
+        <IsPartOfProject Value="True"/>
+        <IsVisibleTab Value="True"/>
+        <EditorIndex Value="8"/>
+        <TopLine Value="411"/>
+        <CursorPos X="31" Y="435"/>
+        <UsageCount Value="208"/>
+        <Bookmarks Count="2">
+          <Item0 Y="469" ID="2"/>
+          <Item1 X="3" Y="423" ID="1"/>
+        </Bookmarks>
+        <Loaded Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="../../../General-Purpose-Units/ParameterManagerUnit_V2.pp"/>
+        <IsPartOfProject Value="True"/>
+        <EditorIndex Value="-1"/>
+        <CursorPos X="3" Y="42"/>
+        <UsageCount Value="227"/>
+      </Unit>
+      <Unit>
+        <Filename Value="../../../General-Purpose-Units/GenericCollectionUnit.pp"/>
+        <EditorIndex Value="14"/>
+        <CursorPos X="37" Y="22"/>
+        <UsageCount Value="119"/>
+        <Loaded Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="ExtractContentUnit.pp"/>
+        <EditorIndex Value="7"/>
+        <TopLine Value="160"/>
+        <CursorPos X="8" Y="179"/>
+        <UsageCount Value="119"/>
+        <Loaded Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="/usr/share/fpcsrc/packages/rtl-generics/src/generics.collections.pas"/>
+        <UnitName Value="Generics.Collections"/>
+        <EditorIndex Value="15"/>
+        <TopLine Value="62"/>
+        <CursorPos X="46" Y="78"/>
+        <UsageCount Value="109"/>
+        <Loaded Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="/usr/lib64/lazarus/components/lazutils/laz2_xmlread.pas"/>
+        <UnitName Value="laz2_XMLRead"/>
+        <EditorIndex Value="-1"/>
+        <TopLine Value="1492"/>
+        <CursorPos Y="1517"/>
+        <UsageCount Value="21"/>
+      </Unit>
+      <Unit>
+        <Filename Value="StepHandlersUnit.pp"/>
+        <EditorIndex Value="4"/>
+        <CursorPos X="3" Y="31"/>
+        <UsageCount Value="107"/>
+        <Loaded Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="../../../Threading/ThreadPoolUnit.pp"/>
+        <EditorIndex Value="18"/>
+        <TopLine Value="61"/>
+        <CursorPos X="5" Y="82"/>
+        <UsageCount Value="115"/>
+        <Loaded Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="../../../Threading/ThreadSafeQueueUnit.pp"/>
+        <EditorIndex Value="17"/>
+        <TopLine Value="50"/>
+        <CursorPos X="7" Y="74"/>
+        <UsageCount Value="115"/>
+        <Loaded Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="ValidArguments.inc"/>
+        <EditorIndex Value="3"/>
+        <CursorPos X="6" Y="24"/>
+        <UsageCount Value="113"/>
+        <Loaded Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="/usr/lib64/lazarus/components/lazutils/laz2_dom.pas"/>
+        <UnitName Value="Laz2_DOM"/>
+        <EditorIndex Value="-1"/>
+        <TopLine Value="1833"/>
+        <CursorPos Y="1867"/>
+        <UsageCount Value="136"/>
+      </Unit>
+      <Unit>
+        <Filename Value="/usr/share/fpcsrc/rtl/objpas/sysutils/sysstrh.inc"/>
+        <EditorIndex Value="-1"/>
+        <TopLine Value="152"/>
+        <CursorPos X="29" Y="152"/>
+        <UsageCount Value="32"/>
+      </Unit>
+      <Unit>
+        <Filename Value="/usr/share/fpcsrc/rtl/objpas/sysutils/sysstr.inc"/>
+        <EditorIndex Value="-1"/>
+        <TopLine Value="1136"/>
+        <CursorPos X="9" Y="1153"/>
+        <UsageCount Value="32"/>
+      </Unit>
+      <Unit>
+        <Filename Value="/usr/share/fpcsrc/rtl/objpas/sysutils/sysinth.inc"/>
+        <EditorIndex Value="-1"/>
+        <TopLine Value="29"/>
+        <CursorPos X="3" Y="57"/>
+        <UsageCount Value="32"/>
+      </Unit>
+      <Unit>
+        <Filename Value="/usr/share/fpcsrc/rtl/objpas/sysutils/sysformt.inc"/>
+        <EditorIndex Value="-1"/>
+        <TopLine Value="206"/>
+        <CursorPos X="20" Y="223"/>
+        <UsageCount Value="32"/>
+      </Unit>
+      <Unit>
+        <Filename Value="FindStartIndicesUnit.pp"/>
+        <EditorIndex Value="5"/>
+        <TopLine Value="102"/>
+        <CursorPos X="25" Y="138"/>
+        <UsageCount Value="100"/>
+        <Loaded Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="SharedUnit.pp"/>
+        <EditorIndex Value="6"/>
+        <CursorPos X="10" Y="11"/>
+        <UsageCount Value="100"/>
+        <Loaded Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="../../../General-Purpose-Units/GenericCollection.UtilsUnit.pp"/>
+        <EditorIndex Value="-1"/>
+        <CursorPos X="12" Y="17"/>
+        <UsageCount Value="100"/>
+      </Unit>
+      <Unit>
+        <Filename Value="../../../PB2PAS/ProtoStreamUnit.pp"/>
+        <EditorIndex Value="20"/>
+        <TopLine Value="197"/>
+        <CursorPos Y="214"/>
+        <UsageCount Value="101"/>
+        <Loaded Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="../../../General-Purpose-Units/StringUnit.pp"/>
+        <EditorIndex Value="1"/>
+        <CursorPos X="5" Y="20"/>
+        <UsageCount Value="112"/>
+        <Loaded Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="../../../General-Purpose-Units/ParameterManagerUnit.pp"/>
+        <EditorIndex Value="2"/>
+        <CursorPos X="46" Y="8"/>
+        <UsageCount Value="112"/>
+        <Loaded Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="../../../General-Purpose-Units/ValueUnit.pp"/>
+        <EditorIndex Value="13"/>
+        <TopLine Value="215"/>
+        <CursorPos X="7" Y="236"/>
+        <UsageCount Value="113"/>
+        <Loaded Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="TypesUnit.pp"/>
+        <EditorIndex Value="10"/>
+        <TopLine Value="60"/>
+        <CursorPos Y="89"/>
+        <UsageCount Value="110"/>
+        <Loaded Value="True"/>
+      </Unit>
+    </Units>
+    <JumpHistory HistoryIndex="29">
+      <Position>
+        <Filename Value="/usr/share/fpcsrc/packages/rtl-generics/src/generics.collections.pas"/>
+        <Caret Line="251" Column="7" TopLine="231"/>
+      </Position>
+      <Position>
+        <Filename Value="../../../WikiParser/WikiParserUnit.pp"/>
+        <Caret Line="421" Column="41" TopLine="401"/>
+      </Position>
+      <Position>
+        <Filename Value="../../../General-Purpose-Units/GenericCollectionUnit.pp"/>
+        <Caret Line="35" Column="33" TopLine="14"/>
+      </Position>
+      <Position>
+        <Filename Value="../../../General-Purpose-Units/GenericCollectionUnit.pp"/>
+        <Caret Line="22" Column="53" TopLine="4"/>
+      </Position>
+      <Position>
+        <Filename Value="../../../General-Purpose-Units/GenericCollectionUnit.pp"/>
+        <Caret Line="35" Column="50" TopLine="16"/>
+      </Position>
+      <Position>
+        <Filename Value="../../../General-Purpose-Units/GenericCollectionUnit.pp"/>
+        <Caret Line="192" Column="13" TopLine="173"/>
+      </Position>
+      <Position>
+        <Filename Value="../../../General-Purpose-Units/GenericCollectionUnit.pp"/>
+        <Caret Line="35" Column="14" TopLine="16"/>
+      </Position>
+      <Position>
+        <Filename Value="../../../General-Purpose-Units/GenericCollectionUnit.pp"/>
+        <Caret Line="192" Column="13" TopLine="172"/>
+      </Position>
+      <Position>
+        <Filename Value="../../../General-Purpose-Units/GenericCollectionUnit.pp"/>
+        <Caret Line="35" Column="44" TopLine="16"/>
+      </Position>
+      <Position>
+        <Filename Value="../../../General-Purpose-Units/GenericCollectionUnit.pp"/>
+        <Caret Line="36" TopLine="22"/>
+      </Position>
+      <Position>
+        <Filename Value="../../../General-Purpose-Units/GenericCollectionUnit.pp"/>
+        <Caret Line="34" Column="31" TopLine="16"/>
+      </Position>
+      <Position>
+        <Filename Value="../../../General-Purpose-Units/GenericCollectionUnit.pp"/>
+        <Caret Line="22" Column="37" TopLine="2"/>
+      </Position>
+      <Position>
+        <Filename Value="../../../General-Purpose-Units/GenericCollectionUnit.pp"/>
+        <Caret Line="14" Column="3" TopLine="2"/>
+      </Position>
+      <Position>
+        <Filename Value="AllUniBiGrams.lpr"/>
+        <Caret Line="21" Column="14"/>
+      </Position>
+      <Position>
+        <Filename Value="../../../General-Purpose-Units/GenericCollectionUnit.pp"/>
+        <Caret Line="14" Column="11"/>
+      </Position>
+      <Position>
+        <Filename Value="../../../General-Purpose-Units/GenericCollectionUnit.pp"/>
+        <Caret Line="22" Column="37" TopLine="2"/>
+      </Position>
+      <Position>
+        <Filename Value="../../../General-Purpose-Units/GenericCollectionUnit.pp"/>
+        <Caret Line="36" Column="50" TopLine="17"/>
+      </Position>
+      <Position>
+        <Filename Value="../../../General-Purpose-Units/GenericCollectionUnit.pp"/>
+        <Caret Line="192" TopLine="173"/>
+      </Position>
+      <Position>
+        <Filename Value="../../../General-Purpose-Units/GenericCollectionUnit.pp"/>
+        <Caret Line="36" Column="7" TopLine="36"/>
+      </Position>
+      <Position>
+        <Filename Value="../../../General-Purpose-Units/GenericCollectionUnit.pp"/>
+        <Caret Line="197" Column="2" TopLine="173"/>
+      </Position>
+      <Position>
+        <Filename Value="../../../WikiParser/WikiParserUnit.pp"/>
+        <Caret Line="421" Column="3" TopLine="401"/>
+      </Position>
+      <Position>
+        <Filename Value="../../../WikiParser/WikiParserUnit.pp"/>
+        <Caret Line="428" Column="5" TopLine="408"/>
+      </Position>
+      <Position>
+        <Filename Value="../../../WikiParser/WikiParserUnit.pp"/>
+        <Caret Line="431" Column="9" TopLine="410"/>
+      </Position>
+      <Position>
+        <Filename Value="../../../General-Purpose-Units/GenericCollectionUnit.pp"/>
+        <Caret Line="14" Column="7"/>
+      </Position>
+      <Position>
+        <Filename Value="../../../General-Purpose-Units/GenericCollectionUnit.pp"/>
+        <Caret Line="35"/>
+      </Position>
+      <Position>
+        <Filename Value="../../../General-Purpose-Units/GenericCollectionUnit.pp"/>
+        <Caret Line="193" Column="3" TopLine="191"/>
+      </Position>
+      <Position>
+        <Filename Value="../../../WikiParser/WikiParserUnit.pp"/>
+        <Caret Line="428" Column="34" TopLine="408"/>
+      </Position>
+      <Position>
+        <Filename Value="../../../WikiParser/WikiParserUnit.pp"/>
+        <Caret Line="429" Column="11" TopLine="409"/>
+      </Position>
+      <Position>
+        <Filename Value="../../../General-Purpose-Units/GenericCollectionUnit.pp"/>
+        <Caret Line="22" Column="37"/>
+      </Position>
+      <Position>
+        <Filename Value="../../../WikiParser/WikiParserUnit.pp"/>
+        <Caret Line="433" Column="10" TopLine="409"/>
+      </Position>
+    </JumpHistory>
+    <RunParams>
+      <FormatVersion Value="2"/>
+      <Modes ActiveMode="default">
+        <Mode Name="default">
+          <local>
+            <CommandLineParams Value="--Mode TestExtractContent --InputFile ../../../../1BWLM/NLP/Wikidump/fawiki-20230220-pages-articles-multistream.xml --WorkingDir  ../../../../1BWLM/NLP/tmp/ --Debug 511 --DebugIndex 11700 --DebugStart -1 --DebugEnd -1  --TaskID 8"/>
+          </local>
+        </Mode>
+      </Modes>
+    </RunParams>
+    <HistoryLists>
+      <List Name="LaunchingApplication" Type="File" Count="1">
+        <Item1 Value="/usr/bin/gnome-terminal -t &apos;Lazarus Run Output&apos; -e &apos;$(LazarusDir)/tools/runwait.sh $(TargetCmdLine)&apos;"/>
+      </List>
+      <List Name="CommandLineParameters" Count="20">
+        <Item1 Value="--Mode TestExtractContent --InputFile ../../../../1BWLM/NLP/Wikidump/fawiki-20230220-pages-articles-multistream.xml --WorkingDir  ../../../../1BWLM/NLP/tmp/ --Debug 511 --DebugIndex 11700 --DebugStart -1 --DebugEnd -1  --TaskID 8"/>
+        <Item2 Value="--Mode TestExtractContent --InputFile ../../../../1BWLM/NLP/Wikidump/fawiki-20230220-pages-articles-multistream.xml --WorkingDir  ../../../../1BWLM/NLP/tmp/ --Debug 0 --DebugIndex 32 --DebugStart -1 --DebugEnd -1  --TaskID 1"/>
+        <Item3 Value="--Mode TestExtractContent --InputFile ../../../../1BWLM/NLP/Wikidump/fawiki-20230220-pages-articles-multistream.xml --WorkingDir  ../../../../1BWLM/NLP/tmp/ --Debug 0 --DebugIndex 32 --DebugStart -1 --DebugEnd -1  --TaskID -1  "/>
+        <Item4 Value="--Mode TestExtractContent --InputFile ../../../../1BWLM/NLP/Wikidump/fawiki-20230220-pages-articles-multistream.xml --WorkingDir  ../../../../1BWLM/NLP/tmp/ --Debug 0 --DebugIndex 32 --DebugStart -1 --DebugEnd -1  --TaskID -1  2> /tmp/a.log"/>
+        <Item5 Value="--Mode TestExtractContent --InputFile ../../../../1BWLM/NLP/Wikidump/fawiki-20230220-pages-articles-multistream.xml --WorkingDir  ../../../../1BWLM/NLP/tmp/ --Debug 0 --DebugIndex 32 --DebugStart -1 --DebugEnd -1  --TaskID -1  > /tmp/a.log"/>
+        <Item6 Value="--Mode TestExtractContent --InputFile ../../../../1BWLM/NLP/Wikidump/fawiki-20230220-pages-articles-multistream.xml --WorkingDir  ../../../../1BWLM/NLP/tmp/ --Debug 0 --DebugIndex 32 --DebugStart -1 --DebugEnd -1  --TaskID -1"/>
+        <Item7 Value="--Mode TestExtractContent --InputFile ../../../../1BWLM/NLP/Wikidump/fawiki-20230220-pages-articles-multistream.xml --WorkingDir  ../../../../1BWLM/NLP/tmp/ --Debug 511 --DebugIndex 32 --DebugStart -1 --DebugEnd -1  --TaskID -1"/>
+        <Item8 Value="--Mode TestExtractContent --InputFile ../../../../1BWLM/NLP/Wikidump/fawiki-20230220-pages-articles-multistream.xml --WorkingDir  ../../../../1BWLM/NLP/tmp/ --Debug 511 --DebugIndex 32 --DebugStart -1 --DebugEnd -1  --TaskID 37"/>
+        <Item9 Value="--Mode TestExtractContent --InputFile ../../../../1BWLM/NLP/Wikidump/fawiki-20230220-pages-articles-multistream.xml --WorkingDir  ../../../../1BWLM/NLP/tmp/ --Debug 511 --DebugIndex 939 --DebugStart -1 --DebugEnd -1  --TaskID 37"/>
+        <Item10 Value="--Mode TestExtractContent --InputFile ../../../../1BWLM/NLP/Wikidump/fawiki-20230220-pages-articles-multistream.xml --WorkingDir  ../../../../1BWLM/NLP/tmp/ --Debug 0 --DebugIndex 7433  --DebugStart -1 --DebugEnd -1  --TaskID 1"/>
+        <Item11 Value="--Mode TestExtractContent --InputFile ../../../../1BWLM/NLP/Wikidump/fawiki-20230220-pages-articles-multistream.xml --WorkingDir  ../../../../1BWLM/NLP/tmp/ --Debug 0 --DebugIndex 36624 --DebugStart -1 --DebugEnd -1  --TaskID 11"/>
+        <Item12 Value="--Mode TestExtractContent --InputFile ../../../../1BWLM/NLP/Wikidump/fawiki-20230220-pages-articles-multistream.xml --WorkingDir  ../../../../1BWLM/NLP/tmp/ --Debug 511 --DebugIndex 36624 --DebugStart -1 --DebugEnd -1  --TaskID 11"/>
+        <Item13 Value=" --Mode TestExtractContent --InputFile ../../../../1BWLM/NLP/Wikidump/fawiki-20230220-pages-articles-multistream.xml --WorkingDir  ../../../../1BWLM/NLP/tmp/ --Debug 0 --DebugIndex 34149 --DebugStart -1 --DebugEnd -1  --TaskID 6 "/>
+        <Item14 Value="--Pipeline.StepID 2 --InputFile ../../../../1BWLM/NLP/Wikidump/fawiki-20230220-pages-articles-multistream.xml --WorkingDir  ../../../../1BWLM/NLP/tmp/ --Debug 0 --DebugIndex 13602 --DebugStart -1 --DebugEnd -1 --TaskID 34"/>
+        <Item15 Value="--Pipeline.StepID 2 --InputFile ../../../../1BWLM/NLP/Wikidump/fawiki-20230220-pages-articles-multistream.xml --WorkingDir  ../../../../1BWLM/NLP/tmp/ --Debug 0 --DebugIndex 13602 --DebugStart -1 --DebugEnd -1 --TaskID 27"/>
+        <Item16 Value=" --Pipeline.StepID 2 --InputFile ../../../../1BWLM/NLP/Wikidump/fawiki-20230220-pages-articles-multistream.xml --WorkingDir  ../../../../1BWLM/NLP/tmp/ --Debug 0 --DebugIndex 13602 --DebugStart -1 --DebugEnd -1"/>
+        <Item17 Value="--Mode TestFindStartIndices --InputFile ../../../../1BWLM/NLP/Wikidump/fawiki-20230220-pages-articles-multistream.xml --WorkingDir  ../../../../1BWLM/NLP/tmp/ --Debug 0 --DebugIndex 15599  --DebugStart -1 --DebugEnd -1  --TaskID 63"/>
+        <Item18 Value="--Mode TestExtractContent --InputFile ../../../../1BWLM/NLP/Wikidump/fawiki-20230220-pages-articles-multistream.xml --WorkingDir  ../../../../1BWLM/NLP/tmp/ --Debug 0 --DebugIndex 15599  --DebugStart -1 --DebugEnd -1  --TaskID 63"/>
+        <Item19 Value="--Mode TestExtractContent --InputFile ../../../../1BWLM/NLP/Wikidump/fawiki-20230220-pages-articles-multistream.xml --WorkingDir  ../../../../1BWLM/NLP/tmp/ --Debug 0 --DebugIndex 1223 --DebugStart -1 --DebugEnd -1  --TaskID 1"/>
+        <Item20 Value="--Mode TestExtractContent --InputFile ../../../../1BWLM/NLP/Wikidump/fawiki-20230220-pages-articles-multistream.xml --WorkingDir  ../../../../1BWLM/NLP/tmp/ --Debug 511 --DebugIndex 1223 --DebugStart -1 --DebugEnd -1  --TaskID 1"/>
+      </List>
+    </HistoryLists>
+  </ProjectSession>
+  <Debugging>
+    <BreakPoints>
+      <Item>
+        <Kind Value="bpkSource"/>
+        <WatchScope Value="wpsLocal"/>
+        <WatchKind Value="wpkWrite"/>
+        <Source Value="../../../General-Purpose-Units/ValueUnit.pp"/>
+        <Line Value="156"/>
+      </Item>
+      <Item>
+        <Kind Value="bpkSource"/>
+        <WatchScope Value="wpsLocal"/>
+        <WatchKind Value="wpkWrite"/>
+        <Source Value="../../../General-Purpose-Units/ValueUnit.pp"/>
+        <Line Value="167"/>
+      </Item>
+      <Item>
+        <Kind Value="bpkSource"/>
+        <WatchScope Value="wpsLocal"/>
+        <WatchKind Value="wpkWrite"/>
+        <Source Value="../../../General-Purpose-Units/ValueUnit.pp"/>
+        <Line Value="179"/>
+      </Item>
+      <Item>
+        <Kind Value="bpkSource"/>
+        <WatchScope Value="wpsLocal"/>
+        <WatchKind Value="wpkWrite"/>
+        <Source Value="../../../General-Purpose-Units/ValueUnit.pp"/>
+        <Line Value="190"/>
+      </Item>
+      <Item>
+        <Kind Value="bpkSource"/>
+        <WatchScope Value="wpsLocal"/>
+        <WatchKind Value="wpkWrite"/>
+        <Source Value="../../../General-Purpose-Units/ValueUnit.pp"/>
+        <Line Value="202"/>
+      </Item>
+      <Item>
+        <Kind Value="bpkSource"/>
+        <WatchScope Value="wpsLocal"/>
+        <WatchKind Value="wpkWrite"/>
+        <Source Value="../../../General-Purpose-Units/ValueUnit.pp"/>
+        <Line Value="213"/>
+      </Item>
+      <Item>
+        <Kind Value="bpkSource"/>
+        <WatchScope Value="wpsLocal"/>
+        <WatchKind Value="wpkWrite"/>
+        <Source Value="../../../ALogger/ALoggerUnit.pp"/>
+        <Line Value="259"/>
+      </Item>
+      <Item>
+        <Kind Value="bpkSource"/>
+        <WatchScope Value="wpsLocal"/>
+        <WatchKind Value="wpkWrite"/>
+        <Source Value="ExtractContentUnit.pp"/>
+        <Line Value="63"/>
+      </Item>
+      <Item>
+        <Kind Value="bpkSource"/>
+        <WatchScope Value="wpsLocal"/>
+        <WatchKind Value="wpkWrite"/>
+        <Source Value="../../../WikiParser/WikiParserUnit.pp"/>
+        <Line Value="370"/>
+      </Item>
+      <Item>
+        <Kind Value="bpkSource"/>
+        <WatchScope Value="wpsLocal"/>
+        <WatchKind Value="wpkWrite"/>
+        <Source Value="ExtractContentUnit.pp"/>
+        <Line Value="233"/>
+      </Item>
+      <Item>
+        <Kind Value="bpkSource"/>
+        <WatchScope Value="wpsLocal"/>
+        <WatchKind Value="wpkWrite"/>
+        <Source Value="FindStartIndicesUnit.pp"/>
+        <Line Value="72"/>
+      </Item>
+      <Item>
+        <Kind Value="bpkSource"/>
+        <WatchScope Value="wpsLocal"/>
+        <WatchKind Value="wpkWrite"/>
+        <Source Value="../../../WikiParser/WikiParserUnit.pp"/>
+        <Line Value="506"/>
+      </Item>
+      <Item>
+        <Kind Value="bpkSource"/>
+        <WatchScope Value="wpsLocal"/>
+        <WatchKind Value="wpkWrite"/>
+        <Source Value="../../../WikiParser/WikiParserUnit.pp"/>
+        <Line Value="519"/>
+      </Item>
+      <Item>
+        <Kind Value="bpkSource"/>
+        <WatchScope Value="wpsLocal"/>
+        <WatchKind Value="wpkWrite"/>
+        <Source Value="../../../WikiParser/WikiParserUnit.pp"/>
+        <Line Value="374"/>
+      </Item>
+      <Item>
+        <Kind Value="bpkSource"/>
+        <WatchScope Value="wpsLocal"/>
+        <WatchKind Value="wpkWrite"/>
+        <Source Value="../../../WikiParser/WikiParserUnit.pp"/>
+        <Line Value="1555"/>
+      </Item>
+      <Item>
+        <Kind Value="bpkSource"/>
+        <WatchScope Value="wpsLocal"/>
+        <WatchKind Value="wpkWrite"/>
+        <Source Value="../../../General-Purpose-Units/GenericCollectionUnit.pp"/>
+        <Line Value="151"/>
+      </Item>
+      <Item>
+        <Kind Value="bpkSource"/>
+        <WatchScope Value="wpsLocal"/>
+        <WatchKind Value="wpkWrite"/>
+        <Source Value="../../../WikiParser/WikiParserUnit.pp"/>
+        <Line Value="730"/>
+      </Item>
+      <Item>
+        <Kind Value="bpkSource"/>
+        <WatchScope Value="wpsLocal"/>
+        <WatchKind Value="wpkWrite"/>
+        <Source Value="ExtractContentUnit.pp"/>
+        <Line Value="238"/>
+      </Item>
+      <Item>
+        <Kind Value="bpkSource"/>
+        <WatchScope Value="wpsLocal"/>
+        <WatchKind Value="wpkWrite"/>
+        <Source Value="ExtractContentUnit.pp"/>
+        <Line Value="180"/>
+      </Item>
+      <Item>
+        <Kind Value="bpkSource"/>
+        <WatchScope Value="wpsLocal"/>
+        <WatchKind Value="wpkWrite"/>
+        <Source Value="ExtractContentUnit.pp"/>
+        <Line Value="49"/>
+      </Item>
+      <Item>
+        <Kind Value="bpkSource"/>
+        <WatchScope Value="wpsLocal"/>
+        <WatchKind Value="wpkWrite"/>
+        <Source Value="ExtractContentUnit.pp"/>
+        <Line Value="71"/>
+      </Item>
+      <Item>
+        <Kind Value="bpkSource"/>
+        <WatchScope Value="wpsLocal"/>
+        <WatchKind Value="wpkWrite"/>
+        <Source Value="ExtractContentUnit.pp"/>
+        <Line Value="183"/>
+      </Item>
+      <Item>
+        <Kind Value="bpkSource"/>
+        <WatchScope Value="wpsLocal"/>
+        <WatchKind Value="wpkWrite"/>
+        <Source Value="ExtractContentUnit.pp"/>
+        <Line Value="202"/>
+      </Item>
+      <Item>
+        <Kind Value="bpkSource"/>
+        <WatchScope Value="wpsLocal"/>
+        <WatchKind Value="wpkWrite"/>
+        <Source Value="ExtractContentUnit.pp"/>
+        <Line Value="208"/>
+      </Item>
+      <Item>
+        <Kind Value="bpkSource"/>
+        <WatchScope Value="wpsLocal"/>
+        <WatchKind Value="wpkWrite"/>
+        <Source Value="../../../WikiParser/WikiParserUnit.pp"/>
+        <Line Value="355"/>
+      </Item>
+      <Item>
+        <Kind Value="bpkSource"/>
+        <WatchScope Value="wpsLocal"/>
+        <WatchKind Value="wpkWrite"/>
+        <Source Value="../../../WikiParser/WikiParserUnit.pp"/>
+        <Line Value="315"/>
+      </Item>
+      <Item>
+        <Kind Value="bpkSource"/>
+        <WatchScope Value="wpsLocal"/>
+        <WatchKind Value="wpkWrite"/>
+        <Source Value="../../../WikiParser/WikiParserUnit.pp"/>
+        <Line Value="1220"/>
+      </Item>
+    </BreakPoints>
+  </Debugging>
+</CONFIG>

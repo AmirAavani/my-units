@@ -70,7 +70,7 @@ type
   public
     property Name: AnsiString read FName;
 
-    constructor Create(_Name: AnsiString; _Config: TPipelineConfig);
+    constructor Create(constref _Name: AnsiString; _Config: TPipelineConfig);
     destructor Destroy; override;
 
     procedure AddNewStep(
@@ -185,13 +185,13 @@ begin
   Task := TTask(SysArgs[0]);
   wg := TWaitGroup(SysArgs[1]);
   Step := TPipeline.TStepInfo(SysArgs[2]);
-  FMTDebugLn('Running Task %d', [Task.ID], 5);
+  ALoggerUnit.GetLogger.FMTDebugLn('Running Task %d', [Task.ID], 5);
 
-  FMTDebugLn('StepID: %d TaskID: %d', [Step.ID, Task.ID], 5);
+  ALoggerUnit.GetLogger.FMTDebugLn('StepID: %d TaskID: %d', [Step.ID, Task.ID], 5);
 
   Result := Task.StepInfo.StepHandler(Task);
 
-  FMTDebugLn('wg.Done Task: %d Result: %s', [Task.ID, BoolToStr(Result, True)], 5);
+  ALoggerUnit.GetLogger.FMTDebugLn('wg.Done Task: %d Result: %s', [Task.ID, BoolToStr(Result, True)], 5);
 
   wg.Done(1);
 
@@ -215,7 +215,7 @@ var
 
 begin
   if Step = nil then
-    FmtFatalLn('Invalid Step', []);
+    ALoggerUnit.FmtFatalLnIFFalse(False, 'Invalid Step', []);
 
   AllTasks := TTasks.Create;
   SetLength(Status, Step.NumTasks + 1);
@@ -237,15 +237,24 @@ begin
     ThreadPool.Run(@RunHandler, SysArgs, @Status[i]);
   end;
 
-  FMTDebugLn('Waiting for all jobs of Step %d to Finish', [Step.ID], 5);
+  ALoggerUnit.GetLogger.FMTDebugLn(
+    'Waiting for all jobs of Step %d to Finish',
+    [Step.ID],
+    5);
   Wg.Wait();
-  FMTDebugLn('Step: %d All are Done', [Step.ID], 5);
+  ALoggerUnit.GetLogger.FMTDebugLn(
+    'Step: %d All are Done',
+    [Step.ID],
+    5);
 
-  DebugLn('All jobs are Running');
+  ALoggerUnit.GetLogger.DebugLn('All jobs are Running');
 
   for i := 1 to Step.NumTasks do
   begin
-    FMTDebugLn('Task %d is Done with Status: %s', [i, BoolToStr(Status[i], True)], 5);
+    ALoggerUnit.GetLogger.FMTDebugLn(
+      'Task %d is Done with Status: %s',
+      [i, BoolToStr(Status[i], True)],
+      5);
   end;
 
   SetLength(Status, 0);
@@ -254,7 +263,7 @@ begin
   Result := True;
 end;
 
-constructor TPipeline.Create(_Name: AnsiString; _Config: TPipelineConfig);
+constructor TPipeline.Create(constref _Name: AnsiString; _Config: TPipelineConfig);
 begin
   inherited Create;
 
@@ -307,7 +316,7 @@ begin
   for ID := FromStepID to ToStepID do
     Result := ThePipeline.RunStep(ID);
 
-  FMTDebugLn('Result: %s', [BoolToStr(Result, True)], 5);
+  ALoggerUnit.GetLogger.FMTDebugLn('Result: %s', [BoolToStr(Result, True)], 5);
 
   wg.Done(1);
 
@@ -337,11 +346,14 @@ end;
 
 function TPipeline.RunStep(StepIndex: Integer): Boolean;
 begin
-  FMTDebugLn('%d StepIndex: %d', [ThreadID, StepIndex], 5);
+  ALoggerUnit.GetLogger.FMTDebugLn('%d StepIndex: %d', [ThreadID, StepIndex], 5);
 
   Result := RunStep(Steps[StepIndex]);
 
-  FMTDebugLn('%d Result: %s', [ThreadID, BoolToStr(Result, True)], 5);
+  ALoggerUnit.GetLogger.FMTDebugLn(
+    '%d Result: %s',
+    [ThreadID, BoolToStr(Result, True)],
+    5);
 
 end;
 

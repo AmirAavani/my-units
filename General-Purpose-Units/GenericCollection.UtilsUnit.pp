@@ -79,49 +79,49 @@ end;
 
 function SaveInt8(constref n: Int8; Stream: TStream): Boolean;
 begin
-  SaveData(@n, 1, Stream);
+  Result := SaveData(@n, 1, Stream);
 
 end;
 
 function SaveInt16(constref n: Int16; Stream: TStream): Boolean;
 begin
-  SaveData(@n, 2, Stream);
+  Result := SaveData(@n, 2, Stream);
 
 end;
 
 function SaveInt32(constref n: Int32; Stream: TStream): Boolean;
 begin
-  SaveData(@n, 4, Stream);
+  Result := SaveData(@n, 4, Stream);
 
 end;
 
 function SaveInt64(constref n: Int64; Stream: TStream): Boolean;
 begin
-  SaveData(@n, 8, Stream);
+  Result := SaveData(@n, 8, Stream);
 
 end;
 
 function SaveUInt8(constref n: UInt8; Stream: TStream): Boolean;
 begin
-  SaveData(@n, 1, Stream);
+  Result := SaveData(@n, 1, Stream);
 
 end;
 
 function SaveUInt16(constref n: UInt16; Stream: TStream): Boolean;
 begin
-  SaveData(@n, 2, Stream);
+  Result := SaveData(@n, 2, Stream);
 
 end;
 
 function SaveUInt32(constref n: UInt32; Stream: TStream): Boolean;
 begin
-  SaveData(@n, 4, Stream);
+  Result := SaveData(@n, 4, Stream);
 
 end;
 
 function SaveUInt64(constref n: uInt64; Stream: TStream): Boolean;
 begin
-  SaveData(@n, 8, Stream);
+  Result := SaveData(@n, 8, Stream);
 
 end;
 

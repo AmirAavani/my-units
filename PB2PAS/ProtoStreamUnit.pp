@@ -212,32 +212,6 @@ begin
   WireType := Tag and ((1 shl TAG_TYPE_BITS) - 1) ;
 end;
 
-function GetFieldNumberWire(
-  Stream: TBitStreamReader; var FieldNumber, WireType: Integer): Boolean;
-var
-  Shift: Integer;
-  b: Integer;
-begin
-  {
-  Shift := 0;
-  while Shift < 64 do
-  begin
-    if Stream.Size <= Stream.Position then
-      Exit(False);
-
-    b := Stream.ReadNextBit;
-	iNdEx++
-	wire |= (uint64(b) & 0x7F) << shift
-	if b < 0x80 {
-		break
-	}
-    Inc(Shift, 7);
-  end;
-
-  fieldNum := int32(wire >> 3)
-wireType := int(wire & 0x7)
-}
-end;
 
 { EInvalidInput }
 

@@ -20,18 +20,21 @@ procedure TestExtractContent;
 var
   Task: TTask;
   Step: TPipeline.TStepInfo;
-  id: Integer;
+  i, id: Integer;
 
 begin
   id := GetRunTimeParameterManager.ValueByName['--TaskID'].AsInteger;
+  for i := 1 to 64 do
   begin
-    FMTDebugLn('id: %d', [id]);
+    if (id <> -1) and (i <> id) then
+      Continue;
+    ALoggerUnit.GetLogger.FMTDebugLn('id: %d', [i]);
     Step := TPipeline.TStepInfo.Create(0, 64, nil);
-    Task := TTask.Create(id, Step);
+    Task := TTask.Create(i, Step);
     ExtractContentUnit.ExtractContent(Task);
     Step.Free;
     Task.Free;
-    FMTDebugLn('id: %d', [id]);
+    ALoggerUnit.GetLogger.FMTDebugLn('id: %d', [i]);
 
   end;
 end;
@@ -44,9 +47,9 @@ begin
   Pipeline.AddNewStep(nil, 64);
   Pipeline.AddNewStep(@ExtractContent, 64);
   if Pipeline.Run then
-    ALoggerUnit.FMTDebugLn('Success! [in %dms]', [DateTimeToTimeStamp(Now).Time -        Start])
+    ALoggerUnit.GetLogger.FMTDebugLn('Success! [in %dms]', [DateTimeToTimeStamp(Now).Time -        Start])
   else
-    ALoggerUnit.FatalLn('Failed!');
+    ALoggerUnit.FmtFatalLnIFFalse(False, 'Failed!', []);
 
   Pipeline.Free;
 end;
@@ -58,8 +61,20 @@ var
   id: Integer;
 
 begin
-<<<<<<< HEAD
-=======
+  id := GetRunTimeParameterManager.ValueByName['--TaskID'].AsInteger;
+  begin
+    ALoggerUnit.GetLogger.FMTDebugLn('id: %d', [id]);
+    Step := TPipeline.TStepInfo.Create(0, 64, nil);
+    Task := TTask.Create(id, Step);
+    FindStartIndicesUnit.FindStartIndices(Task);
+    Step.Free;
+    Task.Free;
+    ALoggerUnit.GetLogger.FMTDebugLn('id: %d', [id]);
+
+  end;
+end;
+
+begin
   id := GetRunTimeParameterManager.ValueByName['--TaskID'].AsInteger;
   begin
     FMTDebugLn('id: %d', [id]);
@@ -74,27 +89,23 @@ begin
 end;
 
 begin
->>>>>>> bf15520 (...)
   if GetRunTimeParameterManager.ValueByName['--Mode'].AsAnsiString = 'TestExtractContent' then
   begin
     TestExtractContent;
     Exit;
 
   end
-  else if GetRunTimeParameterManager.ValueByName['--Mode'].AsAnsiString = 'TestExtractContent' then
+  else if GetRunTimeParameterManager.ValueByName['--Mode'].AsAnsiString = 'TestExtractContentWithPipeline;' then
   begin
     TestExtractContentWithPipeline;
     Exit;
 
-<<<<<<< HEAD
-=======
   end
   else if GetRunTimeParameterManager.ValueByName['--Mode'].AsAnsiString = 'TestFindStartIndices' then
   begin
     TestFindStartIndices;
     Exit;
 
->>>>>>> bf15520 (...)
   end;
 
   if not DirectoryExists(GetRunTimeParameterManager.ValueByName['--WorkingDir'].AsAnsiString) then
@@ -115,9 +126,9 @@ begin
   Start := DateTimeToTimeStamp(Now).Time;
 
   if Pipeline.Run then
-    ALoggerUnit.FMTDebugLn('Success! [in %dms]', [DateTimeToTimeStamp(Now).Time - Start])
+    ALoggerUnit.GetLogger.FMTDebugLn('Success! [in %ums]', [DateTimeToTimeStamp(Now).Time - Start])
   else
-    ALoggerUnit.FatalLn('Failed!');
+    ALoggerUnit.FmtFatalLnIFFalse(False, 'Failed!', []);
 
   Pipeline.Free;
 

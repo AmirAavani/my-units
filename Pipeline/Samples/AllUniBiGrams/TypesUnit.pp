@@ -70,7 +70,7 @@ const
 begin
   inherited Create;
 
-  FMTDebugLn('InputFile: %s', [InputFilename]);
+  ALoggerUnit.GetLogger.FMTDebugLn('InputFile: %s', [InputFilename]);
   Reader := TFileStream.Create(InputFilename, fmOpenRead);
   FMemory := TMemory.Create;
 
@@ -86,7 +86,6 @@ begin
       FMemory.AddData(TObjectString.Create(Copy(Buffer, 1, Len)));
 
     Len := Reader.Read(Buffer[1], BufferSize);
-    FMTDebugLn('Memory.Size: %d ', [MemorySize]);
 
   end;
 

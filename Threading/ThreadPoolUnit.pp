@@ -79,7 +79,7 @@ var
 begin
   while True do
   begin
-    FMTDebugLn('Before Delete', [], 5);
+    ALoggerUnit.GetLogger.FMTDebugLn('Before Delete', [], 5);
 
     FParent.RequestsQueue.Delete(Args);
 

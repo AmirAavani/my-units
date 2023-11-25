@@ -21,6 +21,7 @@ type
 {
   The function does not change the content of CharPtr but it might increases its value.
 }
+procedure ReadWideStringFromACharArrayProc(var CharPtr: PChar; Len: Integer; var Result: WideString);
 function ReadWideStringFromACharArray(var CharPtr: PChar; Len: Integer): WideString;
 function ReadWideStringFromString(constref Source: AnsiString): WideString;
 function ReadWideString(var FdFile: TextFile): WideString;
@@ -38,8 +39,9 @@ function WideStrSplit(
 implementation
 uses
   Math, ALoggerUnit;
-  
-function ReadWideStringFromACharArray(var CharPtr: PChar; Len: Integer): WideString;
+
+procedure ReadWideStringFromACharArrayProc(var CharPtr: PChar; Len: Integer;
+   var Result: WideString);
 
   function ReadAWideChar: WideChar;
   var
@@ -87,42 +89,57 @@ function ReadWideStringFromACharArray(var CharPtr: PChar; Len: Integer): WideStr
       Result:= WideChar(Value);
 
     end
-    else if b1 and 8= 0 then
+    else if b1 and 8 = 0 then
     begin
-      c2:= CharPtr^;
+      c2 :=  CharPtr^;
       Inc(CharPtr);
       Dec(Len);
 
-      b2:= Ord(c2);
-      c3:= CharPtr^;
+      b2 :=  Ord(c2);
+      c3 :=  CharPtr^;
       Inc(CharPtr);
       Dec(Len);
 
-      b3:= Ord(c3);
-      c4:= CharPtr^;
+      b3 :=  Ord(c3);
+      c4 :=  CharPtr^;
       Inc(CharPtr);
       Dec(Len);
 
-      b4:= Ord(c4);
-      b4:= b4 xor 128;
-      b3:= b3 xor 128;
-      b2:= b2 xor 128;
-      b1:= b1 xor(128+ 64+ 32+ 16);
-      Value:= b4+ b3 shl 6+ b2 shl 12+(b1 shl 18);
-      Result:= WideChar(Value);
+      b4 :=  Ord(c4);
+      b4 :=  b4 xor 128;
+      b3 :=  b3 xor 128;
+      b2 :=  b2 xor 128;
+      b1 :=  b1 xor(128+ 64+ 32+ 16);
+      Value :=  b4+ b3 shl 6+ b2 shl 12+(b1 shl 18);
+      Result :=  WideChar(Value);
 
     end
     else
-      Result := WideChar(' ');
+      Result  :=  WideChar(' ');
   end;
+
+var
+  i: Integer;
 
 begin
-  Result := '';
+  i  :=  0;
+  SetLength(Result, Len);
+
   while 0 < Len do
   begin
-    Result := Result+ ReadAWideChar;
+    Inc(i);
+    Result[i]  :=  ReadAWideChar;
 
   end;
+  SetLength(Result, i);
+
+end;
+
+function ReadWideStringFromACharArray(var CharPtr: PChar; Len: Integer
+  ): WideString;
+begin
+  Result := '';
+  ReadWideStringFromACharArrayProc(CharPtr, Len, Result);
 
 end;
 
@@ -131,8 +148,9 @@ var
   ChPtr: PChar;
 
 begin
-  ChPtr := @Source[1];
-  Result := ReadWideStringFromACharArray(ChPtr, Length(Source));
+  ChPtr  :=  @Source[1];
+  Result := '';
+  ReadWideStringFromACharArrayProc(ChPtr, Length(Source), Result);
 
 end;
 
@@ -146,27 +164,27 @@ function ReadWideString(var FdFile: TextFile): WideString;
 
   begin
     Read(FdFile, c1);
-    b1 := Ord(c1);
+    b1  :=  Ord(c1);
 
     if b1 and 128= 0 then
-      Result := WideChar(b1)
+      Result  :=  WideChar(b1)
     else if b1 and 32= 0 then
     begin
       Read(FdFile, c2);
-      b2 := Ord(c2);
-      b2 := b2 xor 128;
-      b1 := b1 xor(128+ 64);
-      Value := b2+ b1 shl 6; 
-      Result := WideChar(Value);
+      b2  :=  Ord(c2);
+      b2  :=  b2 xor 128;
+      b1  :=  b1 xor(128+ 64);
+      Value  :=  b2+ b1 shl 6;
+      Result  :=  WideChar(Value);
 
     end
     else if b1 and 16= 0 then
     begin
       Read(FdFile, c2);
-      b2 := Ord(c2);
+      b2  :=  Ord(c2);
       Read(FdFile, c3);
-      b3 := Ord(c3);
-      b3 := b3 xor 128;
+      b3  :=  Ord(c3);
+      b3  :=  b3 xor 128;
       b2 := b2 xor 128;
       b1 := b1 xor(128+ 64+ 32);
       Value := b3+ b2 shl 6+ b1 shl 12;
@@ -200,7 +218,7 @@ var
 begin
   Result := '';
   Temp := ReadAWideChar;
-  while Temp<> #$D do
+  while Temp <> #$D do
   begin
     Result := Result+ Temp;
     Temp := ReadAWideChar;
@@ -258,7 +276,7 @@ end;
 
 procedure WideStrDelete(var Str: WideString; Index, Len: Integer);
 begin
-  Str := WideStrCopy(Str, 1, Index- 1)+
+  Str := WideStrCopy(Str, 1, Index- 1) +
   WideStrCopy(Str, Index+ Len, Length(Str));
     
 end;
@@ -341,26 +359,23 @@ end;
 { TWideStringList }
 
 function TWideStringList.JoinStrings(Separator: WideString): WideString;
-const
-  SkipEmptyString: Boolean = False;
-
+// TODO: This could be optimized by allocating Result first...
 var
-  Str: WideString;
   i: Integer;
 
 begin
   Result := '';
+  if Self.Count = 0 then
+    Exit;
+  Result := Self[0];
 
-  for i := 0 to Self.Count - 1 do
+  for i :=  1 to Self.Count - 1 do
   begin
-    Str := Self[i];
-    if SkipEmptyString and (Length(Str) = 0) then
-      Continue;
+    Result += Separator;
+    Result += Self[i];
 
-    if Length(Result) <> 0 then
-      Result += Separator;
-    Result += Str;
   end;
+
 end;
 
 end.

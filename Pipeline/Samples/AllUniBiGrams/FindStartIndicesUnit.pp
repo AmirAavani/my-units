@@ -53,18 +53,18 @@ const
   BufferSize = 1024 * 1024 * 8;
 
 begin
-  FMTDebugLn('In FindStartIndices: "%s"', [
+  ALoggerUnit.GetLogger.FMTDebugLn('In FindStartIndices: "%s"', [
   GetRunTimeParameterManager.ValueByName['--InputFile'].AsAnsiString]);
   Reader := TFileStream.Create(
     GetRunTimeParameterManager.ValueByName['--InputFile'].AsAnsiString,
     fmOpenRead or fmShareDenyNone);
   Size := Reader.Size;
-  FMTDebugLn('Reader.Size: %d', [Size]);
+  ALoggerUnit.GetLogger.FMTDebugLn('Reader.Size: %d', [Size]);
   Start := ((Size + Task.ID - 1) div Task.StepInfo.NumTasks) *
        (Task.ID - 1);
   Fin := ((Size + Task.ID - 1) div Task.StepInfo.NumTasks) *
        Task.ID - 1;
-  FMTDebugLn('Task: %d (%d -> %d)',[Task.ID, Start, Fin]);
+  ALoggerUnit.GetLogger.FMTDebugLn('Task: %d (%d -> %d)',[Task.ID, Start, Fin]);
   Reader.Position := Start;
 
   Positions := TPositionList.Create;
@@ -98,7 +98,7 @@ begin
       Content := '';
       if Positions.Count mod 10000 = 0 then
       begin
-        FMTDebugLn('ID: %d Index: %d Position: %d', [
+        ALoggerUnit.GetLogger.FMTDebugLn('ID: %d Index: %d Position: %d', [
           Task.ID,
           Positions.Count,
           Positions.Last]);
@@ -126,7 +126,7 @@ begin
 
   Reader.Free;
 
-  FMTDebugLn('ID: %d PositionsFileName: %s Count: %d', [
+  ALoggerUnit.GetLogger.FMTDebugLn('ID: %d PositionsFileName: %s Count: %d', [
     Task.ID,
     GetPositionFileName(
       Task.ID,
@@ -135,7 +135,7 @@ begin
   Writer := TFileStream.Create(GetPositionFileName(Task.ID, Task.Count), fmCreate);
   Positions.SaveToStream(Writer, @SaveUInt64);
   Writer.Free;
-  FMTDebugLn('ID: %d Positions.Count: %d', [Task.ID, Positions.Count]);
+  ALoggerUnit.GetLogger.FMTDebugLn('ID: %d Positions.Count: %d', [Task.ID, Positions.Count]);
   Positions.Free;
 
   Result := True;
