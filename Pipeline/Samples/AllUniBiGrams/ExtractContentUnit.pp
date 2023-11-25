@@ -232,11 +232,11 @@ begin
     except
       on e: EBaseWikiParser do
       begin
-         FMTDebugLn('Failed in Processing Data', []);
+         ALoggerUnit.GetLogger.FMTDebugLn('Failed in Processing Data', []);
       end;
       on e: Exception do
       begin
-        FMTDebugLn('Random Errror', []);
+        ALoggerUnit.GetLogger.FMTDebugLn('Random Errror', []);
       end;
     end;
     ALoggerUnit.GetLogger.FMTDebugLn('-Task.ID: %5d i:%5d', [Task.ID, i], -1);

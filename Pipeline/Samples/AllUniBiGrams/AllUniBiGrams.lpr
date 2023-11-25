@@ -75,20 +75,7 @@ begin
 end;
 
 begin
-  id := GetRunTimeParameterManager.ValueByName['--TaskID'].AsInteger;
-  begin
-    FMTDebugLn('id: %d', [id]);
-    Step := TPipeline.TStepInfo.Create(0, 64, nil);
-    Task := TTask.Create(id, Step);
-    FindStartIndicesUnit.FindStartIndices(Task);
-    Step.Free;
-    Task.Free;
-    FMTDebugLn('id: %d', [id]);
 
-  end;
-end;
-
-begin
   if GetRunTimeParameterManager.ValueByName['--Mode'].AsAnsiString = 'TestExtractContent' then
   begin
     TestExtractContent;
