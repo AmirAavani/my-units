@@ -5,17 +5,33 @@ unit ParameterManagerUnit_V2;
 interface
 
 uses
-  ValueUnit, Classes, SysUtils;
+  ValueUnit, Classes, SysUtils, ParameterManagerUnit;
 
 type
 
-  { TRunTimeParameterManager }
-  generic TRunTimeParameterManager<TParamList> = class(TObject)
-  protected
-    Params: TParamList;
+{$M+}
+  { TBaseParam }
 
+  TBaseParam = class(TObject)
+  private
+    FDebug: Integer;
 
   public
+    property Debug: Integer read FDebug;
+
+  public
+    constructor Create(Values: TRunTimeParameterManager.TNameValueMap);
+
+  end;
+
+  { TRunTimeParameterManager }
+  generic TRunTimeParameterManager<TParamList> =
+    class(ParameterManagerUnit.TRunTimeParameterManager)
+  protected
+    FParams: TParamList;
+
+  public
+    property Params: TParamList read FParams;
     constructor Create;
 
   end;
@@ -25,21 +41,27 @@ implementation
 uses
   TypInfo;
 
+{ TBaseParam }
+
+constructor TBaseParam.Create(Values: TRunTimeParameterManager.TNameValueMap);
+var
+  Value: ValueUnit.TValue;
+
+begin
+  inherited Create;
+
+  if Values.TryGetData('--Debug', Value) then
+    Self.FDebug := Value.AsInteger;
+
+end;
+
 { TRunTimeParameterManager }
 
 constructor TRunTimeParameterManager.Create;
-var
-  tInfo: PTypeInfo;
-  td: PTypeData;
-  FCount: Integer;
-  vmt: TVmt;
-  //dtm: PDmt;
-
 begin
-  vmt := PVmt(TParamList)^;
-//  WriteLn('ClassNAme: ', vmt.vClassName);
-  //dtm := PDmt(vmt.vDynamicTable)^;
-//  //WriteLn('ClassNAme: ', vmt.vDynamicTable);
+  inherited Create;
+
+  FParams := TParamList.Create(Self.Values);
 
 end;
 

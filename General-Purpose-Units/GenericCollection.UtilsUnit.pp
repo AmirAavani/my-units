@@ -4,7 +4,7 @@ unit GenericCollection.UtilsUnit;
 
 interface
 uses
-  classes;
+  classes, TupleUnit;
 
 type
   TBytes = array of Byte;
@@ -21,9 +21,9 @@ type
   function SaveData(bp: PByte; ByteCount: UInt16; Stream: TStream): Boolean;
 
 
-  function LoadUInt64(Stream: TStream): UInt64;
-  function LoadUnsignedData(Stream: TStream; ByteCount: Integer): UInt64;
-  function LoadSignedData(Stream: TStream; ByteCount: Integer): Int64;
+  function LoadUInt64(Stream: TStream): specialize TPair<Int64, UInt64>;
+  function LoadUnsignedData(Stream: TStream; ByteCount: Integer): specialize TPair<Int64, UInt64>;
+  function LoadSignedData(Stream: TStream; ByteCount: Integer): specialize TPair<Int64, UInt64>;
 
 implementation
 
@@ -125,20 +125,23 @@ begin
 
 end;
 
-function LoadUInt64(Stream: TStream): UInt64;
+function LoadUInt64(Stream: TStream): specialize TPair<Int64, UInt64>;
 begin
   Result := LoadUnsignedData(Stream, 8);
-end;
-
-function LoadUnsignedData(Stream: TStream; ByteCount: Integer): UInt64;
-begin
-  Stream.Read(Result, ByteCount);
 
 end;
 
-function LoadSignedData(Stream: TStream; ByteCount: Integer): Int64;
+function LoadUnsignedData(Stream: TStream; ByteCount: Integer): specialize TPair
+  <Int64, UInt64>;
 begin
-  Stream.Read(Result, ByteCount);
+  Result.First := Stream.Read(Result.Second, ByteCount);
+
+end;
+
+function LoadSignedData(Stream: TStream; ByteCount: Integer): specialize TPair<
+  Int64, UInt64>;
+begin
+  Result.First := Stream.Read(Result.Second, ByteCount);
 
 end;
 

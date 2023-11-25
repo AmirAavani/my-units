@@ -34,13 +34,6 @@ TestFindStartIndices:
 	${Binary} --Mode TestFindStartIndices --InputFile ../../../../1BWLM/NLP/Wikidump/fawiki-20230220-pages-articles-multistream.xml --WorkingDir  ../../../../1BWLM/NLP/tmp/   --TaskID $(TaskID)
 
 
-<<<<<<< HEAD
-=======
-TestFindStartIndices:
-	${Binary} --Mode TestFindStartIndices --InputFile ../../../../1BWLM/NLP/Wikidump/fawiki-20230220-pages-articles-multistream.xml --WorkingDir  ../../../../1BWLM/NLP/tmp/   --TaskID $(TaskID)
-
-
->>>>>>> bf15520 (...)
 TestExtractContent:
 	${Binary} --Mode TestExtractContent --InputFile ../../../../1BWLM/NLP/Wikidump/fawiki-20230220-pages-articles-multistream.xml --WorkingDir  ../../../../1BWLM/NLP/tmp/ --Debug ${Debug} --DebugIndex $(DebugIndex) --DebugStart $(DebugStart) --DebugEnd $(DebugEnd)  --TaskID $(TaskID)
 

@@ -58,12 +58,12 @@ type
 
     //function GetCurrentToken: TToken;
     function GetNextChar: WideChar;
-    function GetNextToken: TToken;
-    function _GetNextToken: TToken;
+    procedure GetNextToken;
+    procedure _GetNextToken(var Result: TToken);
 
     procedure Rewind;
   public
-    property NextToken: TToken read GetNextToken;
+    //property NextToken: TToken read GetNextToken;
     // property CurrentToken: TToken read GetCurrentToken;
     constructor Create(constref Data: WideString);
 
@@ -214,7 +214,9 @@ var
 
 begin
   for TokenType in TokenTypes do
+  begin
     EndTokens.Add(MakeToken(nil, nil, TokenType));
+  end;
 
   Result := EndTokens; 
 end;
@@ -445,6 +447,8 @@ begin
 
   end;
 
+  p.Free;
+
   if Token.TokenType in [
     ttCloseHyperLink,
     ttCloseHeadingSection,
@@ -452,8 +456,9 @@ begin
     ttEndTag,
     ttEndTable
     ] then
-    Exit;
-  Result := False;
+  begin
+    Exit(True);
+  end;
 
 end;
 
@@ -559,7 +564,7 @@ begin
   EndTokens:= MakeTokens(
     [ttGreaterThan, ttEndTag, ttOpenHeadingSection],
     EndTokens);
-  Tokenizer.NextToken;
+  Tokenizer.GetNextToken;
 
   Child := nil;
   Parameters := TNodes.Create;
@@ -572,12 +577,12 @@ begin
 
     if Tokenizer.LastToken.TokenType in [ttGreaterThan] then
     begin
-      Tokenizer.NextToken;
+      Tokenizer.GetNextToken;
       EndTokens.Pop(3);
 
     end else // if Tokenizer.LastToken.TokenType in [ttEndTzag] then
     begin
-      Tokenizer.NextToken;
+      Tokenizer.GetNextToken;
       EndTokens.Pop(3);
       Exit;
 
@@ -595,12 +600,12 @@ begin
       Result.AddChild(Child);
       if Tokenizer.LastToken.TokenType in [ttEOF, ttEndTag] then
         Break;
-      Tokenizer.NextToken;
+      Tokenizer.GetNextToken;
 
     end;
 
     if Tokenizer.LastToken.TokenType = ttEndTag then
-      Tokenizer.NextToken;
+      Tokenizer.GetNextToken;
   except
     on EInvalidEntity do
     begin
@@ -666,7 +671,7 @@ begin
 	  ttBeginTable,
 	  ttBeginTag,
 	  ttBeginTemplate]) then
-    Tokenizer.NextToken;
+    Tokenizer.GetNextToken;
 
   try
     NextNode := ParseEntity(EndTokens);
@@ -711,7 +716,7 @@ var
 
 
 begin
-  Tokenizer.NextToken;
+  Tokenizer.GetNextToken;
   EndTokens := MakeTokens([
     ttCloseHyperLink,
     ttBar,
@@ -742,13 +747,13 @@ begin
     Current := ParseUntilNil(Current, EndTokens);
     if Tokenizer.LastToken.TokenType = ttCloseHyperLink then
     begin
-      Tokenizer.NextToken;
+      Tokenizer.GetNextToken;
       Break;
 
     end;
     if Tokenizer.LastToken.TokenType = ttBar then
     begin
-      Tokenizer.NextToken;
+      Tokenizer.GetNextToken;
       Continue;
     end;
 
@@ -786,7 +791,7 @@ var
   Parameters: TNodes;
 
 begin
-  Tokenizer.NextToken;
+  Tokenizer.GetNextToken;
   Result := nil;
   EndTokens.Add(MakeToken(nil, nil, ttEndTemplate));
   EndTokens.Add(MakeToken(nil, nil, ttBar));
@@ -830,7 +835,7 @@ begin
     while IsUnacceptable(Tokenizer.LastToken.TokenType, [ttEndTemplate,
       ttOpenHeadingSection]) do
     begin
-      Tokenizer.NextToken;
+      Tokenizer.GetNextToken;
       Current := ParseEntity(EndTokens);
       Parameters.Add(Current);
 
@@ -860,7 +865,7 @@ begin
   EndTokens.Pop(4);
 
   if Tokenizer.LastToken.TokenType = ttEndTemplate then
-    Tokenizer.NextToken;
+    Tokenizer.GetNextToken;
   Result := TTemplate.Create(Name, Parameters);
 
 end;
@@ -868,7 +873,7 @@ end;
 function TWikiParser.ParseComment(EndTokens: TTokens): TCommentWikiEntry;
 begin
   Result := TCommentWikiEntry.Create(Tokenizer.LastToken.Text);
-  Tokenizer.NextToken;
+  Tokenizer.GetNextToken;
 end;
 
 function TWikiParser.ParseTable(EndTokens: TTokens): TTable;
@@ -876,7 +881,7 @@ var
   Current: TBaseWikiNode;
 
 begin
-  Tokenizer.NextToken;
+  Tokenizer.GetNextToken;
   Result := TTable.Create;
   EndTokens.Add(MakeToken(nil, nil, ttEndTable));
   Current := Result;
@@ -911,7 +916,7 @@ var
   i: Integer;
 
 begin
-  Tokenizer.NextToken;
+  Tokenizer.GetNextToken;
   EndTokens.Add(MakeToken(nil, nil, ttNewLine));
   for i := 1 to Length(Token.Text) do
   begin
@@ -949,7 +954,7 @@ begin
 
   end;
   EndTokens.Pop(1 + Length(Token.Text));
-  Tokenizer.NextToken;
+  Tokenizer.GetNextToken;
 
 end;
 
@@ -957,7 +962,7 @@ function TWikiParser.ParseSeparator(constref Token: TToken
   ): TSeparatorWikiEntry;
 begin
   Result := TSeparatorWikiEntry.Create(Token.Text);
-  Tokenizer.NextToken;
+  Tokenizer.GetNextToken;
 
 end;
 
@@ -1000,7 +1005,7 @@ begin
   end;
   Link := TTextWikiEntity.Create(Tokenizer.LastToken.Text);
 
-  Tokenizer.NextToken;
+  Tokenizer.GetNextToken;
   EndTokens.Add(MakeToken(nil, nil, ttCloseBracket));
 
   Text := nil;
@@ -1025,8 +1030,10 @@ end;
 function TWikiParser.ParseBulletList(constref Token: TToken; EndTokens: TTokens
   ): TBaseWikiNode;
 begin
-  Tokenizer.NextToken;
+  Tokenizer.GetNextToken;
   Result := TTextWikiEntity.Create(Token.Text);
+  if EndTokens.Count = EndTokens.Count + 1 then
+    Exit;
   Exit;
   // TODO: Implement this
                        {
@@ -1057,7 +1064,7 @@ end;
 function TWikiParser.ParseNumberedList(constref Token: TToken;
   EndTokens: TTokens): TBaseWikiNode;
 begin
-  Tokenizer.NextToken;
+  Tokenizer.GetNextToken;
   Result := TTextWikiEntity.Create(Token.Text);
   Exit;
 {
@@ -1107,7 +1114,7 @@ var
   Child: TBaseWikiNode;
 
 begin
-  Tokenizer.NextToken;
+  Tokenizer.GetNextToken;
   InitialCount := Length(AToken.Text);
   if InitialCount = 1 then
   begin
@@ -1152,7 +1159,7 @@ begin
 
   end;
   if Tokenizer.LastToken.TokenType = ttSingleQuote then
-    Tokenizer.NextToken;
+    Tokenizer.GetNextToken;
 
   EndTokens.Pop(3);
 
@@ -1185,7 +1192,7 @@ begin
     EndTokens := TTokens.Create;
     Result := TNodes.Create;
     EndTokens.Add(MakeToken(nil, nil, ttEOF));
-    Tokenizer.NextToken;
+    Tokenizer.GetNextToken;
     Next := Self.ParseEntity(EndTokens);
     while Next <> nil do
     begin
@@ -1244,14 +1251,13 @@ begin
 end;
 }
 
-function TWikiTokenizer.GetNextToken: TToken;
+procedure TWikiTokenizer.GetNextToken;
 begin
   Prev := Current;
 
-  Result := _GetNextToken;
-  LastToken := Result;
+  _GetNextToken(LastToken);
   ALoggerUnit.GetLogger.FMTDebugLn('%d Token: %s  %s',
-    [it, Result.Text, TokenTypeToString(Result.TokenType)],
+    [it, LastToken.Text, TokenTypeToString(LastToken.TokenType)],
     4);
   Inc(it);
 
@@ -1331,7 +1337,7 @@ end;
 const
   SingleQuote = #$27;
 
-function TWikiTokenizer._GetNextToken: TToken;
+procedure TWikiTokenizer._GetNextToken(var Result: TToken);
 
   function GetNext(Current: PWideChar; Delta: Integer = 1): WideChar;
   begin
@@ -1343,6 +1349,7 @@ function TWikiTokenizer._GetNextToken: TToken;
 var
   Start: PWideChar;
   Status: Integer;
+  PrevToken: TToken;
 
 begin
   while Current^ = ' ' do
@@ -1364,7 +1371,8 @@ begin
       if GetNext(Current) = ' ' then
       begin
         Inc(Current);
-        Exit(MakeToken(Start, Current - 1, ttLessThan));
+        Result := MakeToken(Start, Current - 1, ttLessThan);
+        Exit;
       end;
       Status := 0;
       Inc(Current);
@@ -1433,6 +1441,7 @@ begin
     end;
     '=':
     begin
+      PrevToken.TokenType := LastToken.TokenType;
       Result := MaybeGroupSamePatternToken(Current, '=', ttEqualSign);
 
       if Length(Result.Text) = 1 then
@@ -1442,7 +1451,7 @@ begin
       end
       else if 2 <= Length(Result.Text) then
       begin
-        if LastToken.TokenType = ttNewLine then
+        if PrevToken.TokenType = ttNewLine then
            Result.TokenType := ttOpenHeadingSection
         else
         begin
@@ -1517,7 +1526,8 @@ begin
       if GetNext(Current) = '>' then
       begin
         Inc(Current, 2);
-        Exit(MakeToken(Start, Current, ttEndTag));
+        Result := MakeToken(Start, Current, ttEndTag);
+        Exit;
 
       end;
       Result := MakeToken(Start, Current, ttSlash);

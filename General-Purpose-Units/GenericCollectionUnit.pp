@@ -6,7 +6,8 @@ unit GenericCollectionUnit;
 interface
 
 uses
-  Classes, SysUtils, Generics.Collections, GenericCollection.UtilsUnit;
+  Classes, SysUtils, Generics.Collections, GenericCollection.UtilsUnit,
+  TupleUnit;
 type
 
   { TCollection }
@@ -16,8 +17,9 @@ type
     function GetIsEmpty: Boolean; inline;
 
   public type
+    TInt64TDataPair = specialize TPair<Int64, TData>;
     TDumpFunc = function (constref d: TData; Stream: TStream): Boolean;
-    TLoadFunc = function (Stream: TStream): TData;
+    TLoadFunc = function (Stream: TStream): TInt64TDataPair;
     TMatcherFunc = function (constref Str: TData): Boolean;
     TPointerEnumerator = specialize TEnumerator<PT>;
 
@@ -131,15 +133,20 @@ end;
 class function TCollection.LoadFromStream(Stream: TStream; LoadFunc: TLoadFunc
   ): specialize TCollection<TData>;
 var
-  x: TData;
+  x: TCollection.TInt64TDataPair;
+  CurrentPosition: Int64;
+  StreamSize: Int64;
 
 begin
   Result := (specialize TCollection<TData>).Create;
 
-  while Stream.Position < Stream.Size do
+  StreamSize := Stream.Size;
+  CurrentPosition := Stream.Position;
+  while CurrentPosition < StreamSize do
   begin
     x := LoadFunc(Stream);
-    Result.Add(x);
+    Result.Add(x.Second);
+    Inc(CurrentPosition, x.First);
 
   end;
 end;

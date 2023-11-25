@@ -20,10 +20,10 @@ type
       constructor Create(ArgName: AnsiString);
 
     end;
-  private type
+  public type
     TNameValueMap = specialize TMapSimpleKeyObjectValue<AnsiString, TValue>;
 
-  private
+  protected
     Values: TNameValueMap;
 
     function GetVerbosity: Integer;

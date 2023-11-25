@@ -68,6 +68,10 @@
         <Filename Value="../../../General-Purpose-Units/ParameterManagerUnit_V2.pp"/>
         <IsPartOfProject Value="True"/>
       </Unit>
+      <Unit>
+        <Filename Value="ParamUnit.pp"/>
+        <IsPartOfProject Value="True"/>
+      </Unit>
     </Units>
   </ProjectOptions>
   <CompilerOptions>

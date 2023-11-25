@@ -8,7 +8,7 @@ uses
   Classes, SysUtils;
 
 type
-
+  {$M+}
   { TValue }
 
   TValue = class(TObject)
@@ -57,7 +57,6 @@ type
     function AsUIntegerOrDefault(ui: UInt64): uInt64;
 
     procedure UpdateValue(NewValue: AnsiString); virtual;
-
   end;
 
 implementation

@@ -117,7 +117,7 @@ var
   LineNumber: Integer;
 
 begin
-  if Verbosity < Self.Debug then
+  if Self.Debug < Verbosity then
     Exit;
 
   GetParentLineInfo(Filename, LineNumber);
@@ -160,8 +160,6 @@ var
   b: Boolean;
 
 begin
-  if RunTimeParameterManager.ValueByName['--Debug'].AsIntegerOrDefault(-1) < Verbosity then
-    Exit;
   LineInfo := Format('%s:%d', [Filename, LineNumber]);
 
   Mutex4Counters.Lock;
@@ -192,6 +190,9 @@ var
   LineNumber: Integer;
 
 begin
+  if Self.Debug < Verbosity then
+    Exit;
+
   GetParentLineInfo(Filename, LineNumber);
   _DebugLnEveryN(Filename, LineNumber, N, '%s', [Msg], Verbosity, 2);
 
@@ -207,6 +208,9 @@ var
   LineNumber: Integer;
 
 begin
+  if Self.Debug < Verbosity then
+    Exit;
+
   GetParentLineInfo(Filename, LineNumber);
   _DebugLnEveryN(Filename, LineNumber, N, Fmt, Args, Verbosity, 2);
 
