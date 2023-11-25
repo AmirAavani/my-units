@@ -7,6 +7,7 @@ uses
   Classes, SysUtils;
 
 type
+  ToStringFunction = function: WideString;
 
   { TALogger }
 
@@ -35,6 +36,10 @@ procedure FmtFatalLnIFFalse(
   Value: Boolean;
   constref Fmt: AnsiString;
   constref Args: array of const);
+procedure FmtFatalLnIFFalse(
+  Value: Boolean;
+  constref Fmt: AnsiString;
+  constref ArgFuncs: array of ToStringFunction);
 
 function GetLogger: TALogger;
 function InitLogger(DebugLvl: Integer): TALogger;
@@ -315,6 +320,24 @@ begin
 
   GetParentLineInfo(Filename, LineNumber);
   _FatalLn(Filename, LineNumber, Format(Fmt, Args));
+
+end;
+
+procedure FmtFatalLnIFFalse(Value: Boolean; constref Fmt: AnsiString; constref
+  ArgFuncs: array of ToStringFunction);
+var
+  i: Integer;
+  Args: array of WideString;
+
+begin
+  if Value then
+    Exit;
+
+  SetLength(Args, Length(ArgFuncs));
+  for i := 0 to High(ArgFuncs) do
+    Args[i] := ArgFuncs[i]();
+
+
 
 end;
 

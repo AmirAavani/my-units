@@ -18,30 +18,17 @@ uses
 
 function ProcessData(constref Data: AnsiString): TWikiPage;
 var
-  Doc: TXMLDocument;
-  S: TStream;
+  Title: WideString;
+  TextStart, TextLast: PChar;
 
 begin
-  Doc := nil;
   Result := nil;
-  S := TStringStream.Create(Data);
   try
-    ReadXMLFile(Doc, S);
-
-  except
-    on e: Exception do
+    if not ParseWikiNode(Data, Result) then
     begin
-      S.Free;
       Exit;
 
     end;
-
-  end;
-  if (Doc = nil) or (Doc.FirstChild = nil) then
-    Exit;
-
-  try
-    Result := ParseWiki(Doc.FirstChild);
 
   except
     on e: EBaseWikiParser do
@@ -49,17 +36,13 @@ begin
       FmtFatalLnIFFalse(
         False,
         'Failed in Parsing %',
-        [Doc.FirstChild.TextContent]);
-      S.Free;
-      Doc.Free;
+        [Data]);
       raise;
 
     end;
     on e: EDOMError do
     begin
       Result := nil;
-      S.Free;
-      Doc.Free;
       ALoggerUnit.GetLogger.FMTWriteLn(
         'ERRORR: %s Data: %s',
         [e.Message, Data]);
@@ -73,9 +56,6 @@ begin
     end;
 
   end;
-
-  S.Free;
-  Doc.Free;
 
 end;
 
@@ -182,16 +162,12 @@ begin
 
     try
       WikiDoc := ProcessData(Data);
-      if (WikiDoc = nil) or (WikiDoc.IsADisambiguationPage) or (WikiDoc.Redirect <> nil) then
+      if (WikiDoc = nil) or (WikiDoc.IsADisambiguationPage) or (WikiDoc.Redirect <> '') then
       begin
         {ALoggerUnit.GetLogger.FMTWriteLn(
           '-Task.ID: %05d i:%05d',
           [Task.ID, i]);
-<<<<<<< HEAD
-
-=======
         }
->>>>>>> 008fbe2 (:x...)
         if WikiDoc <> nil then
         begin
           {
@@ -212,7 +188,7 @@ begin
         {
         WriteLn('<B>');
         WriteLn(Format('<WikiDoc Index="%d"><Title>%s</Title>%s</WikiDoc>', [
-          i, WikiDoc.Title.ToXML('  '), WikiDoc.ToXML]));
+          i, WriteAsUTF8(WikiDoc.Title), WikiDoc.ToXML]));
         WriteLn('</B>');
         }
       end;
@@ -262,10 +238,7 @@ begin
       Continue;
     end;
 
-<<<<<<< HEAD
-=======
     {
->>>>>>> 008fbe2 (:x...)
     WriteLn(Format(
       'ID: %d i: %d Title: (%s) -> (%d, %d)', [
       Task.ID,
@@ -274,10 +247,7 @@ begin
       LineInfo.First.Count,
       LineInfo.Second.Count])
     );
-<<<<<<< HEAD
-=======
     }
->>>>>>> 008fbe2 (:x...)
 
     {
     ALoggerUnit.GetLogger.FMTWriteLn(

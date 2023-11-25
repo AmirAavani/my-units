@@ -77,12 +77,12 @@ var
 
 begin
   ElementCount := InputStream.ReadInt32;
-  Self.Capacity := ElementCount;
+  Self.Count := ElementCount;
 
   for i := 0 to ElementCount - 1 do
   begin
     Element := LoadAnElement(InputStream);
-    Self.Add(Element);
+    Self[i] := Element;
 
   end;
   Result := True;

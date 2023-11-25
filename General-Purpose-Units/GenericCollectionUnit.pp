@@ -129,6 +129,9 @@ var
   i: Integer;
 
 begin
+  if Self.Capacity < Self.Count + AnotherCollection.Count then
+    Self.Capacity := Self.Count + AnotherCollection.Count;
+
   for i := 0 to AnotherCollection.Count - 1 do
     Self.Add(TData(AnotherCollection[i]));
 
@@ -426,6 +429,7 @@ var
   i: Integer;
 
 begin
+  Self.Capacity := Self.Count + Another.Count;
   for i := 0 to Another.Count - 1 do
     Self.Add(Another[i]);
 

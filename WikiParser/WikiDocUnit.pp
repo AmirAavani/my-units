@@ -63,24 +63,38 @@ type
 
   end;
 
+  TPairPWideChar = specialize TPair<PWideChar, PWideChar>;
+
+  { TTokens }
+
+  TTokens = class(specialize TCollection<TPairPWideChar>)
+  public
+    function IsPrefix(constref SubStr: WideString): Boolean;
+    function JoinStrings(constref Separator: WideString): WideString;
+    procedure Join(tokens: TTokens);
+
+    class function MakePair(TokenStart, TokenLast: PWideChar): TPairPWideChar;
+
+  end;
+
   { TTextWikiEntity }
 
   TTextWikiEntity = class(TBaseWikiNodeWithChildren)
   private
-    FContent: TWideStringList;
-    function GetContent: WideString;
+    FContent: TTokens;
 
   protected
     function _ToXml(constref Indent: AnsiString): AnsiString; override;
     procedure DoExportText(Unigrams, Bigrams: TWideStringList); override;
 
   public
-    property Content: WideString read GetContent;
+    property Content: TTokens read FContent write FContent;
 
-    constructor Create(constref Text: WideString);
+    constructor Create(TokenStart, TokenLast: PWideChar);
     destructor Destroy; override;
 
     procedure Flatten;
+    function GetText: WideString;
   end;
 
   { TTextStyler }
@@ -135,7 +149,7 @@ type
     procedure DoExportText(Unigrams, Bigrams: TWideStringList); override;
 
   public
-    constructor Create(constref Text: WideString);
+    constructor Create(Start, Last: PWideChar);
 
   end;
 
@@ -144,7 +158,7 @@ type
   TSeparatorWikiEntry = class(TTextWikiEntity)
   protected
   public
-    constructor Create(constref Text: WideString);
+    constructor Create(Start, Last: PWideChar);
     destructor Destroy; override;
 
   end;
@@ -267,22 +281,19 @@ type
   TWikiPage = class(TObject)
   private
     FContent: TNodes;
+    FRawData: WideString;
     // FNodes: TNodes;
-    FTitle, FNS, FID, FRedirect: TTextWikiEntity;
-    function GetTitle: TTextWikiEntity;
+    FTitle, FNS, FRedirect, FID: WideString;
     procedure SetContent(AValue: TNodes);
-    procedure SetID(AValue: TTextWikiEntity);
-    procedure SetNS(AValue: TTextWikiEntity);
-    procedure SetRedirect(AValue: TTextWikiEntity);
-    procedure SetTitle(AValue: TTextWikiEntity);
 
   public
     // property Nodes: TNodes read FNodes write SetNodes;
-    property Title: TTextWikiEntity read GetTitle write SetTitle;
-    property NS: TTextWikiEntity read FNS write SetNS;
-    property ID: TTextWikiEntity read FID write SetID;
-    property Redirect: TTextWikiEntity read FRedirect write SetRedirect;
+    property Title: WideString read FTitle write FTitle;
+    property NS: WideString read FNS write FNS;
+    property ID: WideString read FID write FID;
+    property Redirect: WideString read FRedirect write FRedirect;
     property Content: TNodes read FContent write SetContent;
+    property RawData: WideString read FRawData write FRawData;
 
     constructor Create;
     destructor Destroy; override;
@@ -320,6 +331,13 @@ begin
     Text.JoinStrings(' '),
     WideStrSplit4Extracts,
     True);
+  if TextUnigrams.IsEmpty then
+  begin
+    TextUnigrams.Free;
+    Exit;
+
+  end;
+
   i := 0;
   for Uni in TextUnigrams do
   begin
@@ -331,6 +349,7 @@ begin
 
   TextUnigrams.Count := i;
   Unigrams.AddAnotherCollection(TextUnigrams);
+  // Bigrams.Capacity := Bigrams.Capacity + TextUnigrams.Count - 1;
 
   for i := 0 to TextUnigrams.Count - 2 do
   begin
@@ -341,21 +360,91 @@ begin
 
 end;
 
-procedure ExtractUnigramsAndBigrams(constref Text: WideString; Unigrams, Bigrams: TWideStringList);
+procedure SplitTokens(Tokens: TTokens; constref Delimiters: WideString;
+    Unigrams: TWideStringList);
+
+  function IsADelimiter(constref Current: WideChar): Boolean; inline;
+  var
+    Delimiter: WideChar;
+
+  begin
+    for Delimiter in Delimiters do
+      if Current = Delimiter then
+        Exit(True);
+
+    Result := False;
+  end;
+
 var
-  TextUnigrams: TWideStringList;
+  Start, Current: PWideChar;
+  Tmp: WideString;
+  Token: TPairPWideChar;
+  It: TTokens.TEnumerator;
+
+begin
+  Tmp := '';
+  It := Tokens.GetEnumerator;
+
+  while It.MoveNext do
+  begin
+    Token := It.Current;
+    Start := Token.First;
+    Current := Start;
+    while Current <= Token.Second do
+    begin
+      if not IsADelimiter(Current^) then
+      begin
+        Inc(Current);
+        Continue;
+
+      end;
+
+      if Start < Current then
+      begin
+        SetLength(Tmp, (Current - Start));
+        Move(Start^, Tmp[1], SizeOf(WideChar) * (Current - Start));
+        Unigrams.Add(Tmp);
+
+      end;
+
+      Start := Current + 1;
+      Unigrams.Add(Current^);
+      Inc(Current);
+
+    end;
+
+    if Start < Current then
+    begin
+      SetLength(Tmp, (Current - Start));
+      Move(Start^, Tmp[1], SizeOf(WideChar) * (Current - Start));
+      Unigrams.Add(Tmp);
+
+    end;
+
+  end;
+  It.Free;
+
+end;
+
+procedure ExtractUnigramsAndBigrams(Tokens: TTokens; Unigrams, Bigrams: TWideStringList);
+var
+  BeforeUnigramCount, BeforeBigramCount: Integer;
   i: Integer;
 
 begin
-  if Text = sLineBreak then
+  if Tokens.Count = 0 then
     Exit;
-  TextUnigrams := WideStrSplit(Text, WideStrSplit4Extracts, True);
-  Unigrams.AddAnotherCollection(TextUnigrams);
-  for i := 0 to TextUnigrams.Count - 2 do
+  BeforeUnigramCount := Unigrams.Count;
+  SplitTokens(Tokens, WideStrSplit4Extracts, Unigrams);
+  if Unigrams.Count <= BeforeUnigramCount + 1 then
+    Exit;
+
+  BeforeBigramCount := Bigrams.Count;
+  Bigrams.Count := BeforeBigramCount + (Unigrams.Count - BeforeUnigramCount - 1);
+  for i := BeforeUnigramCount to Unigrams.Count - 2 do
   begin
-    Bigrams.Add(TextUnigrams[i] + ' ' + TextUnigrams[i + 1]);
+    Bigrams[BeforeBigramCount + i - BeforeUnigramCount] := Unigrams[i] + ' ' + Unigrams[i + 1];
   end;
-  TextUnigrams.Free;
 
 end;
 
@@ -540,14 +629,21 @@ begin
 
 end;
 
+const LineBreakWideString = WideString(sLineBreak);
+const SingleQuoteWideString = WideString(SingleQuote);
+
 constructor TTextStyler.Create(_Style: TStyle);
 begin
-  inherited Create(sLineBreak);
+  inherited Create(
+    @LineBreakWideString[1],
+    @LineBreakWideString[Length(LineBreakWideString)]
+  );
 
   FStyle := _Style;
 end;
 
-class function TTextStyler.CreateStyler(constref Text: WideString): TTextStyler;
+class function TTextStyler.CreateStyler(constref Text: WideString
+  ): TTextStyler;
 var
   Child: TBaseWikiNode;
 
@@ -557,7 +653,10 @@ begin
   3: Exit(TBoldTextStyler.Create);
   4:
     begin
-      Child := TTextWikiEntity.Create(SingleQuote);
+      Child := TTextWikiEntity.Create(
+        @SingleQuoteWideString[1],
+        @SingleQuoteWideString[Length(SingleQuoteWideString)]
+      );
       Result := TBoldTextStyler.Create;
       Result.Children.Add(Child);
     end;
@@ -569,7 +668,10 @@ begin
   begin
     Result := TItalicBoldTextStyler.Create;
     Result.Children.Add(
-      TTextWikiEntity.Create(SingleQuote));
+      TTextWikiEntity.Create(
+        @SingleQuoteWideString[1],
+        @SingleQuoteWideString[Length(SingleQuoteWideString)])
+      );
   end
   else
     ALoggerUnit.GetLogger.FMTDebugLn('Invalid Style: Length(Text): %d ->%s', [Length(Text), Text]);
@@ -594,13 +696,10 @@ end;
 function TTemplate.GetTemplateName: WideString;
 var
   Current: TBaseWikiNode;
-  AllContents: TWideStringList;
 
 begin
-  Result := '';
-  AllContents := TWideStringList.Create;
+  Result := (FTemplateName as TTextWikiEntity).GetText;
 
-  AllContents.Add((FTemplateName as TTextWikiEntity).Content);
   for Current in (FTemplateName as TTextWikiEntity).Children do
   begin
     if not (Current is TTextWikiEntity) then
@@ -611,12 +710,10 @@ begin
       Continue;
 
     end;
-    AllContents.Add((Current as TTextWikiEntity).Content);
+    Result += WideStringSpace;
+    Result += (Current as TTextWikiEntity).GetText;
 
   end;
-
-  Result := AllContents.JoinStrings;
-  AllContents.Free;
 
 end;
 
@@ -731,38 +828,6 @@ begin
   FContent := AValue;
 end;
 
-function TWikiPage.GetTitle: TTextWikiEntity;
-begin
-  if Self = nil then
-    Exit(nil);
-
-  Result := FTitle;
-end;
-
-procedure TWikiPage.SetID(AValue: TTextWikiEntity);
-begin
-  FID.Free;
-  FID := AValue;
-end;
-
-procedure TWikiPage.SetNS(AValue: TTextWikiEntity);
-begin
-  FNS.Free;
-  FNS := AValue;
-end;
-
-procedure TWikiPage.SetRedirect(AValue: TTextWikiEntity);
-begin
-  FRedirect.Free;
-  FRedirect := AValue;
-end;
-
-procedure TWikiPage.SetTitle(AValue: TTextWikiEntity);
-begin
-  FTitle.Free;
-  FTitle := AValue;
-end;
-
 constructor TWikiPage.Create;
 begin
   inherited Create;
@@ -774,10 +839,6 @@ begin
   if Self = nil then
     Exit;
 
-  FTitle.Free;
-  FID.Free;
-  FNS.Free;
-  FRedirect.Free;
   FContent.Free;
 
   inherited Destroy;
@@ -807,7 +868,7 @@ function TWikiPage.ExportText: TWideStringListPair;
 
       for S in TerminatorHeadings do
         if WideStringUnit.WriteAsUTF8(
-          ((Node as THeadingSection).Title as TTextWikiEntity).Content) = S then
+          ((Node as THeadingSection).Title as TTextWikiEntity).GetText) = S then
         begin
           Exit;
         end;
@@ -847,6 +908,11 @@ begin
       if Node is THeadingSection then
       begin
         PrevNode := Node;
+        Continue;
+
+      end;
+      if (PrevNode is THeadingSection) and (UCount = Result.First.Count) then
+      begin
         Continue;
 
       end;
@@ -1018,7 +1084,7 @@ var Parvandeh: WideString;
 procedure THyperLinkEntity.DoExportText(Unigrams, Bigrams: TWideStringList);
 begin
   if (FLink <> nil) and(FLink is TTextWikiEntity) and
-    IsPrefix(Parvandeh, (FLink as TTextWikiEntity).FContent.JoinStrings('')) then
+    (FLink as TTextWikiEntity).FContent.IsPrefix(Parvandeh) then
   begin
     Exit;
   end;
@@ -1031,9 +1097,9 @@ end;
 
 { TSeparatorWikiEntry }
 
-constructor TSeparatorWikiEntry.Create(constref Text: WideString);
+constructor TSeparatorWikiEntry.Create(Start, Last: PWideChar);
 begin
-  inherited Create(Text);
+  inherited Create(Start, Last);
 
 end;
 
@@ -1044,9 +1110,9 @@ end;
 
 { TCommentWikiEntry }
 
-constructor TCommentWikiEntry.Create(constref Text: WideString);
+constructor TCommentWikiEntry.Create(Start, Last: PWideChar);
 begin
-  inherited Create(Text);
+  inherited Create(Start, Last);
 
 end;
 
@@ -1057,7 +1123,7 @@ end;
 
 { TTextWikiEntity }
 
-function TTextWikiEntity.GetContent: WideString;
+function TTextWikiEntity.GetText: WideString;
 var
   Child: TBaseWikiNode;
 
@@ -1068,7 +1134,7 @@ begin
   Result := FContent.JoinStrings(' ');
   for Child in Children do
     if Child is TTextWikiEntity then
-      Result += ' ' + (Child as TTextWikiEntity).GetContent;
+      Result += ' ' + (Child as TTextWikiEntity).GetText;
 
 end;
 
@@ -1106,7 +1172,7 @@ begin
     if Child.ClassName = TTextWikiEntity.ClassName then
     begin
       TextChild := Child as TTextWikiEntity;
-      Self.FContent.AddAnotherCollection(TextChild.FContent);
+      Self.FContent.Join(TextChild.FContent);
       Self.Children.Delete(0);
       if TextChild.Children.Count <> 0 then
         MyChildren.AddAnotherCollection(TextChild.Children);
@@ -1130,13 +1196,13 @@ begin
 
 end;
 
-constructor TTextWikiEntity.Create(constref Text: WideString);
+constructor TTextWikiEntity.Create(TokenStart, TokenLast: PWideChar);
 begin
   inherited Create;
 
-  FContent := TWideStringList.Create;
-  if Length(Text) <> 0 then
-    FContent.Add(Text);
+  FContent := TTokens.Create;
+  if TokenStart <= TokenLast then
+    FContent.Add(TTokens.MakePair(TokenStart, TokenLast));
 
 end;
 
@@ -1175,6 +1241,82 @@ end;
 procedure TBaseWikiNodeWithChildren.AddChild(Child: TBaseWikiNode);
 begin
   self.Children.Add(Child);
+end;
+
+{ TTokens }
+
+function TTokens.IsPrefix(constref SubStr: WideString): Boolean;
+var
+  Token: TPairPWideChar;
+  Source, PCh: PWideChar;
+  i: Integer;
+
+begin
+  Result := True;
+
+  Source := @SubStr[1];
+  i := 1;
+
+  for Token in Self do
+  begin
+    Pch := Token.First;
+    while PCh <= Token.Second do
+    begin
+      if PCh^ <> Source^ then
+        Exit(False);
+
+      Source^ := Pch^;
+      Inc(Pch);
+      Inc(i);
+      if Length(SubStr) < i then
+        Break;
+
+
+    end;
+
+  end;
+end;
+
+function TTokens.JoinStrings(constref Separator: WideString): WideString;
+var
+  Token: TPairPWideChar;
+  Size: Integer;
+  PCh, Target: PWideChar;
+
+begin
+  Result := '';
+
+  Size := 0;
+  for Token in Self do
+    Size += Token.Second - Token.First;
+  Inc(Size, 2 * Self.Count - 1);
+  SetLength(Result, Size);
+  Target := @Result[1];
+  for Token in Self do
+  begin
+    Pch := Token.First;
+    while PCh <= Token.Second do
+    begin
+      Target^ := Pch^;
+      Inc(Target);
+      Inc(Pch);
+
+    end;
+    Target^ := ' ';
+    Inc(Target);
+
+  end;
+end;
+
+procedure TTokens.Join(tokens: TTokens);
+begin
+  ALoggerUnit.GetLogger.FatalLn('NIY');
+
+end;
+
+class function TTokens.MakePair(TokenStart, TokenLast: PWideChar): TPairPWideChar;
+begin
+  Result := specialize MakePair<PWideChar, PWideChar>(TokenStart, TokenLast);
 end;
 
 { TBaseWikiNode }

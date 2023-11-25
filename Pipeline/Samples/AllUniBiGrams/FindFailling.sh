@@ -1,5 +1,7 @@
 Binary=./AllUniBiGrams-Debug
-taskID=-1
+taskID=28
+top=4100
+bot=4200
 
 if [ $taskID -eq -1 ];
 then
@@ -29,6 +31,7 @@ do
   mid=`expr $mid / 2`
   echo $top, $bot '->' $mid
   echo /tmp/$top-$mid-$taskID.log 
+  echo ${Binary} Pipeline.StepID=2 InputFile=../../../../1BWLM/NLP/Wikidump/fawiki-20240301-pages-articles-multistream.xml WorkingDir=../../../../1BWLM/NLP/tmp/ Debug=0 DebugStart=${top} DebugEnd=${mid}  Pipeline.TaskID=$taskID 
   ${Binary} Pipeline.StepID=2 InputFile=../../../../1BWLM/NLP/Wikidump/fawiki-20240301-pages-articles-multistream.xml WorkingDir=../../../../1BWLM/NLP/tmp/ Debug=0 DebugStart=${top} DebugEnd=${mid}  Pipeline.TaskID=$taskID > /tmp/$top-$mid-$taskID.log 2>&1
 
   if [ $? -ne 0 ];
