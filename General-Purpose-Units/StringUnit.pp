@@ -12,8 +12,8 @@ function IsPrefix(constref Prefix, Str: WideString): Boolean;
 function IsSuffix(constref Suffix, Str: AnsiString): Boolean;
 function IsSuffix(constref Suffix, Str: WideString): Boolean;
 function Split(constref Str: AnsiString; Delimiter: AnsiString): TStringList;
-function JoinStrings(const Strings: TStringList; Separator: AnsiString): AnsiString;
-function JoinStrings(const Strings: array of AnsiString; Separator: AnsiString;
+function JoinStrings(const Strings: TStringList; constref Separator: AnsiString): AnsiString;
+function JoinStrings(const Strings: array of AnsiString; constref Separator: AnsiString;
    SkipEmptyString: Boolean = True): AnsiString;
 
 implementation
@@ -101,7 +101,7 @@ begin
 
 end;
 
-function JoinStrings(const Strings: TStringList; Separator: AnsiString
+function JoinStrings(const Strings: TStringList; constref Separator: AnsiString
   ): AnsiString;
 var
   Str: AnsiString;
@@ -120,8 +120,8 @@ begin
 
 end;
 
-function JoinStrings(const Strings: array of AnsiString; Separator: AnsiString;
-  SkipEmptyString: Boolean): AnsiString;
+function JoinStrings(const Strings: array of AnsiString; constref
+  Separator: AnsiString; SkipEmptyString: Boolean): AnsiString;
 var
   Str: AnsiString;
   i: Integer;

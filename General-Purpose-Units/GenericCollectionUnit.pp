@@ -13,23 +13,39 @@ type
   { TCollection }
 
   generic TCollection<TData> = class(specialize TList<TData>)
-  private
-    function GetIsEmpty: Boolean; inline;
-
   public type
-    TInt64TDataPair = specialize TPair<Int64, TData>;
+    TLongIntDataPair = specialize TPair<LongInt, TData>;
+    TBoolDataPair = specialize TPair<Boolean, TData>;
     TDumpFunc = function (constref d: TData; Stream: TStream): Boolean;
-    TLoadFunc = function (Stream: TStream): TInt64TDataPair;
+    TLoadFromStreamFunc = function (Stream: TStream): TLongIntDataPair;
+    // Loads the data from bp to bp + len - 1.
+    // The result.First will be False if the interval contains partial content of
+    // TData.
+    // This function will be called again with the same "bp" value and a larger Len.
+    TLoadFromBytesFunc = function (var bp: PByte; Len: Int32): TBoolDataPair;
     TMatcherFunc = function (constref Str: TData): Boolean;
     TPointerEnumerator = specialize TEnumerator<PT>;
 
+  protected
+    function GetItemPtr(Index: Integer): PT; virtual;
+    function GetIsEmpty: Boolean; inline;
+
+
   public
+    property ItemPtr[Index: Integer]: PT read GetItemPtr;
     property IsEmpty: Boolean read GetIsEmpty;
 
     procedure AddAnotherCollection(AnotherCollection: TCollection);
     procedure SaveToStream(Stream: TStream; DumpFunc: TDumpFunc);
 
-    class function LoadFromStream(Stream: TStream; LoadFunc: TLoadFunc): specialize
+    class function LoadFromStream(
+      Stream: TStream;
+      LoadFunc: TLoadFromStreamFunc): specialize
+      TCollection<TData>;
+    class function BatchLoadFromStream(
+      Stream: TStream;
+      LoadFunc: TLoadFromBytesFunc;
+      ChunkSize: UInt32 = 64 * 1024 * 1024): specialize
       TCollection<TData>;
 
     function Pop(n: Integer = 1): TData; virtual;
@@ -98,6 +114,11 @@ uses
 
 { TCollection }
 
+function TCollection.GetItemPtr(Index: Integer): PT;
+begin
+  Result := @(Self.FItems[Index]);
+end;
+
 function TCollection.GetIsEmpty: Boolean;
 begin
   Result := Count = 0;
@@ -131,24 +152,75 @@ begin
   it.Free;
 end;
 
-class function TCollection.LoadFromStream(Stream: TStream; LoadFunc: TLoadFunc
+class function TCollection.LoadFromStream(Stream: TStream; LoadFunc: TLoadFromStreamFunc
   ): specialize TCollection<TData>;
 var
-  x: TCollection.TInt64TDataPair;
+  x: TCollection.TLongIntDataPair;
   i: Integer;
+  pItem: PT;
 
 begin
   Result := (specialize TCollection<TData>).Create;
   Result.Count := Stream.ReadDWord;
+  pItem := @Result.FItems[0];
 
   i := 0;
   while i < Result.Count do
   begin
     x := LoadFunc(Stream);
-    Result[i] := x.Second;
+    pItem^ := x.Second;
+    Inc(pItem);
     Inc(i);
 
   end;
+end;
+
+class function TCollection.BatchLoadFromStream(
+  Stream: TStream;
+  LoadFunc: TLoadFromBytesFunc;
+  ChunkSize: UInt32): specialize TCollection<TData>;
+
+  function Reload(Current: PByte; var bs: array of Byte; Remaining: LongInt): LongInt;
+  var
+    Read: LongInt;
+
+  begin
+    System.Move(Current, bs[0], Remaining);
+    Result := Remaining;
+    Stream.Read(bs[Remaining], ChunkSize - Remaining);
+
+  end;
+var
+  x: TCollection.TBoolDataPair;
+  Index: Integer;
+  bs: array of Byte;
+  bp: PByte;
+  Remaining: Integer;
+
+begin
+  Result := (specialize TCollection<TData>).Create;
+  Result.Count := Stream.ReadDWord;
+  SetLength(bs, ChunkSize);
+  Remaining := Stream.Read(bs, ChunkSize);
+
+  bp := @bs[0];
+  Index := 0;
+  while Index < Result.Count do
+  begin
+    x := LoadFunc(bp, Remaining);
+    if not x.First then
+    begin
+      Remaining := Reload(bp, bs, Remaining);
+
+
+    end;
+    Result[Index] := x.Second;
+    Inc(Index);
+
+  end;
+
+  SetLength(bs, 0);
+
 end;
 
 function TCollection.Pop(n: Integer): TData;

@@ -105,12 +105,16 @@ procedure _DebugLn(constref Filename: AnsiString;
   LineNumber: Integer;
   constref Fmt: AnsiString; 
   const Args: array of const);
+var
+  Message: AnsiString;
+
 begin
+  Message := Format(Fmt, Args);
   if (Filename <> 'UNKNOWN') and (LineNumber <> -1) then
     _Writeln(Format('%d-%s-%s:%d] %s', [ThreadID, DateTimeToStr(Now), Filename, LineNumber,
-      Format(Fmt, Args)]))
+      Message]))
   else
-    _Writeln(Format('%d-%s] %s', [ThreadID, DateTimeToStr(Now), Format(Fmt, Args)]));
+    _Writeln(Format('%d-%s] %s', [ThreadID, DateTimeToStr(Now), Message]));
 
 end;
 
@@ -323,6 +327,11 @@ function InitLogger(DebugLvl: Integer): TALogger;
 begin
   Logger := TALogger.Create(DebugLvl);
 
+end;
+
+function Format(constref Fmt: AnsiString; Args: array of const): AnsiString;
+begin
+  Result := SysUtils.Format(Fmt, Args);
 end;
 
 procedure PrintError(Arguments: TPtrArray);

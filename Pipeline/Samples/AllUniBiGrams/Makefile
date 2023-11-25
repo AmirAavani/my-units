@@ -22,27 +22,30 @@ AllUniBiGrams-MemLeak:
 AllUniBiGrams-Profiling:
 	mkdir -p /tmp/AllUniBiGrams-Profiling
 	fpc -O3 -gv -g -gl AllUniBiGrams.lpr -Fu$(MyUnitPath)/Pipeline -Fu$(MyUnitPath)/General-Purpose-Units -Fu$(MyUnitPath)/Unicode-Functions -Fu$(MyUnitPath)/ALogger -Fu$(MyUnitPath)/Threading -Fu$(MyUnitPath)/PB2PAS -Fu$(MyUnitPath)/Algorithmic-Units -Fu$(MyUnitPath)/WikiParser  -Fu$(ModulesPath) -Fu. -Fu../../  -Fu/usr/local/share/lazarus/components/*/ -FU/tmp/AllUniBiGrams-Profiling  -oAllUniBiGrams-Profiling
-	valgrind --tool=callgrind --dump-instr=yes --collect-jumps=yes  ./AllUniBiGrams-Profiling Pipeline.StepID=2 InputFile=../../../../1BWLM/NLP/Wikidump/fawiki-20230220-pages-articles-multistream.xml WorkingDir=../../../../1BWLM/NLP/tmp/ Debug=${Debug} DebugIndex=$(DebugIndex) DebugStart=$(DebugStart) DebugEnd=$(DebugEnd)  Pipeline.TaskID=${TaskID} 
+	valgrind --tool=callgrind --dump-instr=yes --collect-jumps=yes  ./AllUniBiGrams-Profiling Pipeline.StepID=2 InputFile=../../../../1BWLM/NLP/Wikidump/fawiki-20240301-pages-articles-multistream.xml WorkingDir=../../../../1BWLM/NLP/tmp/ Debug=${Debug} DebugIndex=$(DebugIndex) DebugStart=$(DebugStart) DebugEnd=$(DebugEnd)  Pipeline.TaskID=${TaskID} 
+
+MemLeak: AllUniBiGrams-MemLeak
+	./AllUniBiGrams-MemLeak Pipeline.StepID=2 InputFile=../../../../1BWLM/NLP/Wikidump/fawiki-20240301-pages-articles-multistream.xml WorkingDir=../../../../1BWLM/NLP/tmp/ Debug=${Debug} DebugIndex=$(DebugIndex) DebugStart=$(DebugStart) DebugEnd=$(DebugEnd)  Pipeline.TaskID=${TaskID} 
 
 MemLeak: AllUniBiGrams-MemLeak
 	./AllUniBiGrams-MemLeak Pipeline.StepID=2 InputFile=../../../../1BWLM/NLP/Wikidump/fawiki-20230220-pages-articles-multistream.xml WorkingDir=../../../../1BWLM/NLP/tmp/ Debug=${Debug} DebugIndex=$(DebugIndex) DebugStart=$(DebugStart) DebugEnd=$(DebugEnd)  Pipeline.TaskID=${TaskID} 
 
 
 Step1:
-	${Binary} Pipeline.StepID=1 InputFile=../../../../1BWLM/NLP/Wikidump/fawiki-20230220-pages-articles-multistream.xml WorkingDir=../../../../1BWLM/NLP/tmp/ Debug=$(Debug) 2>&1 
+	${Binary} Pipeline.StepID=1 InputFile=../../../../1BWLM/NLP/Wikidump/fawiki-20240301-pages-articles-multistream.xml WorkingDir=../../../../1BWLM/NLP/tmp/ Debug=$(Debug) 2>&1 
 
 Step2:
-	${Binary} Pipeline.StepID=2 InputFile=../../../../1BWLM/NLP/Wikidump/fawiki-20230220-pages-articles-multistream.xml WorkingDir=../../../../1BWLM/NLP/tmp/ Debug=${Debug} DebugIndex=$(DebugIndex) DebugStart=$(DebugStart) DebugEnd=$(DebugEnd)  Pipeline.TaskID=$(TaskID)
+	${Binary} Pipeline.StepID=2 InputFile=../../../../1BWLM/NLP/Wikidump/fawiki-20240301-pages-articles-multistream.xml WorkingDir=../../../../1BWLM/NLP/tmp/ Debug=${Debug} DebugIndex=$(DebugIndex) DebugStart=$(DebugStart) DebugEnd=$(DebugEnd)  Pipeline.TaskID=$(TaskID)
 
 TestFindStartIndices:
-	${Binary} Mode=TestFindStartIndices InputFile=../../../../1BWLM/NLP/Wikidump/fawiki-20230220-pages-articles-multistream.xml WorkingDir=../../../../1BWLM/NLP/tmp/   Pipeline.TaskID=$(TaskID) Debug=$(Debug)
+	${Binary} Mode=TestFindStartIndices InputFile=../../../../1BWLM/NLP/Wikidump/fawiki-20240301-pages-articles-multistream.xml WorkingDir=../../../../1BWLM/NLP/tmp/   Pipeline.TaskID=$(TaskID) Debug=$(Debug)
 
 
 TestExtractContent:
-	${Binary} Mode=TestExtractContent InputFile=../../../../1BWLM/NLP/Wikidump/fawiki-20230220-pages-articles-multistream.xml WorkingDir=../../../../1BWLM/NLP/tmp/ Debug=${Debug} DebugIndex=$(DebugIndex) DebugStart=$(DebugStart) DebugEnd=$(DebugEnd)  Pipeline.TaskID=$(TaskID)
+	${Binary} Mode=TestExtractContent InputFile=../../../../1BWLM/NLP/Wikidump/fawiki-20240301-pages-articles-multistream.xml WorkingDir=../../../../1BWLM/NLP/tmp/ Debug=${Debug} DebugIndex=$(DebugIndex) DebugStart=$(DebugStart) DebugEnd=$(DebugEnd)  Pipeline.TaskID=$(TaskID)
 
 DStep2:
-	${Binary} Pipeline.StepID=2 InputFile=../../../../1BWLM/NLP/Wikidump/fawiki-20230220-pages-articles-multistream.xml WorkingDir=../../../../1BWLM/NLP/tmp/ Debug=$(Debug) DebugIndex=$(DebugIndex)  2>&1
+	${Binary} Pipeline.StepID=2 InputFile=../../../../1BWLM/NLP/Wikidump/fawiki-20240301-pages-articles-multistream.xml WorkingDir=../../../../1BWLM/NLP/tmp/ Debug=$(Debug) DebugIndex=$(DebugIndex)  2>&1
 
 Proto:
 	for f in `ls Protos/*.proto`;\

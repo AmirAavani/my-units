@@ -26,7 +26,8 @@ uses
   StringUnit;
 
 type
-  TTokenType = (ttNone, ttHeading, ttText, ttLessThan, ttGreaterThan,
+  TTokenType = (ttNone,
+  ttText, ttLessThan, ttGreaterThan,
   ttBeginTag, ttEndTag,
   ttIdentifier, ttEqualSign, ttString, ttNewLine,
   ttBeginTemplate, ttEndTemplate,
@@ -384,7 +385,7 @@ begin
   if Self.TokenType <> OtherToken.TokenType then
     Exit(False);
 
-  if Self.TokenLast - Self.TokenStart = OtherToken.TokenLast - OtherToken.TokenStart then
+  if Self.TokenLast - Self.TokenStart <> OtherToken.TokenLast - OtherToken.TokenStart then
     Exit(False);
 
   P1 := Self.TokenStart;
@@ -601,6 +602,10 @@ begin
     end;
   end;
 
+  {
+  ALoggerUnit.GetLogger.FMTDebugLn(
+   'Result: %s', [Result.ToXML('')]);
+  }
 end;
 
 function TWikiParser.ParseTag(constref Token: TToken; EndTokens: TTokens
@@ -649,10 +654,10 @@ begin
     begin
       Child := nil;
       Child := ParseEntity(EndTokens);
-      ParseUntilNil(Child, EndTokens);
-      if Child = nil then
+      if Child <> nil then
+        Result.AddChild(Child);
+      if ParseUntilNil(Child, EndTokens) = nil then
         Break;
-      Result.AddChild(Child);
       if Tokenizer.LastToken.TokenType in [ttEOF, ttEndTag] then
         Break;
       Tokenizer.GetNextToken;
@@ -702,8 +707,8 @@ begin
   begin
     Result := ParseEntityWithSingleQuoteToken(Token, EndTokens);
     EndTokens.Pop(4);
-    // FMTDebugLn('Result: %s', [Result.ToXML('')]);
-    // FMTDebugLn('TStyleTextNode: %s', [Result.ToXML('')], 16);
+    // ALoggerUnit.GetLogger.FMTDebugLn('Result: %X', [Result]);
+    // ALoggerUnit.GetLogger.FMTDebugLn('TStyleTextNode: %X', [Result], 16);
     Exit;
 
   end;
@@ -834,7 +839,7 @@ begin
 
   end;
   Name := Current as TTextWikiEntity;
-  ALoggerUnit.GetLogger.FMTDebugLn('Template: %s', [Name.ToXML('')], 3);
+  // ALoggerUnit.GetLogger.FMTDebugLn('Template: %s', [Name.ToXML('')], 3);
   Parameters := TNodes.Create;
 
   while IsUnAcceptable(Tokenizer.LastToken.TokenType,
@@ -936,7 +941,7 @@ var
 begin
   Tokenizer.GetNextToken;
   Result := TTable.Create;
-  EndTokens.Add(MakeToken(nil, nil, ttEndTable));
+  EndTokens := MakeTokens([ttEndTable, ttOpenHeadingSection], EndTokens);
   Current := Result;
 
   while (Current <> nil) and (Tokenizer.LastToken.TokenType <> ttEOF) do
@@ -950,7 +955,7 @@ begin
     except
       on EInvalidEntity do
       begin
-        EndTokens.Pop(1);
+        EndTokens.Pop(2);
         FreeAndNil(Result);
         raise;
       end;
@@ -958,7 +963,7 @@ begin
     end;
   end;
 
-  EndTokens.Pop;
+  EndTokens.Pop(2);
 
 end;
 

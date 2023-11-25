@@ -243,9 +243,13 @@ type
 
   end;
 
+  { TBulletedListEntity }
+
   TBulletedListEntity = class(TBaseWikiNodeWithChildren)
 
   end;
+
+  { TNumberedListEntity }
 
   TNumberedListEntity = class(TBaseWikiNodeWithChildren)
 
@@ -302,7 +306,9 @@ const
 var
   WideStrSplit4Extracts: WideString;
 
-procedure ExtractUnigramsAndBigrams(constref Text: TWideStringList; Unigrams, Bigrams: TWideStringList);
+procedure ExtractUnigramsAndBigrams(
+  constref Text: TWideStringList;
+  Unigrams, Bigrams: TWideStringList);
 var
   TextUnigrams: TWideStringList;
   i: Integer;
@@ -346,7 +352,9 @@ begin
   TextUnigrams := WideStrSplit(Text, WideStrSplit4Extracts, True);
   Unigrams.AddAnotherCollection(TextUnigrams);
   for i := 0 to TextUnigrams.Count - 2 do
+  begin
     Bigrams.Add(TextUnigrams[i] + ' ' + TextUnigrams[i + 1]);
+  end;
   TextUnigrams.Free;
 
 end;
@@ -454,7 +462,10 @@ begin
     Child.ExportText(CurrentUnigrams, CurrentBigrams);
     Unigrams.AddAnotherCollection(CurrentUnigrams);
     if (LastUnigrams <> '') and not CurrentUnigrams.IsEmpty then
+    begin
       Bigrams.Add(LastUnigrams + WideString(' ') + CurrentUnigrams.First);
+
+    end;
     Bigrams.AddAnotherCollection(CurrentBigrams);
 
     LastUnigrams := '';
@@ -837,6 +848,7 @@ begin
       begin
         PrevNode := Node;
         Continue;
+
       end;
 
       if (UCount <> 0) and (UCount < Result.First.Count) and
@@ -1201,7 +1213,6 @@ procedure TBaseWikiNode.ExportText(Unigrams, Bigrams: TWideStringList);
 var
   UCount, BCount: Integer;
   NewBigram: WideString;
-
 
 begin
   Inc(c);

@@ -5,7 +5,7 @@ unit SyncUnit;
 interface
 
 uses
-  Classes, SysUtils, cthreads, pthreads, Contnrs;
+  cthreads, pthreads, Classes, SysUtils, Contnrs;
 
 type
   { TMutex }

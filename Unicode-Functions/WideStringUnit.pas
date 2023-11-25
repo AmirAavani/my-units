@@ -12,7 +12,7 @@ type
   TWideStringList = class(specialize TCollection<WideString>)
   private
   public
-    function JoinStrings(Separator: WideString = sLineBreak): WideString;
+    function JoinStrings(constref Separator: WideString = sLineBreak): WideString;
 
   end;
 
@@ -150,7 +150,6 @@ var
 }
 begin
   Result := UTF8Decode(Source);
-  Exit;
 {
   ChPtr  :=  @Source[1];
   Result := '';
@@ -320,7 +319,19 @@ function WideStrSplit(constref Str: WideString; constref
 var
   Start, Current: PWideChar;
   Tmp: WideString;
-  Delimiter: WideChar;
+
+  function IsADelimiter(constref Current: WideChar): Boolean; inline;
+  var
+    Delimiter: WideChar;
+
+  begin
+    for Delimiter in Delimiters do
+      if Current = Delimiter then
+        Exit(True);
+
+    Result := False;
+  end;
+
 begin
   Result := TWideStringList.Create;
 
@@ -328,30 +339,24 @@ begin
   Current := Start;
   while Current^ <> #0 do
   begin
-    for Delimiter in Delimiters do
+    if IsADelimiter(Current^) then
     begin
-
-      if Current^ = Delimiter then
+      if Start < Current then
       begin
-        if Start <= Current - 1 then
-        begin
-          SetLength(Tmp, (Current - Start));
-          Move(Start^, Tmp[1], SizeOf(WideChar) * (Current - Start));
-          Result.Add(Tmp);
-
-        end;
-        Start := Current + 1;
-        if KeepDelimiters then
-          Result.Add(Delimiter);
-        Break;
+        SetLength(Tmp, (Current - Start));
+        Move(Start^, Tmp[1], SizeOf(WideChar) * (Current - Start));
+        Result.Add(Tmp);
 
       end;
+      Start := Current + 1;
+      if KeepDelimiters then
+        Result.Add(Current^);
 
     end;
     Inc(Current);
   end;
 
-  if Start <= Current - 1 then
+  if Start < Current then
   begin
     SetLength(Tmp, (Current - Start));
     Move(Start^, Tmp[1], SizeOf(WideChar) * (Current - Start));
@@ -362,15 +367,43 @@ end;
 
 { TWideStringList }
 
-function TWideStringList.JoinStrings(Separator: WideString): WideString;
-// TODO: This could be optimized by allocating Result first...
+function TWideStringList.JoinStrings(constref Separator: WideString): WideString;
 var
   i: Integer;
+  FinalLength: Integer;
+  Current: PWideChar;
+  Source: PWideString;
+
 
 begin
   Result := '';
-  if Self.Count = 0 then
+  if Self.IsEmpty then
     Exit;
+
+  FinalLength := 0;
+  for i := 0 to Self.Count - 1 do
+    Inc(FinalLength, Length(Self.ItemPtr[i]^));
+  Inc(FinalLength, Length(Separator) * Self.Count - 1);
+
+  SetLength(Result, FinalLength);
+
+  Current := @(Result[1]);
+  for i := 0 to Self.Count - 2 do
+  begin
+    Source := Self.ItemPtr[i];
+    if Length(Source^) <> 0 then
+      System.Move(Source^[1], Current^, SizeOf(WideChar) * Length(Source^));
+    Inc(Current, Length(Source^));
+    System.Move(Separator[1], Current^, SizeOf(WideChar) * Length(Separator));
+    Inc(Current, Length(Separator));
+
+  end;
+  i := Self.Count - 1;
+  Source := Self.ItemPtr[i];
+  if Length(Source^) <> 0 then
+    System.Move(Source^[1], Current^, SizeOf(WideChar) * Length(Source^));
+
+{
   Result := Self[0];
 
   for i :=  1 to Self.Count - 1 do
@@ -379,6 +412,7 @@ begin
     Result += Self[i];
 
   end;
+}
 
 end;
 

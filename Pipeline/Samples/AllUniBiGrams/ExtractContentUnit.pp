@@ -119,8 +119,8 @@ begin
   DebugStart := ParamUnit.GetParams.DebugStart.Value;
   DebugEnd := ParamUnit.GetParams.DebugEnd.Value;
   ALoggerUnit.GetLogger.FMTWriteLn(
-    'DebugIndex: %d DebugStart: %d DebugEnd: %d',
-    [DebugIndex, DebugStart, DebugEnd]);
+    'DebugIndex: %d DebugStart: %d DebugEnd: %d TaskID: %d',
+    [DebugIndex, DebugStart, DebugEnd, ParamUnit.GetParams.Pipeline.TaskID.Value]);
 
 
   ALoggerUnit.GetLogger.FMTWriteLn(
@@ -146,12 +146,13 @@ begin
        (Task.ID - 1);
   Fin := ((Size + Task.ID - 1) div Task.StepInfo.NumTasks) *
        Task.ID - 1;
-  ALoggerUnit.GetLogger.FMTWriteLn(
+  {ALoggerUnit.GetLogger.FMTWriteLn(
     'Task.ID: %d Start: %d Fin: %d',
     [Task.ID, Start, Fin]);
-
+  }
   for i := 0 to Positions.Count - 2 do
   begin
+
     if (DebugStart <> -1) and ((i < DebugStart) or (DebugEnd < i)) then
       Continue;
     if (i <> DebugIndex) and (DebugIndex <> -1) then
@@ -159,7 +160,7 @@ begin
 
     // ALoggerUnit.GetLogger.FMTWriteLn('*****%05d/%05d*****', [i, Positions.Count - 2]);
     // ALoggerUnit.GetLogger.FMTWriteLn('+Task.ID: %05d i:%05d', [Task.ID, i]);
-    // WriteLn(Format('+Task.ID: %05d i:%05d', [Task.ID, i]));
+    WriteLn(Format('+Task.ID: %05d i:%05d', [Task.ID, i]));
     Flush(Output);
 
     Reader.Position := Positions[i];
@@ -183,17 +184,23 @@ begin
       WikiDoc := ProcessData(Data);
       if (WikiDoc = nil) or (WikiDoc.IsADisambiguationPage) or (WikiDoc.Redirect <> nil) then
       begin
-        ALoggerUnit.GetLogger.FMTWriteLn(
+        {ALoggerUnit.GetLogger.FMTWriteLn(
           '-Task.ID: %05d i:%05d',
           [Task.ID, i]);
+<<<<<<< HEAD
 
+=======
+        }
+>>>>>>> 008fbe2 (:x...)
         if WikiDoc <> nil then
         begin
+          {
           ALoggerUnit.GetLogger.FMTWriteLn(
             'Skipped Task.ID: %05d i: %05d %s', [
             Task.ID,
             i,
             WikiDoc.Title.ToXML('')]);
+          }
         end;
 
         WikiDoc.Free;
@@ -202,11 +209,12 @@ begin
       end;
       if DebugIndex <> -1 then
       begin
+        {
         WriteLn('<B>');
         WriteLn(Format('<WikiDoc Index="%d"><Title>%s</Title>%s</WikiDoc>', [
           i, WikiDoc.Title.ToXML('  '), WikiDoc.ToXML]));
         WriteLn('</B>');
-
+        }
       end;
       LineInfo := WikiDoc.ExportText;
       LineInfo.First.RemoveAllValuesMatching(@IsEmptyString);
@@ -254,6 +262,10 @@ begin
       Continue;
     end;
 
+<<<<<<< HEAD
+=======
+    {
+>>>>>>> 008fbe2 (:x...)
     WriteLn(Format(
       'ID: %d i: %d Title: (%s) -> (%d, %d)', [
       Task.ID,
@@ -262,6 +274,10 @@ begin
       LineInfo.First.Count,
       LineInfo.Second.Count])
     );
+<<<<<<< HEAD
+=======
+    }
+>>>>>>> 008fbe2 (:x...)
 
     {
     ALoggerUnit.GetLogger.FMTWriteLn(
