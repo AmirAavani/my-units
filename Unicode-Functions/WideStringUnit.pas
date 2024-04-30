@@ -19,6 +19,7 @@ type
 
 
 {
+
   The function does not change the content of CharPtr but it might increases its value.
 }
 procedure ReadWideStringFromACharArrayProc(var CharPtr: PChar; Len: Integer; var Result: WideString);
@@ -35,6 +36,8 @@ function WideStrSplit(
   constref Str: WideString;
   constref Delimiters: WideString;
   KeepDelimiters: Boolean = False): TWideStringList;
+
+function HasPrefix(Current: PWideChar; constref StrToProbe: WideString): Boolean;
 
 implementation
 uses
@@ -364,6 +367,25 @@ begin
 
   end;
 end;
+
+function HasPrefix(Current: PWideChar; constref StrToProbe: WideString
+  ): Boolean;
+var
+  Ch: WideChar;
+
+begin
+  Result := False;
+  for ch in StrToProbe do
+  begin
+    if Ch <> Current^ then
+      Exit;
+    Inc(Current);
+
+  end;
+
+  Result := True;
+end;
+
 
 { TWideStringList }
 

@@ -285,6 +285,7 @@ type
     // FNodes: TNodes;
     FTitle, FNS, FRedirect, FID: WideString;
     procedure SetContent(AValue: TNodes);
+    procedure SetRawData(const AValue: WideString);
 
   public
     // property Nodes: TNodes read FNodes write SetNodes;
@@ -293,7 +294,7 @@ type
     property ID: WideString read FID write FID;
     property Redirect: WideString read FRedirect write FRedirect;
     property Content: TNodes read FContent write SetContent;
-    property RawData: WideString read FRawData write FRawData;
+    property RawData: WideString read FRawData write SetRawData;
 
     constructor Create;
     destructor Destroy; override;
@@ -826,6 +827,77 @@ procedure TWikiPage.SetContent(AValue: TNodes);
 begin
   FContent.Free;
   FContent := AValue;
+end;
+
+procedure TWikiPage.SetRawData(const AValue: WideString);
+  function DecodeXML: Boolean;
+  var
+    Target: PWideChar;
+    Ch, Last: PWideChar;
+
+  begin
+    Ch := @FRawData[1];
+    Last := Ch + Length(FRawData) - 1;
+    Target := Ch;
+
+    while Ch <= Last do
+    begin
+      if Ch^ <> '&' then
+      begin
+        Target^ := Ch^;
+        Inc(Ch);
+        Inc(Target);
+        Continue;
+
+      end;
+
+      if HasPrefix(Ch, '&amp;') then
+      begin
+        Inc(Ch, 5);
+        Target^ := '&';
+        Inc(Target);
+
+      end
+      else if HasPrefix(Ch, '&lt;') then
+      begin
+        Inc(Ch, 4);
+        Target^ := '<';
+        Inc(Target);
+
+      end
+      else if HasPrefix(Ch, '&gt;') then
+      begin
+        Inc(Ch, 4);
+        Target^ := '>';
+        Inc(Target);
+
+      end
+      else if HasPrefix(Ch, '&apos;') then
+      begin
+        Inc(Ch, 6);
+        Target^ := SingleQuote;
+        Inc(Target);
+
+      end
+      else if HasPrefix(Ch, '&quot;') then
+      begin
+        Inc(Ch, 6);
+        Target^ := '"';
+        Inc(Target);
+
+      end
+      else
+        ALoggerUnit.GetLogger.FmtFatalLn('Invalid Sequence: ', []);
+
+    end;
+    SetLength(FRawData, Target - @(FRawData[1]));
+
+  end;
+
+begin
+  FRawData := AValue;
+  DecodeXML;
+
 end;
 
 constructor TWikiPage.Create;

@@ -192,23 +192,6 @@ begin
 
 end;
 
-function HasPrefix(Current: PWideChar; constref StrToProbe: AnsiString): Boolean;
-var
-  i: Integer;
-
-begin
-  Result := False;
-  for i := 1 to Length(StrToProbe) do
-  begin
-    if Current^ <> StrToProbe[i] then
-      Exit;
-    Inc(Current);
-
-  end;
-
-  Result := True;
-end;
-
 const
   SizeOfWideChar = SizeOf(WideChar);
 
@@ -378,6 +361,7 @@ begin
       Inc(Ch);
       LastOfTag := GetEndOfTag(Ch, LastCh, '</text>');
       WikiPage.RawData := ReadWideStringFromACharArray(Ch, LastOfTag - Ch + 1);
+
       WikiPage.Content := ParseContent(WikiPage.RawData);
 
       Result := True;
@@ -1586,53 +1570,7 @@ procedure TWikiTokenizer._GetNextToken(var Result: TToken);
 
   function GetNext(Current: PWideChar; Delta: Integer = 1): WideChar;
   begin
-    Result := Current^;
-  end;
-
-  function HandleAmpersand(Current: PWideChar): TToken;
-  const
-    Ampersand: WideString = '&amp;';
-    Apostrophe: WideString = '&apos;';
-    GreaterThan: WideString = '&gt;';
-    LessThan: WideString = '&lt';
-    QuotationMark: WideString = '&quot;';
-
-  begin
-    if IsPrefix(PChar(Current), PChar(@Ampersand[1])) then
-    begin
-      Result := '&';
-      Inc(Current, 5);
-
-    end
-    else if IsPrefix(PChar(Current), PChar(@Apostrophe[1])) then
-    begin
-      Result := SingleQuote;
-      Inc(Current, 6);
-
-    end
-    else if IsPrefix(PChar(Current), PChar(@GreaterThan[1])) then
-    begin
-      Result := '>';
-      Inc(Current, 4);
-
-    end
-    else if IsPrefix(PChar(Current), PChar(@LessThan[1])) then
-    begin
-      Result := '<';
-      Inc(Current, 4);
-
-    end
-    else if IsPrefix(PChar(Current), PChar(@QuotationMark[1])) then
-    begin
-      Result := '"';
-      Inc(Current, 6);
-
-    end
-    else
-    begin
-      ALoggerUnit.GetLogger.FMTDebugLn('Unknown Token: %s', [Current^]);
-
-    end;
+    Result := (Current + 1)^;
   end;
 
 var
@@ -1653,10 +1591,6 @@ begin
     begin
       Result := MakeToken(nil, nil, ttEOF);
 
-    end;
-    '&':
-    begin
-      Result := HandleAmpersand;
     end;
     '<':
     begin

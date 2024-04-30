@@ -17,10 +17,6 @@ uses
   WikiParserUnit, WideStringUnit;
 
 function ProcessData(constref Data: AnsiString): TWikiPage;
-var
-  Title: WideString;
-  TextStart, TextLast: PChar;
-
 begin
   Result := nil;
   try
