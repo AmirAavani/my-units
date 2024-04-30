@@ -1,4 +1,4 @@
-unit HeapUnit; 
+unit HeapUnit;
 {
   Tested with mowlawn @ USACO OPEN11 GOLD.
 }
@@ -13,23 +13,23 @@ type
 
   { THeap }
 
-  generic THeap<T>= class (TObject)
+  generic THeap<T> = class(TObject)
   private
-    function Get (Index: Integer): T;
+    function Get(Index: Integer): T;
 
   private
-    property Member [Index: Integer]: T read Get;
+    property Member[Index: Integer]: T read Get;
     function GetCapacity: Integer;
     function GetCount: Integer;
     function GetMin: T;
 
-    procedure Heapify (Index: Integer);
-    function GetLeftChild (Index: Integer): Integer; inline;
-    function GetRightChild (Index: Integer): Integer; inline;
-    function GetParent (Index: Integer): Integer; inline;
+    procedure Heapify(Index: Integer);
+    function GetLeftChild(Index: Integer): Integer; inline;
+    function GetRightChild(Index: Integer): Integer; inline;
+    function GetParent(Index: Integer): Integer; inline;
 
   type
-    TIsGreaterThanFunction= function (const a: T; const b: T): Boolean;
+    TIsGreaterThanFunction = function(const a: T; const b: T): Boolean;
     TList = specialize TFPGList<T>;
   var
     FMembers: TList;
@@ -40,14 +40,14 @@ type
     property Capacity: Integer read GetCapacity;
     property Min: T read GetMin;
 
-    constructor Create (GreaterThanFunction: TIsGreaterThanFunction);
+    constructor Create(GreaterThanFunction: TIsGreaterThanFunction);
     {
     Destroy calls free of all the objects in the Heap objecty
     }
     destructor Destroy; override;
     procedure Clear;
 
-    procedure Insert (Data: T);
+    procedure Insert(Data: T);
     procedure DeleteMin;
 
     procedure Print;
@@ -59,61 +59,60 @@ implementation
 
 { THeap }
 
-function THeap.Get (Index: Integer): T;
+function THeap.Get(Index: Integer): T;
 begin
-  Result:= T (FMembers.Items [Index]);
+  Result := T(FMembers.Items[Index]);
 
 end;
 
 function THeap.GetCapacity: Integer;
 begin
-  Result:= FMembers.Capacity;
+  Result := FMembers.Capacity;
 
 end;
 
 function THeap.GetCount: Integer;
 begin
-  Result:= FMembers.Count;
+  Result := FMembers.Count;
 
 end;
 
 function THeap.GetMin: T;
 begin
-  Result:= Member [0];
+  Result := Member[0];
 
 end;
 
-procedure THeap.Heapify (Index: Integer);
+procedure THeap.Heapify(Index: Integer);
 var
   ActiveIndex: Integer;
   MinOfChildrenIndex: Integer;
   MinOfChildren: T;
   Temp: T;
-
 begin
-  ActiveIndex:= Index;
+  ActiveIndex := Index;
 
-  while 2* ActiveIndex+ 1< Count do
+  while 2 * ActiveIndex + 1 < Count do
   begin
-    MinOfChildrenIndex:= 2* ActiveIndex+ 1;
-    MinOfChildren:= Member [MinOfChildrenIndex];
+    MinOfChildrenIndex := 2 * ActiveIndex + 1;
+    MinOfChildren := Member[MinOfChildrenIndex];
 
-    if 2* ActiveIndex+ 2< Count then
-      if FIsGreaterThan (Member [2* ActiveIndex+ 1],
-                         Member [2* ActiveIndex+ 2]) then
+    if 2 * ActiveIndex + 2 < Count then
+      if FIsGreaterThan(Member[2 * ActiveIndex + 1],
+        Member[2 * ActiveIndex + 2]) then
       begin
-        Inc (MinOfChildrenIndex);
-        MinOfChildren:= Member [MinOfChildrenIndex];
+        Inc(MinOfChildrenIndex);
+        MinOfChildren := Member[MinOfChildrenIndex];
 
       end;
 
-    if FIsGreaterThan (Member [ActiveIndex], MinOfChildren) then
+    if FIsGreaterThan(Member[ActiveIndex], MinOfChildren) then
     begin
-      Temp:= Member [ActiveIndex];
-      FMembers [ActiveIndex]:= MinOfChildren;
-      FMembers [MinOfChildrenIndex]:= Temp;
+      Temp := Member[ActiveIndex];
+      FMembers[ActiveIndex] := MinOfChildren;
+      FMembers[MinOfChildrenIndex] := Temp;
 
-      ActiveIndex:= MinOfChildrenIndex;
+      ActiveIndex := MinOfChildrenIndex;
 
     end
     else
@@ -123,31 +122,31 @@ begin
 
 end;
 
-function THeap.GetLeftChild (Index: Integer): Integer;
+function THeap.GetLeftChild(Index: Integer): Integer;
 begin
-  Result:= Index shl 1+ 1;
+  Result := Index shl 1 + 1;
 
 end;
 
-function THeap.GetRightChild (Index: Integer): Integer;
+function THeap.GetRightChild(Index: Integer): Integer;
 begin
-  Result:= Index shl 1+ 2;
+  Result := Index shl 1 + 2;
 
 end;
 
-function THeap.GetParent (Index: Integer): Integer;
+function THeap.GetParent(Index: Integer): Integer;
 begin
-  Result:= (Index- 1) shr 1;
+  Result := (Index - 1) shr 1;
 
 end;
 
-constructor THeap.Create (GreaterThanFunction: TIsGreaterThanFunction);
+constructor THeap.Create(GreaterThanFunction: TIsGreaterThanFunction);
 begin
   inherited Create;
 
-  FMembers:= TList.Create;
+  FMembers := TList.Create;
 
-  FIsGreaterThan:= GreaterThanFunction;
+  FIsGreaterThan := GreaterThanFunction;
 
 end;
 
@@ -164,25 +163,24 @@ begin
   FMembers.Clear;
 end;
 
-procedure THeap.Insert (Data: T);
+procedure THeap.Insert(Data: T);
 var
   ActiveIndex: Integer;
   Temp: T;
-
 begin
-  FMembers.Add (Data);
+  FMembers.Add(Data);
 
-  ActiveIndex:= Count- 1;
-  if 1< Count then
-    while FIsGreaterThan (Member [GetParent (ActiveIndex)],
-                          Member [ActiveIndex]) do
+  ActiveIndex := Count - 1;
+  if 1 < Count then
+    while FIsGreaterThan(Member[GetParent(ActiveIndex)],
+        Member[ActiveIndex]) do
     begin
-      Temp:= Member [ActiveIndex];
-      FMembers [ActiveIndex]:= FMembers [GetParent (ActiveIndex)];
-      FMembers [GetParent (ActiveIndex)]:= Temp;
+      Temp := Member[ActiveIndex];
+      FMembers[ActiveIndex] := FMembers[GetParent(ActiveIndex)];
+      FMembers[GetParent(ActiveIndex)] := Temp;
 
-      ActiveIndex:= GetParent (ActiveIndex);
-      if ActiveIndex= 0 then
+      ActiveIndex := GetParent(ActiveIndex);
+      if ActiveIndex = 0 then
         Break;
 
     end;
@@ -191,10 +189,10 @@ end;
 
 procedure THeap.DeleteMin;
 begin
-  FMembers.Items [0]:= FMembers.Items [Count- 1];
+  FMembers.Items[0] := FMembers.Items[Count - 1];
 
-  Heapify (0);
-  FMembers.Count:= Count- 1;
+  Heapify(0);
+  FMembers.Count := Count - 1;
 
 end;
 
@@ -202,20 +200,18 @@ procedure THeap.Print;
 var
   i: Integer;
   Obj: T;
-
 begin
-  Write ('{');
+  Write('{');
 
-  for i:= 0 to Count- 1 do
+  for i := 0 to Count - 1 do
   begin
-    Obj:= Member [i];
-//    Write ('(', T (Obj).Value, ',', T (Obj).Pos, ')');
+    Obj := Member[i];
+    //    Write ('(', T (Obj).Value, ',', T (Obj).Pos, ')');
 
   end;
 
-  WriteLn ('}');
+  WriteLn('}');
 
 end;
 
 end.
-

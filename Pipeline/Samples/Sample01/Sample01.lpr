@@ -6,8 +6,8 @@ uses
   {$IFDEF UNIX}
   cthreads,
   {$ENDIF}
-  Classes, PipelineUnit, Pipeline.TypesUnit, ALoggerUnit, sysutils,
-  StepHandlersUnit
+  Classes, PipelineUnit, Pipeline.TypesUnit, WideStringUnit, ALoggerUnit,
+  SyncUnit, ProtoHelperUnit, HeapUnit, sysutils, StepHandlersUnit, MapReduceUnit
   { you can add units after this };
 
 var
@@ -25,9 +25,9 @@ begin
   Start := DateTimeToTimeStamp(Now).Time;
 
   if Pipeline.Run then
-    ALoggerUnit.FMTDebugLn('Success! [in %dms]', [DateTimeToTimeStamp(Now).Time - Start])
+    ALoggerUnit.GetLogger.FMTDebugLn('Success! [in %dms]', [DateTimeToTimeStamp(Now).Time - Start])
   else
-    ALoggerUnit.FatalLn('Failed!');
+    ALoggerUnit.FmtFatalLnIFFalse(False, 'Failed!', []);
 
   Pipeline.Free;
 

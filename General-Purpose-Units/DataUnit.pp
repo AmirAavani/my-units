@@ -141,7 +141,7 @@ begin
     end
     else
     begin
-      FmtFatalLn('Invalid dt: %d', [Ord(dt)]);
+      ALoggerUnit.FmtFatalLnIFFalse(False, 'Invalid dt: %d', [Ord(dt)]);
 
     end;
   end;
@@ -172,7 +172,7 @@ begin
     end;
     else
     begin
-      FmtFatalLn('Invalid dt: %d', [Ord(DataType)]);
+      ALoggerUnit.FmtFatalLnIFFalse(False, 'Invalid dt: %d', [Ord(DataType)]);
 
     end;
 

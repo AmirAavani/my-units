@@ -5,8 +5,7 @@ unit ProtoHelperListsUnit;
 interface
 
 uses
-  GenericCollectionUnit, ProtoStreamUnit, Classes, SysUtils,
-  Generics.Collections;
+  Classes, SysUtils, Generics.Collections;
 
 type
   { TObjectList }

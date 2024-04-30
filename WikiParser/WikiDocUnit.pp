@@ -836,6 +836,7 @@ procedure TWikiPage.SetRawData(const AValue: WideString);
     Ch, Last: PWideChar;
 
   begin
+    Result := True;
     Ch := @FRawData[1];
     Last := Ch + Length(FRawData) - 1;
     Target := Ch;
@@ -887,7 +888,13 @@ procedure TWikiPage.SetRawData(const AValue: WideString);
 
       end
       else
-        ALoggerUnit.GetLogger.FmtFatalLn('Invalid Sequence: ', []);
+      begin
+        Target^ := Ch^;
+        Inc(Ch);
+        Inc(Target);
+        Continue;
+
+      end;
 
     end;
     SetLength(FRawData, Target - @(FRawData[1]));

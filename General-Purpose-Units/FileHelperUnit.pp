@@ -8,18 +8,20 @@ uses
   Classes, SysUtils;
 
 type
-  TMatcherFunc = function (Path, FileName: AnsiString; Params: array of AnsiString): Boolean;
+  TMatcherFunc = function (constref Path, FileName: AnsiString; constref Params: array of AnsiString): Boolean;
 
 function GetAllFiles(MatcherFunc: TMatcherFunc; Params: array of AnsiString; Path: AnsiString): TStringList;
-function DeleteDir(DirPath: AnsiString): Boolean;
-function GetMatcherByExtension(Path, FileName: AnsiString; Params: array of AnsiString): Boolean;
-function CreateDir(Path: AnsiString; Recursive: Boolean): Boolean;
+function DeleteDir(constref DirPath: AnsiString): Boolean;
+function GetMatcherByExtension(constref Path, FileName: AnsiString; Params: array of AnsiString): Boolean;
+function CreateDir(constref Path: AnsiString; Recursive: Boolean): Boolean;
+function GetFileSize(constref Filename: AnsiString): Int64;
 
 implementation
 uses
   StringUnit, ALoggerUnit, PathHelperUnit;
 
-function GetAllFiles(MatcherFunc: TMatcherFunc; Params: array of AnsiString;
+function GetAllFiles(MatcherFunc: TMatcherFunc;
+  Params: array of AnsiString;
   Path: AnsiString): TStringList;
   procedure RecGetAllFiles(Path: AnsiString);
   var
@@ -52,7 +54,7 @@ begin
   RecGetAllFiles(Path);
 end;
 
-function DeleteDir(DirPath: AnsiString): Boolean;
+function DeleteDir(constref DirPath: AnsiString): Boolean;
 var
   Info : TSearchRec;
 
@@ -84,14 +86,14 @@ begin
 
 end;
 
-function GetMatcherByExtension(Path, FileName: AnsiString;
+function GetMatcherByExtension(constref Path, FileName: AnsiString;
   Params: array of AnsiString): Boolean;
 begin
   Result := ExtractFileExt(FileName) = Params[0];
 
 end;
 
-function CreateDir(Path: AnsiString; Recursive: Boolean): Boolean;
+function CreateDir(constref Path: AnsiString; Recursive: Boolean): Boolean;
 var
   Parts: TStringList;
   CurPath: AnsiString;
@@ -131,6 +133,17 @@ begin
   Parts.Free;
 
 
+end;
+
+function GetFileSize(constref Filename: AnsiString): Int64;
+var
+  Info: TRawbyteSearchRec;
+
+begin
+  if FindFirst(Filename, faAnyFile, Info) <> 0 then
+    Exit(0);
+
+  Result := Info.Size;
 end;
 
 end.

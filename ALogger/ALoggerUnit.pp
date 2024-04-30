@@ -22,23 +22,23 @@ type
 
 
     procedure FMTWriteLn(constref Fmt: AnsiString; constref Args: array of const);
-    procedure FMTDebugLn(constref Fmt: AnsiString; constref Args: array of const ; Verbosity: Integer = 0);
+    procedure FMTDebugLn(constref Fmt: AnsiString; constref Args: array of const;
+      Verbosity: Integer = 0);
     procedure DebugLn(constref Msg: AnsiString; Verbosity: Integer = 0);
-    procedure DebugLnEveryN(N: Integer; constref Msg: AnsiString; Verbosity: Integer = 0);
-    procedure FMTDebugLnEveryN(N: Integer; constref Fmt: AnsiString; constref Args : array of const; Verbosity: Integer = 0);
+    procedure DebugLnEveryN(N: Integer; constref Msg: AnsiString;
+      Verbosity: Integer = 0);
+    procedure FMTDebugLnEveryN(N: Integer; constref Fmt: AnsiString;
+      constref Args: array of const; Verbosity: Integer = 0);
     procedure FatalLn(constref Msg: AnsiString);
     procedure FmtFatalLn(constref Fmt: AnsiString; const Args: array of const);
-    procedure FmtFatalLnIFFalse(Value: Boolean; constref Fmt: AnsiString; constref Args: array of const);
+    procedure FmtFatalLnIFFalse(Value: Boolean; constref Fmt: AnsiString;
+      constref Args: array of const);
 
   end;
 
-procedure FmtFatalLnIFFalse(
-  Value: Boolean;
-  constref Fmt: AnsiString;
+procedure FmtFatalLnIFFalse(Value: Boolean; constref Fmt: AnsiString;
   constref Args: array of const);
-procedure FmtFatalLnIFFalse(
-  Value: Boolean;
-  constref Fmt: AnsiString;
+procedure FmtFatalLnIFFalse(Value: Boolean; constref Fmt: AnsiString;
   constref ArgFuncs: array of ToStringFunction);
 
 function GetLogger: TALogger;
@@ -56,13 +56,11 @@ var
 
 procedure GetParentLineInfo(var Filename: AnsiString; var LineNumber: Integer);
 var
-  CallerAddress,
-  bp: CodePointer;
+  CallerAddress, bp: CodePointer;
   Func, Source: ShortString;
   Parts: TStringList;
-
 begin
-  Filename:= 'UNKOWN';
+  Filename := 'UNKOWN';
   LineNumber := -1;
 
   Mutex4LineInfo.Lock();
@@ -74,11 +72,12 @@ begin
     Exit;
   end;
 
-  Func := ''; Source := '';
+  Func := '';
+  Source := '';
   CallerAddress := get_caller_addr(bp);
   if CallerAddress = nil then
   begin
-    PrintOnce.Run
+    PrintOnce.Run;
   end
   else if not GetLineInfo(CodePtrUInt(CallerAddress), Func, Source, LineNumber) then
   begin
@@ -106,18 +105,15 @@ begin
 
 end;
 
-procedure _DebugLn(constref Filename: AnsiString; 
-  LineNumber: Integer;
-  constref Fmt: AnsiString; 
-  const Args: array of const);
+procedure _DebugLn(constref Filename: AnsiString; LineNumber: Integer;
+  constref Fmt: AnsiString; const Args: array of const);
 var
   Message: AnsiString;
-
 begin
   Message := Format(Fmt, Args);
   if (Filename <> 'UNKNOWN') and (LineNumber <> -1) then
-    _Writeln(Format('%d-%s-%s:%d] %s', [ThreadID, DateTimeToStr(Now), Filename, LineNumber,
-      Message]))
+    _Writeln(Format('%d-%s-%s:%d] %s', [ThreadID, DateTimeToStr(Now),
+      Filename, LineNumber, Message]))
   else
     _Writeln(Format('%d-%s] %s', [ThreadID, DateTimeToStr(Now), Message]));
 
@@ -127,7 +123,6 @@ procedure TALogger.DebugLn(constref Msg: AnsiString; Verbosity: Integer);
 var
   Filename: AnsiString;
   LineNumber: Integer;
-
 begin
   if Self.Debug < Verbosity then
     Exit;
@@ -136,12 +131,11 @@ begin
   _DebugLn(Filename, LineNumber, '%s', [Msg]);
 end;
 
-procedure TALogger.FMTDebugLn(constref Fmt: AnsiString; constref Args: array of const;
-  Verbosity: Integer);
+procedure TALogger.FMTDebugLn(constref Fmt: AnsiString;
+  constref Args: array of const; Verbosity: Integer);
 var
   Filename: AnsiString;
   LineNumber: Integer;
-
 begin
   if Self.Debug < Verbosity then
     Exit;
@@ -158,19 +152,13 @@ var
   Counters: TLineInfoIntegerMap;
   Mutex4Counters: TMutex;
 
-procedure _DebugLnEveryN(
-  constref Filename: AnsiString;
-  LineNumber: Integer;
-  N: Integer;
-  constref Fmt: AnsiString;
-  const Args: array of const;
-  Verbosity: Integer;
-  Depth: Integer);
+procedure _DebugLnEveryN(constref Filename: AnsiString; LineNumber: Integer;
+  N: Integer; constref Fmt: AnsiString; const Args: array of const;
+  Verbosity: Integer; Depth: Integer);
 var
   LineInfo: AnsiString;
   Value: Integer;
   b: Boolean;
-
 begin
   LineInfo := Format('%s:%d', [Filename, LineNumber]);
 
@@ -189,18 +177,18 @@ begin
 
   if b then
   begin
-    _Writeln(Format('%d-%s-%s:%d] %s', [ThreadID, DateTimeToStr(Now), Filename, LineNumber,
-    Format(Fmt, Args)]));
+    _Writeln(Format('%d-%s-%s:%d] %s', [ThreadID, DateTimeToStr(Now),
+      Filename, LineNumber, Format(Fmt, Args)]));
 
   end;
 
 end;
 
-procedure TALogger.DebugLnEveryN(N: Integer; constref Msg: AnsiString; Verbosity: Integer);
+procedure TALogger.DebugLnEveryN(N: Integer; constref Msg: AnsiString;
+  Verbosity: Integer);
 var
   Filename: AnsiString;
   LineNumber: Integer;
-
 begin
   if Self.Debug < Verbosity then
     Exit;
@@ -210,15 +198,11 @@ begin
 
 end;
 
-procedure TALogger.FMTDebugLnEveryN(
-  N: Integer; 
-  constref Fmt: AnsiString;
-  constref  Args: array of const; 
-  Verbosity: Integer);
+procedure TALogger.FMTDebugLnEveryN(N: Integer; constref Fmt: AnsiString;
+  constref Args: array of const; Verbosity: Integer);
 var
   Filename: AnsiString;
   LineNumber: Integer;
-
 begin
   if Self.Debug < Verbosity then
     Exit;
@@ -228,12 +212,11 @@ begin
 
 end;
 
-procedure _FatalLn(
-  constref FileName: AnsiString;
-  LineNumber: Integer;
+procedure _FatalLn(constref FileName: AnsiString; LineNumber: Integer;
   constref Msg: AnsiString);
 begin
-  _Writeln(Format('%d-%s-%s:%d] %s', [ThreadID, DateTimeToStr(Now), Filename, LineNumber, Msg]));
+  _Writeln(Format('%d-%s-%s:%d] %s', [ThreadID, DateTimeToStr(Now),
+    Filename, LineNumber, Msg]));
 
   Halt(1);
 
@@ -243,7 +226,6 @@ procedure TALogger.FatalLn(constref Msg: AnsiString);
 var
   Filename: AnsiString;
   LineNumber: Integer;
-
 begin
   Filename := '';
   LineNumber := 0;
@@ -253,27 +235,21 @@ begin
 end;
 
 
-procedure TALogger.FmtFatalLn(
-  constref Fmt: AnsiString; 
-  const Args: array of const);
+procedure TALogger.FmtFatalLn(constref Fmt: AnsiString; const Args: array of const);
 var
   Filename: AnsiString;
   LineNumber: Integer;
-
 begin
   GetParentLineInfo(Filename, LineNumber);
   _FatalLn(Filename, LineNumber, Format(Fmt, Args));
 
 end;
 
-procedure TALogger.FmtFatalLnIFFalse(
-  Value: Boolean; 
-  constref Fmt: AnsiString;
+procedure TALogger.FmtFatalLnIFFalse(Value: Boolean; constref Fmt: AnsiString;
   constref Args: array of const);
 var
   Filename: AnsiString;
   LineNumber: Integer;
-
 begin
   if Value then
     Exit;
@@ -298,8 +274,7 @@ begin
 
 end;
 
-procedure TALogger.FMTWriteLn(constref Fmt: AnsiString; constref
-  Args: array of const);
+procedure TALogger.FMTWriteLn(constref Fmt: AnsiString; constref Args: array of const);
 begin
   System.WriteLn(Format(Fmt, Args));
 
@@ -308,12 +283,11 @@ end;
 var
   Logger: TALogger;
 
-procedure FmtFatalLnIFFalse(Value: Boolean; constref Fmt: AnsiString; constref
-  Args: array of const);
+procedure FmtFatalLnIFFalse(Value: Boolean; constref Fmt: AnsiString;
+  constref Args: array of const);
 var
   Filename: AnsiString;
   LineNumber: Integer;
-
 begin
   if Value then
     Exit;
@@ -323,12 +297,11 @@ begin
 
 end;
 
-procedure FmtFatalLnIFFalse(Value: Boolean; constref Fmt: AnsiString; constref
-  ArgFuncs: array of ToStringFunction);
+procedure FmtFatalLnIFFalse(Value: Boolean; constref Fmt: AnsiString;
+  constref ArgFuncs: array of ToStringFunction);
 var
   i: Integer;
   Args: array of WideString;
-
 begin
   if Value then
     Exit;
@@ -336,8 +309,6 @@ begin
   SetLength(Args, Length(ArgFuncs));
   for i := 0 to High(ArgFuncs) do
     Args[i] := ArgFuncs[i]();
-
-
 
 end;
 
@@ -381,4 +352,3 @@ finalization
   PrintOnce.Free;
 
 end.
-

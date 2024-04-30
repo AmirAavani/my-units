@@ -6,8 +6,7 @@ unit GenericCollectionUnit;
 interface
 
 uses
-  Classes, SysUtils, Generics.Collections, GenericCollection.UtilsUnit,
-  TupleUnit;
+  Classes, SysUtils, Generics.Collections, TupleUnit;
 type
 
   { TCollection }
@@ -17,7 +16,7 @@ type
     TLongIntDataPair = specialize TPair<LongInt, TData>;
     TBoolDataPair = specialize TPair<Boolean, TData>;
     TDumpFunc = function (constref d: TData; Stream: TStream): Boolean;
-    TLoadFromStreamFunc = function (Stream: TStream): TLongIntDataPair;
+    TLoadFromStreamFunc = function (Stream: TStream): TData;
     // Loads the data from bp to bp + len - 1.
     // The result.First will be False if the interval contains partial content of
     // TData.
@@ -158,7 +157,7 @@ end;
 class function TCollection.LoadFromStream(Stream: TStream; LoadFunc: TLoadFromStreamFunc
   ): specialize TCollection<TData>;
 var
-  x: TCollection.TLongIntDataPair;
+  x: TData;
   i: Integer;
   pItem: PT;
 
@@ -171,7 +170,7 @@ begin
   while i < Result.Count do
   begin
     x := LoadFunc(Stream);
-    pItem^ := x.Second;
+    pItem^ := x;
     Inc(pItem);
     Inc(i);
 
@@ -184,9 +183,6 @@ class function TCollection.BatchLoadFromStream(
   ChunkSize: UInt32): specialize TCollection<TData>;
 
   function Reload(Current: PByte; var bs: array of Byte; Remaining: LongInt): LongInt;
-  var
-    Read: LongInt;
-
   begin
     System.Move(Current, bs[0], Remaining);
     Result := Remaining;
@@ -203,7 +199,7 @@ var
 begin
   Result := (specialize TCollection<TData>).Create;
   Result.Count := Stream.ReadDWord;
-  SetLength(bs, ChunkSize);
+  SetLength(bs , ChunkSize);
   Remaining := Stream.Read(bs, ChunkSize);
 
   bp := @bs[0];

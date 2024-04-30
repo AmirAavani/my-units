@@ -13,7 +13,7 @@ type
   private
     CS: TRTLCriticalSection;
 
-   public
+  public
     procedure Lock;
     procedure Unlock;
 
@@ -25,10 +25,10 @@ type
 
   TRWMutex = class(TMultiReadExclusiveWriteSynchronizer)
   public
-   procedure RLock;
-   procedure RUnlock;
-   procedure WLock;
-   procedure WUnlock;
+    procedure RLock;
+    procedure RUnlock;
+    procedure WLock;
+    procedure WUnlock;
 
   end;
 
@@ -39,7 +39,6 @@ type
     Sem: psem_t;
 
     function GetValue: Integer;
-
   public
     property Value: Integer read GetValue;
 
@@ -76,8 +75,9 @@ type
   { TAtomic }
 
   generic TAtomic<T> = class(TObject)
-  public type
-    TApplyFunc = function (v: T): T;
+  public
+  type
+    TApplyFunc = function(v: T): T;
   private
     FValue: T;
     Mutex: TMutex;
@@ -97,7 +97,7 @@ implementation
 uses
   ALoggerUnit, BaseUnix;
 
-{ TAtomic }
+  { TAtomic }
 
 constructor TAtomic.Create(InitValue: T);
 begin
@@ -182,14 +182,13 @@ end;
 procedure TWaitGroup.Done(k: Integer);
 var
   i: Integer;
-
 begin
   Mutex.Lock;
 
   Value -= k;
 
   if Value < 0 then
-     ALoggerUnit.GetLogger.FmtFatalLn('Value(%d) < 0', [Value]);
+    ALoggerUnit.GetLogger.FmtFatalLn('Value(%d) < 0', [Value]);
 
   if Value = 0 then
     for i := 1 to BlockQueue.Count do
@@ -210,11 +209,10 @@ procedure TWaitGroup.Wait;
 var
   aWait: Boolean;
   anEvent: PRTLEvent;
-
 begin
   Mutex.Lock;
 
-  aWait:= False;
+  aWait := False;
   if 0 < Value then
   begin
     anEvent := RTLEventCreate;
@@ -285,7 +283,6 @@ end;
 procedure TSemaphore.Inc(const Delta: Integer);
 var
   i: Integer;
-
 begin
   for i := 1 to Delta do
     Self.Inc;
@@ -295,7 +292,6 @@ end;
 procedure TSemaphore.Dec(const Delta: Integer);
 var
   i: Integer;
-
 begin
   for i := 1 to Delta do
     Self.Dec;
@@ -332,4 +328,3 @@ begin
 end;
 
 end.
-

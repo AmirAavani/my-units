@@ -1,5 +1,7 @@
 unit MyFileStreamUnit;
 
+{$mode ObjFPC}{$H+}
+
 interface
 uses
   Classes, SysUtils;
@@ -27,7 +29,9 @@ type
     function ReadByte: Byte;
     
     procedure Expect (Str: String);
-    
+
+    function MustRead(var Data: AnsiString; Count: Longint): Longint;
+
   end;
   
 
@@ -110,6 +114,33 @@ begin
   if UpperCase (ReadNextWord)<> UpperCase (Str) then
     raise ExpectFailed.Create (Str);
     
+end;
+
+function TMyFileStream.MustRead(var Data: AnsiString; Count: Longint): Longint;
+var
+  ReadBytes: LongInt;
+  Source: PChar;
+
+begin
+  SetLength(Data, Count);
+
+  ReadBytes := Self.Read(Data[1], Count);
+  if ReadBytes = Count then
+    Exit(ReadBytes);
+  Source := @Data[1];
+  Result := ReadBytes;
+  System.WriteLn('Position: ', Self.Position, ' Size:', Self.Size);
+  Exit;
+
+  while Result < Count do
+  begin
+    System.WriteLn('Position: ', Self.Position, ' Size:', Self.Size);
+    Inc(Source, ReadBytes);
+    ReadBytes := Self.Read(Source, Count - Result);
+    WriteLn(Data);
+    Result += ReadBytes;
+
+  end;
 end;
 
 function TMyFileStream.GetEoS: Boolean;

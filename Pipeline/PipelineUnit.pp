@@ -6,11 +6,39 @@ interface
 
 uses
   Classes, SysUtils, Pipeline.TypesUnit, ThreadSafeQueueUnit, GenericCollectionUnit,
-  ThreadPoolUnit, ValueUnit;
+  ThreadPoolUnit, ValueUnit, ProtoHelperUnit;
 
 type
   TTask = class;
-  TStepHandler = function (Task: TTask): Boolean;
+  TStepHandlerFunc = function(Task: TTask): Boolean;
+
+  { TStepHandler }
+
+  TStepHandler = class(TObject)
+  public
+    constructor Create;
+    class function CreateFromFunction(f: TStepHandlerFunc): TStepHandler;
+
+    function Handle(Task: TTask): Boolean; virtual; abstract;
+
+  end;
+
+  { TFunctionStepHandler }
+
+  TFunctionStepHandler = class(TStepHandler)
+  protected
+    FFn: TStepHandlerFunc;
+
+  public
+    constructor Create(Fn: TStepHandlerFunc);
+
+    function Handle(Task: TTask): Boolean; override;
+
+    class function FromFunc(Fn: TStepHandlerFunc): TFunctionStepHandler;
+
+  end;
+
+
   TObjectList = specialize TObjectCollection<TObject>;
 
   { TPipelineConfig }
@@ -31,7 +59,8 @@ type
   { TPipeline }
 
   TPipeline = class(TObject)
-  public type
+  public
+  type
     { TStepInfo }
 
     TStepInfo = class(TObject)
@@ -73,12 +102,11 @@ type
     constructor Create(constref _Name: AnsiString; _Config: TPipelineConfig);
     destructor Destroy; override;
 
-    procedure AddNewStep(
-      Handler: TStepHandler;
-      NumTasks: Integer;
+    procedure AddNewStep(Handler: TStepHandler; NumTasks: Integer;
       Arguments: TObjectList = nil);
 
     function Run(StepID: Integer = -1): Boolean;
+
   end;
 
   { TTask }
@@ -88,7 +116,6 @@ type
     FID: Integer;
     FStep: TPipeline.TStepInfo;
     function GetCount: Integer;
-
   public
     property ID: Integer read FID;
     property Count: Integer read GetCount;
@@ -99,11 +126,12 @@ type
   end;
 
 implementation
+
 uses
   SyncUnit, StringUnit, ALoggerUnit, RunInAThreadUnit,
   Pipeline.Utils;
 
-{ TPipelineConfig }
+  { TPipelineConfig }
 
 constructor TPipelineConfig.Create;
 begin
@@ -144,6 +172,43 @@ begin
 
 end;
 
+{ TStepHandler }
+
+constructor TStepHandler.Create;
+begin
+  inherited;
+
+end;
+
+class function TStepHandler.CreateFromFunction(f: TStepHandlerFunc
+  ): TStepHandler;
+begin
+  Result := TFunctionStepHandler.Create(f);
+
+end;
+
+{ TFunctionStepHandler }
+
+constructor TFunctionStepHandler.Create(Fn: TStepHandlerFunc);
+begin
+  inherited Create;
+
+  FFn := Fn;
+end;
+
+function TFunctionStepHandler.Handle(Task: TTask): Boolean;
+begin
+  Result := Self.FFn(Task);
+
+end;
+
+class function TFunctionStepHandler.FromFunc(Fn: TStepHandlerFunc
+  ): TFunctionStepHandler;
+begin
+  Result := TFunctionStepHandler.Create(Fn);
+
+end;
+
 { TPipeline.TStepInfo }
 
 constructor TPipeline.TStepInfo.Create(_StepID: Integer; _NumTasks: Integer;
@@ -180,7 +245,6 @@ var
   Task: TTask;
   wg: TWaitGroup;
   Step: TPipeline.TStepInfo;
-
 begin
   Task := TTask(SysArgs[0]);
   wg := TWaitGroup(SysArgs[1]);
@@ -189,9 +253,10 @@ begin
 
   ALoggerUnit.GetLogger.FMTDebugLn('StepID: %d TaskID: %d', [Step.ID, Task.ID], 5);
 
-  Result := Task.StepInfo.StepHandler(Task);
+  Result := Task.StepInfo.StepHandler.Handle(Task);
 
-  ALoggerUnit.GetLogger.FMTDebugLn('wg.Done Task: %d Result: %s', [Task.ID, BoolToStr(Result, True)], 5);
+  ALoggerUnit.GetLogger.FMTDebugLn('wg.Done Task: %d Result: %s',
+    [Task.ID, BoolToStr(Result, True)], 5);
 
   wg.Done(1);
 
@@ -205,14 +270,12 @@ end;
 function TPipeline.RunStep(Step: TStepInfo): Boolean;
 type
   TTasks = specialize TObjectCollection<TTask>;
-
 var
   i: Integer;
   AllTasks: TTasks;
   SysArgs: TObjectList;
   Status: array of Boolean;
   Wg: TWaitGroup;
-
 begin
   if Step = nil then
     ALoggerUnit.FmtFatalLnIFFalse(False, 'Invalid Step', []);
@@ -297,7 +360,6 @@ var
   StepID, FromStepID: Integer;
   wg: TWaitGroup;
   ToStepID, ID: Integer;
-
 begin
   ThePipeline := SysArgs[0] as TPipeline;
   wg := TWaitGroup(SysArgs[1]);
@@ -324,7 +386,6 @@ function TPipeline.Run(StepID: Integer): Boolean;
 var
   SysArgs: TObjectList;
   wg: TWaitGroup;
-
 begin
   // TODO: Change SysArgs from TOjectList to TPointerList.
   SysArgs := TObjectList.Create;
@@ -360,7 +421,6 @@ end;
 function TPipeline.RunFromStep(StepIndex: Integer): Boolean;
 var
   Step: Integer;
-
 begin
   for Step := StepIndex to Steps.Count - 1 do
     if not RunStep(Step) then
@@ -368,8 +428,6 @@ begin
 
   Result := True;
 
-
 end;
 
 end.
-

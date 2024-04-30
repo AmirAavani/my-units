@@ -22,12 +22,12 @@ var
   SleepTime: Integer;
 
 begin
-  FMTDebugLn('Step 1 Task: %d', [Task.ID]);
+  ALoggerUnit.GetLogger.FMTDebugLn('Step 1 Task: %d', [Task.ID]);
   SleepTime := Random(1000);
-  FMTDebugLn('Step 1 Task: %d Sleeping for %dms', [Task.ID, SleepTime]);
+  ALoggerUnit.GetLogger.FMTDebugLn('Step 1 Task: %d Sleeping for %dms', [Task.ID, SleepTime]);
   Sleep(SleepTime);
 
-  FMTDebugLn('Done Step 1 Task: %d', [Task.ID]);
+  ALoggerUnit.GetLogger.FMTDebugLn('Done Step 1 Task: %d', [Task.ID]);
 
   Result := True;
 
@@ -67,15 +67,15 @@ begin
   else if Task.StepInfo.ID = 3 then
     Args := CreateStep3Args(Task)
   else
-    FmtFatalLn('Invalid StepInfo.ID: %d', [Task.StepInfo.ID]);
+    ALoggerUnit.FmtFatalLnIFFalse(False, 'Invalid StepInfo.ID: %d', [Task.StepInfo.ID]);
   StepID := Task.StepInfo.ID;
 
   SleepTime := Random(1000);
-  FMTDebugLn('Step %d Task: %d  with Arg %d Sleeping for %dms',
+  ALoggerUnit.GetLogger.FMTDebugLn('Step %d Task: %d  with Arg %d Sleeping for %dms',
     [StepID, Task.ID, (Args[0].Create as TData).DataAsUInt64, SleepTime]);
   Sleep(SleepTime);
 
-  FMTDebugLn('Done Step %d Task: %d', [StepID, Task.ID]);
+  ALoggerUnit.GetLogger.FMTDebugLn('Done Step %d Task: %d', [StepID, Task.ID]);
 
   Result := True;
   Args.Free;

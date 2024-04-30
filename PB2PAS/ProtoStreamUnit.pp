@@ -188,8 +188,6 @@ const
   TAG_TYPE_MASK = (1 shl TAG_TYPE_BITS) - 1;
 
 implementation
-const
-  RecursionLimit = 64;
 
 function GetTagWireType(Tag: Integer): Integer;
 begin

@@ -46,9 +46,8 @@ type
   { EInsertion }
 
   EInsertion = class (Exception)
-  private
-    constructor RealCreate(Msg: AnsiString);
   public
+    constructor RealCreate(Msg: AnsiString);
     constructor Create;
     constructor Create(Msg: AnsiString);
 
@@ -77,7 +76,7 @@ end;
 
 constructor EInsertion.Create(Msg: AnsiString);
 begin
-  Create;
+  inherited Create(Msg);
 
 end;
 

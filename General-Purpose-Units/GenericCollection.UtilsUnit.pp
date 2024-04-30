@@ -21,12 +21,15 @@ type
   function SaveData(bp: PByte; ByteCount: UInt16; Stream: TStream): Boolean; inline;
 
 
-  function LoadUInt64(Stream: TStream): specialize TPair<LongInt, UInt64>; inline;
-  function BatchLoadUInt64(bp: PByte; Len: LongInt): specialize TPair<Boolean, UInt64>; inline;
-  function LoadUnsignedData(Stream: TStream; ByteCount: Integer): specialize TPair<LongInt, UInt64>; inline;
-  function LoadSignedData(Stream: TStream; ByteCount: Integer): specialize TPair<LongInt, UInt64>; inline;
+  function LoadUInt64(Stream: TStream): UInt64; inline;
+  function LoadUInt16(Stream: TStream): UInt16; inline;
+  function BatchLoadUInt64(bp: PByte; Len: LongInt): UInt64; inline;
+  function LoadWideString(Stream: TStream): WideString; inline;
 
 implementation
+
+uses
+  SysUtils;
 
 function BytesToSignedData(bp: PByte; ByteCount: Integer): Int64;
 var
@@ -69,7 +72,8 @@ end;
 
 function SaveWideString(constref w: WideString; Stream: TStream): Boolean;
 begin
-  Result := SaveData(@w, Length(WideChar) * Length(w), Stream);
+  SaveUInt16(Length(w), Stream);
+  Result := SaveData(@w[1], SizeOf(WideChar) * Length(w), Stream);
 end;
 
 function SaveData(bp: PByte; ByteCount: UInt16; Stream: TStream): Boolean;
@@ -126,29 +130,32 @@ begin
 
 end;
 
-function LoadUInt64(Stream: TStream): specialize TPair<LongInt, UInt64>;
+function LoadUInt64(Stream: TStream): UInt64;
 begin
-  Result := LoadUnsignedData(Stream, 8);
+  Stream.Read(Result, 8);
 
 end;
 
-function BatchLoadUInt64(bp: PByte; Len: LongInt): specialize TPair<Boolean,
-  UInt64>;
+function LoadUInt16(Stream: TStream): UInt16;
 begin
+  Stream.Read(Result, 2);
 
 end;
 
-function LoadUnsignedData(Stream: TStream; ByteCount: Integer): specialize TPair
-  <LongInt, UInt64>;
+function BatchLoadUInt64(bp: PByte; Len: LongInt): UInt64;
 begin
-  Result.First := Stream.Read(Result.Second, ByteCount);
+  raise Exception.Create('NIY');
 
 end;
 
-function LoadSignedData(Stream: TStream; ByteCount: Integer): specialize TPair<
-  LongInt, UInt64>;
+function LoadWideString(Stream: TStream): WideString;
+var
+  l: SizeInt;
+
 begin
-  Result.First := Stream.Read(Result.Second, ByteCount);
+  l := LoadUInt16(Stream);
+  SetLength(Result, l);
+  Stream.Read(Result[1], SizeOf(WideChar) * l);
 
 end;
 
