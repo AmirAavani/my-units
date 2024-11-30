@@ -42,7 +42,7 @@ procedure FmtFatalLnIFFalse(Value: Boolean; constref Fmt: AnsiString;
   constref ArgFuncs: array of ToStringFunction);
 
 function GetLogger: TALogger;
-function InitLogger(DebugLvl: Integer): TALogger;
+function InitLogger(DebugLvl: Integer = 0): TALogger;
 
 implementation
 
