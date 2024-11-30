@@ -16,6 +16,8 @@ function GetMatcherByExtension(constref Path, FileName: AnsiString; Params: arra
 function CreateDir(constref Path: AnsiString; Recursive: Boolean): Boolean;
 function GetFileSize(constref Filename: AnsiString): Int64;
 
+function TrueMatcherFunc(constref Path, FileName: AnsiString; constref Params: array of AnsiString): Boolean;
+
 implementation
 uses
   StringUnit, ALoggerUnit, PathHelperUnit;
@@ -144,6 +146,13 @@ begin
     Exit(0);
 
   Result := Info.Size;
+end;
+
+function TrueMatcherFunc(constref Path, FileName: AnsiString; constref
+  Params: array of AnsiString): Boolean;
+begin
+  Result := True;
+
 end;
 
 end.
