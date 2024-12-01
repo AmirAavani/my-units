@@ -5,7 +5,7 @@ unit MapReduce.ReaderUnit;
 interface
 
 uses
-  Classes, SysUtils, MapReduce.KeyValueUnit, GenericCollectionUnit, StreamUnit,
+  Classes, SysUtils, MapReduce.KeyValueUnit, GenericCollectionUnit,
   TupleUnit, MapReduce.UtilsUnits;
 
 type
@@ -17,18 +17,15 @@ type
     FInputPattern: TPattern;
 
   public
-  type
-    TPairKeyValueBoolean = specialize TPair<TKeyValue, boolean>;
-  public
     constructor Create(constref Pattern: AnsiString);
     destructor Destroy; override;
 
-    function Next: TPairKeyValueBoolean; virtual; abstract;
+    function Next(var kv: TKeyValue): Boolean; virtual; abstract;
   end;
 
   { TMyTextStreams }
 
-  TMyTextStreams = class(specialize TCollection<TMyTextStream>)
+  TTextStreams = class(specialize TCollection<TStream>)
   private
     FPattern: TPattern;
 
@@ -44,7 +41,7 @@ type
   protected
   type
   protected
-    TextStreams: TMyTextStreams;
+    TextStreams: TTextStreams;
 
   public
     constructor Create(constref Pattern: AnsiString);
@@ -78,7 +75,7 @@ end;
 
 { TMyTextStreams }
 
-constructor TMyTextStreams.Create(Pattern: TPattern);
+constructor TTextStreams.Create(Pattern: TPattern);
 begin
   inherited Create;
 
@@ -91,7 +88,7 @@ begin
 }
 end;
 
-destructor TMyTextStreams.Destroy;
+destructor TTextStreams.Destroy;
 begin
   inherited Destroy;
 end;
@@ -101,7 +98,7 @@ end;
 constructor TTextReader.Create(constref Pattern: AnsiString);
 begin
   inherited Create(Pattern);
-  TextStreams := TMyTextStreams.Create(FInputPattern);
+  TextStreams := TTextStreams.Create(FInputPattern);
 
 end;
 
