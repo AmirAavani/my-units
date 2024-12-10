@@ -5,47 +5,37 @@ unit MapReduce.ReaderUnit;
 interface
 
 uses
-  Classes, SysUtils, MapReduce.KeyValueUnit, GenericCollectionUnit,
-  TupleUnit, MapReduce.UtilsUnits;
+  Classes, SysUtils, ProtoHelperUnit, MapReduce.KeyValueUnit, GenericCollectionUnit,
+  TupleUnit, MapReduce.UtilsUnits, SimpleTypesUnit;
 
 type
 
   { TReader }
 
-  TReader = class(TObject)
+  generic TReader<TValue: TBaseMessage> = class(TObject)
   protected
     FInputPattern: TPattern;
 
   public
-    constructor Create(constref Pattern: AnsiString);
+    constructor Create;
     destructor Destroy; override;
 
-    function Next(var kv: TKeyValue): Boolean; virtual; abstract;
-  end;
-
-  { TMyTextStreams }
-
-  TTextStreams = class(specialize TCollection<TStream>)
-  private
-    FPattern: TPattern;
-
-  public
-    constructor Create(Pattern: TPattern);
-    destructor Destroy; override;
-
+    function Next(var Key: AnsiString; Msg: TValue): Boolean; virtual; abstract;
   end;
 
   { TTextReader }
 
-  TTextReader = class(TReader)
+  TTextReader = class(specialize TReader<TStringMessage>)
   protected
   type
   protected
-    TextStreams: TTextStreams;
+    TextStream: TFileStream;
 
   public
-    constructor Create(constref Pattern: AnsiString);
+    constructor Create(constref Filename: AnsiString);
+    destructor Destroy; override;
 
+    function Next(var Key: AnsiString; Msg: TStringMessage): Boolean; override;
   end;
 
   { TTextLineReader }
@@ -61,11 +51,10 @@ implementation
 
 { TReader }
 
-constructor TReader.Create(constref Pattern: AnsiString);
+constructor TReader.Create;
 begin
   inherited Create;
 
-  FInputPattern := TPattern.Create(Pattern);
 end;
 
 destructor TReader.Destroy;
@@ -73,32 +62,25 @@ begin
   inherited Destroy;
 end;
 
-{ TMyTextStreams }
-
-constructor TTextStreams.Create(Pattern: TPattern);
-begin
-  inherited Create;
-
-  FPattern := Pattern;
-  Self.Count := Pattern.Count;
-{  for i := 0 to Pattern.Count - 1 do
-    Self.Add(
-      TMyTextStream.Create(TFileStream.Create(Pattern.Filename[i], fmOpenRead))
-      );
-}
-end;
-
-destructor TTextStreams.Destroy;
-begin
-  inherited Destroy;
-end;
 
 { TTextReader }
 
-constructor TTextReader.Create(constref Pattern: AnsiString);
+constructor TTextReader.Create(constref Filename: AnsiString);
 begin
-  inherited Create(Pattern);
-  TextStreams := TTextStreams.Create(FInputPattern);
+  inherited Create;
+  TextStream := TFileStream.Create(Filename, fmOpenRead);
+
+end;
+
+destructor TTextReader.Destroy;
+begin
+  TextStream.Free;
+
+  inherited Destroy;
+end;
+
+function TTextReader.Next(var Key: AnsiString; Msg: TStringMessage): Boolean;
+begin
 
 end;
 

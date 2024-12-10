@@ -109,7 +109,7 @@ begin
 
   FData.Add(Entry);
 
-  Semaphore.Inc;
+  Semaphore.Inc(1);
   Mutex.Unlock;
 
 end;
@@ -126,7 +126,7 @@ begin
 
   while not HasElement do
   begin
-    Semaphore.Dec;
+    Semaphore.Dec(1);
     if FEndOfOperation then
     begin
       Break;

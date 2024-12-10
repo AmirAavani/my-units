@@ -1244,6 +1244,9 @@ function TBaseMessage.ToJSON: AnsiString;
 var
   Streamer: TJSONStreamer;
 begin
+  if self = nil then
+    Exit('{}');
+
   Streamer := TJSONStreamer.Create(nil);
   Streamer.Options := Streamer.Options + [jsoTStringsAsArray];
 

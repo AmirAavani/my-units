@@ -23,7 +23,6 @@ type
   protected
     procedure DoPush(Entry: T); virtual; abstract;
     procedure DoPop(var LastElement: T); virtual; abstract;
-    function DoGetTop: T; virtual; abstract;
 
   public
     property Count: Integer read GetCount;
@@ -32,7 +31,6 @@ type
 
     procedure Push(Entry: T);
     function Pop: T;
-    function GetTop: T;
   end;
 
   generic TThreadSafeStack<T> = class(specialize TBaseStack<T>)
@@ -42,18 +40,19 @@ type
     FData: TDataList;
     Mutex: TMutex;
     Semaphore: TSemaphore;
+    FDone: Boolean;
 
     function GetCount: Integer; override;
     function GetIsEmpty: Boolean; override;
     function GetIsFull: Boolean; override;
+    procedure SetDone(AValue: Boolean);
 
   protected
     procedure DoPush(Entry: T); override;
     procedure DoPop(var LastElement: T); override;
-    function DoGetTop: T; override;
 
   public
-    procedure Push(Entry: T);
+    property Done: Boolean read FDone write SetDone;
 
     constructor Create;
     destructor Destroy; override;
@@ -81,26 +80,51 @@ begin
 
 end;
 
+procedure TThreadSafeStack.SetDone(AValue: Boolean);
+begin
+  if FDone=AValue then Exit;
+  if not AValue then
+    Exit;
+
+  FDone := AValue;
+  // TODO: We need to keep track of the difference between number of Pop
+  // and number of Pushes.
+  Semaphore.Inc(1024);
+
+end;
+
 procedure TThreadSafeStack.DoPush(Entry: T);
 begin
+  WriteLn('DoPush: ', ThreadID);
   Mutex.Lock;
+  WriteLn('DoPush: ', ThreadID);
 
   FData.Add(Entry);
 
-  Semaphore.Inc;
+  Semaphore.Inc(1);
   Mutex.Unlock;
+  WriteLn('DoPush: ', ThreadID);
 
 end;
 
 procedure TThreadSafeStack.DoPop(var LastElement: T);
 begin
-  LastElement := nil;
+  FillChar(LastElement, SizeOf(T), 0);
 
-  while LastElement = nil do
+  while True do
   begin
-    Semaphore.Dec;
+    WriteLn('DoPop: ', ThreadID);
+    Semaphore.Dec(1);
+    WriteLn('DoPop: ', ThreadID);
 
     Mutex.Lock;
+    WriteLn('DoPop: ', ThreadID);
+    if (FData.Count = 0) and Done then
+    begin
+      Mutex.Unlock;
+      Exit;
+
+    end;
 
     if 0 < FData.Count then
     begin
@@ -109,7 +133,7 @@ begin
 
       Mutex.Unlock;
 
-      Break;
+      Exit;
     end;
 
     Mutex.Unlock;
@@ -117,23 +141,25 @@ begin
 
 end;
 
-function TThreadSafeStack.DoGetTop: T;
-begin
-
-end;
-
-procedure TThreadSafeStack.Push(Entry: T);
-begin
-
-end;
-
 constructor TThreadSafeStack.Create;
 begin
+  inherited;
+
+  FData := TDataList.Create;
+  Mutex := TMutex.Create;
+  Semaphore := TSemaphore.Create(0);
+  FDone := False;
 
 end;
 
 destructor TThreadSafeStack.Destroy;
 begin
+  Done := True;
+
+  FData.Free;
+  Mutex.Free;
+  Semaphore.Free;
+
   inherited Destroy;
 end;
 
@@ -148,12 +174,6 @@ end;
 function TBaseStack.Pop: T;
 begin
   DoPop(Result);
-
-end;
-
-function TBaseStack.GetTop: T;
-begin
-  Result := DoGetTop;
 
 end;
 

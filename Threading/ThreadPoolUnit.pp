@@ -38,13 +38,14 @@ type
     constructor Create(ThreadCount: Integer);
     destructor Destroy; override;
 
-    procedure Run(F: TThreadFunctionPtr; Args: TObjectList; OutputResult: PBoolean);
+    procedure Run(
+      F: TThreadFunctionPtr;
+      Args: TObjectList;
+      OutputResult: PBoolean);
     procedure Wait;
   end;
 
 implementation
-uses
-  ALoggerUnit;
 
 type
 
@@ -79,8 +80,6 @@ var
 begin
   while True do
   begin
-    ALoggerUnit.GetLogger.FMTDebugLn('Before Delete', [], 5);
-
     FParent.RequestsQueue.Delete(Args);
 
     if not Args.IsValid then

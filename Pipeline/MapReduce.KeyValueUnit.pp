@@ -1,33 +1,54 @@
 unit MapReduce.KeyValueUnit;
 
 {$mode ObjFPC}{$H+}
+{$modeswitch ADVANCEDRECORDS}
 
 interface
 
 uses
-  Classes, SysUtils;
+  Classes, SysUtils, ProtoHelperUnit, Generics.Collections, StreamUnit;
 
 type
-  TByteArray = array of Byte;
 
   { TKeyValue }
 
   TKeyValue = record
+  public
     Key: AnsiString;
-    Value: TByteArray;
+    Value: TBaseMessage;
 
+    procedure MustSaveToStream(Stream: TStream);
+    procedure MustLoadFromStream(Stream: TStream);
+
+    procedure Init(constref k: AnsiString; v: TBaseMessage);
   end;
-
-function CopyValue(constref InputKV: TKeyValue; constref NewKey: AnsiString): TKeyValue;
 
 implementation
 
-function CopyValue(constref InputKV: TKeyValue;
-  constref NewKey: AnsiString): TKeyValue;
+uses
+  ALoggerUnit;
+{ TKeyValue }
+
+procedure TKeyValue.MustSaveToStream(Stream: TStream);
 begin
-  Result.Key := NewKey;
-  SetLength(Result.Value, Length(InputKV.Value));
-  Move(InputKV.Value, Result.Value, Length(InputKV.Value));
+  Stream.WriteAnsiString(Key);
+  Value.SaveToStream(Stream);
+
+end;
+
+procedure TKeyValue.MustLoadFromStream(Stream: TStream);
+begin
+  ALoggerUnit.FmtFatalLnIFFalse(False, 'NIY!', []);
+  Self.Key := Stream.ReadAnsiString;
+  // Self.Value := TValue.Create;
+  Self.Value.SaveToStream(Stream);
+
+end;
+
+procedure TKeyValue.Init(constref k: AnsiString; v: TBaseMessage);
+begin
+  Key := k;
+  Value := v;
 
 end;
 

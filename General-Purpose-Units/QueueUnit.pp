@@ -136,6 +136,31 @@ type
     procedure Clear; override;
 
   end;
+
+  { TGenericBlockingQueue }
+
+  generic TGenericBlockingQueue<T> = class(specialize TGenericCircularQueue<T>)
+  private
+    Mutex: TMutex;
+    OpenSlots: TSemaphore;
+    FullSlots: TSemaphore;
+
+    function GetCount: Integer; override;
+    function GetIsEmpty: Boolean; override;
+    function GetIsFull: Boolean; override;
+
+  protected
+    procedure DoInsert(Entry: T); override;
+    procedure DoDelete(var LastElement: T); override;
+    function DoGetTop: T; override;
+
+    public
+    constructor Create(Size: Integer);
+    destructor Destroy; override;
+    procedure Clear; override;
+
+  end;
+
   { TGenericPriorityQueue }
 
   generic TGenericPriorityQueue<T> = class(specialize TGenericAbstractQueue<T>)
@@ -249,6 +274,87 @@ begin
   inherited Clear;
 
   Mutex.Unlock;
+end;
+
+{ TGenericBlockingQueue }
+
+function TGenericBlockingQueue.GetCount: Integer;
+begin
+  Mutex.Lock;
+
+  Result:=inherited GetCount;
+
+  Mutex.Unlock;
+end;
+
+function TGenericBlockingQueue.GetIsEmpty: Boolean;
+begin
+  Mutex.Lock;
+
+  Result:=inherited GetIsEmpty;
+
+  Mutex.Unlock;
+end;
+
+function TGenericBlockingQueue.GetIsFull: Boolean;
+begin
+  Mutex.Lock;
+
+  Result:=inherited GetIsFull;
+
+  Mutex.Unlock;
+end;
+
+procedure TGenericBlockingQueue.DoInsert(Entry: T);
+begin
+  OpenSlots.Dec(1);
+
+  Mutex.Lock;
+  inherited DoInsert(Entry);
+  Mutex.Unlock;
+
+  FullSlots.Inc(1);
+end;
+
+procedure TGenericBlockingQueue.DoDelete(var LastElement: T);
+begin
+  FullSlots.Dec(1);
+
+  Mutex.Lock;
+  inherited DoDelete(LastElement);
+
+  Mutex.Unlock;
+
+  OpenSlots.Inc(1);
+end;
+
+function TGenericBlockingQueue.DoGetTop: T;
+begin
+  Mutex.Lock;
+
+  Result:= inherited DoGetTop;
+
+  Mutex.Unlock;
+end;
+
+constructor TGenericBlockingQueue.Create(Size: Integer);
+begin
+  inherited Create(Size);
+
+  Mutex := TMutex.Create;
+  OpenSlots := TSemaphore.Create(Size);
+  FullSlots := TSemaphore.Create(0);
+
+end;
+
+destructor TGenericBlockingQueue.Destroy;
+begin
+  inherited Destroy;
+end;
+
+procedure TGenericBlockingQueue.Clear;
+begin
+  inherited Clear;
 end;
 
 { TGenericPriorityQueue }

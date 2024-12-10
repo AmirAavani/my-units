@@ -1,6 +1,7 @@
 unit MapReduce.ConfigUnit;
 
 {$mode ObjFPC}{$H+}
+{$modeswitch ADVANCEDRECORDS}
 
 interface
 
@@ -9,7 +10,7 @@ uses
 type
   { TRunConfig }
 
-  TRunConfig = class(TObject)
+  TRunConfig = record
   public
   type
     TMode = (InMemory = 1);
@@ -18,17 +19,21 @@ type
     FMode: TMode;
     FNumProcesses: Integer;
     FProcessIndex: Integer;
+    FNumThreads: Integer;
+    FQueueSize: Integer;
 
   public
     property Mode: TMode read FMode;
     property NumProcesses: Integer read FNumProcesses;
+    property NumThreads: Integer read FNumThreads;
+    property QueueSize: Integer read FQueueSize;
     property ProcessIndex: Integer read FProcessIndex;
 
-    constructor Create;
+    function Init: TRunConfig;
 
-    class function NewRunConfg: TRunConfig;
     function SetMode(AValue: TMode): TRunConfig;
     function SetNumProcesses(n: Integer): TRunConfig;
+    function SetNumThreads(n: Integer): TRunConfig;
     function SetProcessIndex(n: Integer): TRunConfig;
 
 
@@ -36,8 +41,6 @@ type
 
 
 implementation
-
-{ TRunConfig }
 
 { TRunConfig }
 
@@ -54,6 +57,12 @@ begin
 
 end;
 
+function TRunConfig.SetNumThreads(n: Integer): TRunConfig;
+begin
+  Self.FNumThreads := n;
+  Result := Self;
+end;
+
 function TRunConfig.SetProcessIndex(n: Integer): TRunConfig;
 begin
   Result := Self;
@@ -61,19 +70,15 @@ begin
 
 end;
 
-constructor TRunConfig.Create;
+function TRunConfig.Init: TRunConfig;
 begin
-  inherited Create;
+  FillChar(Self, SizeOF(Self), 0);
 
   Self.FMode := InMemory;
   Self.FNumProcesses := 1;
   Self.FProcessIndex := 0;
-
-end;
-
-class function TRunConfig.NewRunConfg: TRunConfig;
-begin
-  Result := TRunConfig.Create;
+  Self.FNumThreads := 16;
+  Self.FQueueSize := 64 * 1024;
 
 end;
 

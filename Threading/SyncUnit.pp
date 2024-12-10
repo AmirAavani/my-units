@@ -39,15 +39,15 @@ type
     Sem: psem_t;
 
     function GetValue: Integer;
+
+    procedure Inc;
+    procedure Dec;
+
   public
     property Value: Integer read GetValue;
 
     constructor Create(const v: Integer = 1);
     destructor Destroy; override;
-
-    procedure Inc;
-    procedure Dec;
-
     procedure Inc(const Delta: Integer);
     procedure Dec(const Delta: Integer);
 

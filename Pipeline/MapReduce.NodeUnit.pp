@@ -5,51 +5,87 @@ unit MapReduce.NodeUnit;
 interface
 
 uses
-  Classes, SysUtils, GenericCollectionUnit, MapReduce.MapperUnit,
-  MapReduce.UtilsUnits;
+  Classes, SysUtils, GenericCollectionUnit, MapReduce.KeyValueUnit,
+  MapReduce.UtilsUnits, ProtoHelperUnit, ThreadSafeStackUnit;
 
 type
   TNode = class;
+  TMapper = class;
 
   TNodes = specialize TCollection<TNode>;
+  TKVStack = specialize TThreadSafeStack<TKeyValue>;
 
   { TNode }
 
   TNode = class(TObject)
   private
-    FShardCount: Integer;
+    class var Index: Integer;
 
-  protected
+  private
+    FShardCount: Integer;
+    FNodeIndex: Integer;
+    FData: TKVStack;
+
+    function GetData: TKVStack;
+    function GetNodeIndex: Integer;
+
+  public
   type
     TTransition = record
       Target: TNode;
-      Mapper: MapReduce.MapperUnit.TMapper;
+      Mapper: TMapper;
       ReshardTo: Integer;
 
     end;
-  protected
+    //TBaseMessage
+  public
     FParent: TNode;
     Children: TNodes;
     Transitions: specialize TCollection<TTransition>;
     DestinationPatten: TPattern;
 
-  protected
+  public
     property Parent: TNode read FParent;
     property ShardCount: Integer read FShardCount;
+    property NodeIndex: Integer read GetNodeIndex;
+    property Data: TKVStack read GetData;
 
   public
     constructor Create(_Parent: TNode);
     destructor Destroy; override;
 
-    function Map(Mapper: MapReduce.MapperUnit.TMapper): TNode;
-    function Map(FuncMapper: MapReduce.MapperUnit.TFuncMapper): TNode;
+    function Map(Mapper: TMapper): TNode;
+    // function Map(MapperFunc: MapReduce.MapperUnit.TMapperFunc): TNode;
     procedure SetDestination(const Pattern: AnsiString);
     function Reshard(n: Integer): TNode;
+
+    procedure Send(constref Key: AnsiString; Value: TBaseMessage);
+  end;
+
+  { TStartingNode }
+
+  TStartingNode = class(TNode)
+  public
+    constructor Create;
+
+  end;
+
+  { TMapper }
+
+  TMapper = class(TObject)
+  public
+    constructor Create;
+    destructor Destroy; override;
+
+    function Process(constref InputKey: AnsiString; InputValue: TBaseMessage;
+      Sender: TNode): Boolean; virtual; abstract;
 
   end;
 
 
 implementation
+uses
+  MapReduce.OutputMappersUnit;
 
 type
   EIncompatibleSettings = class(Exception)
@@ -57,9 +93,27 @@ type
 
 { TNode }
 
+function TNode.GetNodeIndex: Integer;
+begin
+  if Self = nil then
+    Exit(-1);
+
+  Result := FNodeIndex;
+
+end;
+
+function TNode.GetData: TKVStack;
+begin
+  Result := FData;
+
+end;
+
 constructor TNode.Create(_Parent: TNode);
 begin
   inherited Create;
+
+  Inc(TNode.Index);
+  Self.FNodeIndex := TNode.Index;
 
   Self.Children := TNodes.Create;
   FParent := _Parent;
@@ -68,38 +122,45 @@ begin
   Transitions := (specialize TCollection<TTransition>).Create;
   FShardCount := 1;
 
+  FData := TKVStack.Create;
 end;
 
 destructor TNode.Destroy;
 begin
   Transitions.Free;
+  FData.Free;
 
   inherited Destroy;
 end;
 
-function TNode.Map(Mapper: MapReduce.MapperUnit.TMapper): TNode;
+function TNode.Map(Mapper: TMapper): TNode;
 var
   Transition: TTransition;
 begin
-  Result := TNode.Create(Self);
+  Result := nil;
+  if not (Mapper is TBaseOutputMapper) then
+    Result := TNode.Create(Self);
+
   Transition.Target := Result;
   Transition.Mapper := Mapper;
 
   Self.Transitions.Add(Transition);
 end;
 
-function TNode.Map(FuncMapper: MapReduce.MapperUnit.TFuncMapper): TNode;
+{
+function TNode.Map(MapperFunc: MapReduce.MapperUnit.TMapperFunc): TNode;
 var
   Transition: TTransition;
 begin
   Result := TNode.Create(Self);
   Result.FShardCount := Self.ShardCount;
   Transition.Target := Result;
-  Transition.Mapper := TMapper.CreateFromFuncMapper(FuncMapper);
+  Transition.Mapper := MapReduce.MapperUnit.CreateMapperFromFunc(MapperFunc, Result);
 
   Transitions.Add(Transition);
 
 end;
+}
 
 procedure TNode.SetDestination(const Pattern: AnsiString);
 begin
@@ -127,5 +188,42 @@ begin
 
 end;
 
+procedure TNode.Send(constref Key: AnsiString; Value: TBaseMessage);
+var
+  kv: TKeyValue;
+
+begin
+  WriteLn(Format('%d Key: %s', [ThreadID, Key]));
+  kv.Init(Key, Value);
+  WriteLn(Format('%d Key: %s', [ThreadID, kv.Key]));
+  FData.Push(kv);
+
+end;
+
+{ TStartingNode }
+
+constructor TStartingNode.Create;
+begin
+  inherited Create(nil);
+
+end;
+
+{ TMapper }
+
+constructor TMapper.Create;
+begin
+  inherited Create;
+
+end;
+
+destructor TMapper.Destroy;
+begin
+
+  inherited Destroy;
+end;
+
+
+initialization
+  TNode.Index := 0;
 end.
 
