@@ -47,7 +47,7 @@ function InitLogger(DebugLvl: Integer = 0): TALogger;
 implementation
 
 uses
-  StringUnit, WideStringUnit, SyncUnit, OnceUnit, lnfodwrf,
+  StringUnit, SyncUnit, OnceUnit, lnfodwrf,
   GenericCollectionUnit;
 
 var

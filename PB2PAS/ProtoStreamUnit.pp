@@ -38,6 +38,7 @@ type
   TByteArray = array [0..ByteArraySize - 1] of Byte;
 
   { TLinkListNode }
+  // TODO(Amir): Change this class to record.
 
   TLinkListNode = class(TObject)
   private
@@ -57,7 +58,6 @@ type
     property ByteAt[Index: Integer]: Byte read GetByteAt;
 
     constructor Create;
-    destructor Destroy; override;
 
     function WriteRawData(p: Pointer; Count: Integer): TLinkListNode;
     procedure WriteLength(n: Uint32);
@@ -437,12 +437,6 @@ begin
   ID := CID;
 end;
 
-destructor TLinkListNode.Destroy;
-begin
-  FNext.Free;
-
-  inherited Destroy;
-end;
 
 function TLinkListNode.WriteRawData(p: Pointer; Count: Integer): TLinkListNode;
 var
@@ -515,9 +509,19 @@ begin
 end;
 
 destructor TProtoStreamWriter.Destroy;
+var
+  Current, Next: TLinkListNode;
+
 begin
   Self.WriteToStream;
-  Root.Free;
+  Current := Root;
+  while Current <> nil do
+  begin
+    Next := Current.Next;
+    Current.Free;
+    Current := Next;
+
+  end;
 
   if TakeOwnership then
     FStream.Free;
