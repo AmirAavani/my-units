@@ -697,6 +697,7 @@ procedure SaveMessage(Stream: TProtoStreamWriter; const Data: TBaseMessage;
   const TagID: Integer);
 var
   SizeNode: TLinkListNode;
+
 begin
   if Data = nil then
     Exit;
@@ -722,7 +723,9 @@ end;
 generic procedure SaveRepeatedMessage<TMessage>(Stream: TProtoStreamWriter;
   const Data: specialize TObjectList<TMessage>; const TagID: Integer);
 var
+  SizeNode: TLinkListNode;
   Message: TMessage;
+
 begin
   if Data = nil then
     Exit;
@@ -732,7 +735,6 @@ begin
     SaveMessage(Stream, Message, TagID);
 
   end;
-
 end;
 
 generic function LoadRepeatedMessage<TMessage>(Stream: TProtoStreamReader;
@@ -741,19 +743,11 @@ var
   Len: uInt32;
   NewDatum: TMessage;
   StartPos: Integer;
+
 begin
-  Len := Stream.ReadVarUInt32;
-  StartPos := Stream.Position;
-
-  while Stream.Position < StartPos + Len do
-  begin
-    NewDatum := TMessage.Create;
-    LoadMessage(Stream, NewDatum);
-    Data.Add(NewDatum);
-
-  end;
-
-  Result := StartPos + Len = Stream.Position;
+  NewDatum := TMessage.Create;
+  Result := LoadMessage(Stream, NewDatum);
+  Data.Add(NewDatum);
 end;
 
 procedure MaybeDispose(P: PDouble);
@@ -1222,7 +1216,7 @@ var
   ProtoStream: TProtoStreamReader;
 begin
   Self.Clear;
-  ProtoStream := TProtoStreamReader.Create(Stream);
+  ProtoStream := TProtoStreamReader.Create(Stream, False);
 
   Result := Self.LoadFromStream(ProtoStream, Stream.Size);
 

@@ -42,7 +42,7 @@ procedure FmtFatalLnIFFalse(Value: Boolean; constref Fmt: AnsiString;
   constref ArgFuncs: array of ToStringFunction);
 
 function GetLogger: TALogger;
-function InitLogger(DebugLvl: Integer = 0): TALogger;
+procedure InitLogger(DebugLvl: Integer = 0);
 
 implementation
 
@@ -317,7 +317,7 @@ begin
   Result := Logger;
 end;
 
-function InitLogger(DebugLvl: Integer): TALogger;
+procedure InitLogger(DebugLvl: Integer);
 begin
   Logger := TALogger.Create(DebugLvl);
 

@@ -140,6 +140,7 @@ type
   TProtoStreamReader = class(TObject)
   private
     FStream: TStream;
+    TakeOwnership: Boolean;
 
     function GetPosition: Int64;
     function GetSize: Int64;
@@ -151,8 +152,7 @@ type
     property Size: Int64 read GetSize;
     property Position: Int64 read GetPosition;
 
-    // Takes the ownership of AnStream Object.
-    constructor Create(AnStream: TStream);
+    constructor Create(AnStream: TStream; _TakeOwnership: Boolean = True);
     destructor Destroy; override;
 
     function ReadString: AnsiString;
@@ -242,17 +242,20 @@ begin
 
 end;
 
-constructor TProtoStreamReader.Create(AnStream: TStream);
+constructor TProtoStreamReader.Create(AnStream: TStream; _TakeOwnership: Boolean
+  );
 begin
   inherited Create;
 
   FStream := AnStream;
+  TakeOwnership := _TakeOwnership;
 
 end;
 
 destructor TProtoStreamReader.Destroy;
 begin
-  FStream.Free;
+  if TakeOwnership then
+    FStream.Free;
 
   inherited Destroy;
 end;
