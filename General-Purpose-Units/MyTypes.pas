@@ -3,7 +3,7 @@ unit MyTypes;
 {$Mode objfpc}
 interface
 uses
-  GenericCollectionUnit;
+  GenericCollectionUnit, Generics.Collections;
 
 type
   PObject= ^TObject;
@@ -34,8 +34,8 @@ type
 
   end;
 
-  TIntegerCollection= specialize TGenericCollectionForBuiltInData<Integer>;
-  TBooleanCollection= specialize TGenericCollectionForBuiltInData<Boolean>;
+  TIntegerCollection= specialize TList<Integer>;
+  TBooleanCollection= specialize TList<Boolean>;
 
 implementation
 
