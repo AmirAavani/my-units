@@ -7,20 +7,41 @@ interface
 uses
   Classes, SysUtils, CollectionUnit;
 
-function JoinPath(Parent, Rest: AnsiString; DirSeparator: AnsiString = '/'): AnsiString;
+function JoinPath(const Parent, Rest: AnsiString; DirSeparator: AnsiString = '/'): AnsiString;
+function JoinPath(const Parts: array of AnsiString; DirSeparator: AnsiString = '/'): AnsiString;
 function GetAllFiles(APath: AnsiString): TAnsiStrings;
 
 implementation
 uses
   StringUnit;
 
-function JoinPath(Parent, Rest: AnsiString; DirSeparator: AnsiString
+function JoinPath(const Parent, Rest: AnsiString; DirSeparator: AnsiString
   ): AnsiString;
 begin
   Result := Parent;
   if not IsSuffix(DirSeparator, Parent) and not IsPrefix(DirSeparator, Rest) then
     Result += DirSeparator;
   Result += Rest;
+
+end;
+
+function JoinPath(const Parts: array of AnsiString; DirSeparator: AnsiString
+  ): AnsiString;
+var
+  i: Integer;
+
+begin
+  Result := '';
+  if Length(Parts) = 0 then
+    Exit;
+  Result := Parts[0];
+
+  for i := 1 to High(Parts) do
+  begin
+    Result += DirSeparator;
+    Result += Parts[i];
+
+  end;
 
 end;
 

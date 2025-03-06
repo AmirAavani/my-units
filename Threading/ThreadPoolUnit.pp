@@ -5,28 +5,40 @@ unit ThreadPoolUnit;
 interface
 
 uses
-  Classes, SysUtils, ThreadSafeQueueUnit, SyncUnit, GenericCollectionUnit;//,
- // PairUnit;
+  Classes, SysUtils, QueueUnit, SyncUnit, Generics.Collections;
 
 type
-  TObjectList = specialize TObjectCollection<TObject>;
-  TThreadFunctionPtr = function (Args: TObjectList): Boolean;
+  { TGenericThreadPool }
 
-  { TFuncArgResultArgument }
+  generic TGenericThreadPool<TArguments>  = class(TObject)
+  public type
+    TThreadFunctionPtr = function (Args: TArguments): Boolean;
 
-  TFuncArgResultArgument = record
-    IsValid: Boolean;
-    Arguments: TObjectList;
-    FuncPtr: TThreadFunctionPtr;
-    PResult: PBoolean;
-  end;
+    { TFuncArgResultArguments }
 
-  { TThreadPool }
+    TFuncArgResultArguments = record
+      IsValid: Boolean;
+      Arguments: TArguments;
+      FuncPtr: TThreadFunctionPtr;
+      PResult: PBoolean;
+    end;
 
-  TThreadPool = class(TObject)
   private type
-    TRequestsQueue = specialize TThreadSafeQueue<TFuncArgResultArgument>;
-    TThreads = specialize TCollection<TThread>;
+    TRequestsQueue = specialize TGenericBlockingQueue<TFuncArgResultArguments>;
+    TThreads = specialize TList<TThread>;
+
+    { TRunnerThread }
+
+    TRunnerThread = class(TThread)
+    private
+      FParent: TGenericThreadPool;
+
+    public
+      constructor Create(Parent: TGenericThreadPool);
+      destructor Destroy; override;
+
+      procedure Execute; override;
+    end;
 
   private
     RequestsQueue: TRequestsQueue;
@@ -40,30 +52,16 @@ type
 
     procedure Run(
       F: TThreadFunctionPtr;
-      Args: TObjectList;
+      Args: TArguments;
       OutputResult: PBoolean);
     procedure Wait;
   end;
 
 implementation
 
-type
-
-  { TRunnerThread }
-
-  TRunnerThread = class(TThread)
-  private
-    FParent: TThreadPool;
-
-  public
-    constructor Create(Parent: TThreadPool);
-
-    procedure Execute; override;
-  end;
-
 { TRunnerThread }
 
-constructor TRunnerThread.Create(Parent: TThreadPool);
+constructor TGenericThreadPool.TRunnerThread.Create(Parent: TGenericThreadPool);
 begin
   inherited Create(True);
   FreeOnTerminate := True;
@@ -72,9 +70,15 @@ begin
 
 end;
 
-procedure TRunnerThread.Execute;
+destructor TGenericThreadPool.TRunnerThread.Destroy;
+begin
+  inherited Destroy;
+
+end;
+
+procedure TGenericThreadPool.TRunnerThread.Execute;
 var
-  Args: TFuncArgResultArgument;
+  Args: TFuncArgResultArguments;
   _Result: Boolean;
 
 begin
@@ -99,11 +103,12 @@ begin
   end;
 end;
 
-{ TThreadPool }
+{ TGenericThreadPool }
 
-constructor TThreadPool.Create(ThreadCount: Integer);
+constructor TGenericThreadPool.Create(ThreadCount: Integer);
 var
   i: Integer;
+  Thread: TThread;
 
 begin
   inherited Create;
@@ -115,26 +120,38 @@ begin
 
   for i := 1 to ThreadCount do
     Threads.Add(TRunnerThread.Create(Self));
-  for i := 0 to ThreadCount - 1 do
-    Threads[i].Start;
+  for Thread in Threads do
+    Thread.Start;
 
 end;
 
-destructor TThreadPool.Destroy;
-begin
-  Done := True;
-  wg.Free;
+destructor TGenericThreadPool.Destroy;
+var
+  Thread: TThread;
+  Arg: TFuncArgResultArguments;
 
-  RequestsQueue.Free;
+begin
+  Self.Wait;
+  FillChar(Arg, SizeOf(Arg), 0);
+  for Thread in Threads do
+    RequestsQueue.Insert(Arg);
+  WriteLn('BEfore Second Wait');
+  Flush(Output);
+  Self.Wait;
+  WriteLn('After Second Wait');
+  Flush(Output);
+
   Threads.Free;
+  wg.Free;
+  RequestsQueue.Free;
 
   inherited Destroy;
 end;
 
-procedure TThreadPool.Run(F: TThreadFunctionPtr; Args: TObjectList;
+procedure TGenericThreadPool.Run(F: TThreadFunctionPtr; Args: TArguments;
   OutputResult: PBoolean);
 var
-  Arg: TFuncArgResultArgument;
+  Arg: TFuncArgResultArguments;
 
 begin
   wg.Add(1);
@@ -147,9 +164,10 @@ begin
 
 end;
 
-procedure TThreadPool.Wait;
+procedure TGenericThreadPool.Wait;
 begin
   wg.Wait;
+
 end;
 
 end.

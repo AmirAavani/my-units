@@ -39,7 +39,6 @@ type
       property LeafCount: UInt32 read FLeafCount;
       constructor Create(Parent: TNode; NodeID: TTokenID);
       constructor Create(_ID: TTokenID);
-      // It is best to enable TAILREC Optimization.
       destructor Destroy; override;
 
       const procedure Print(const Indent: AnsiString);
@@ -115,6 +114,7 @@ begin
     Current.Free;
 
   end;
+  Stack.Free;
 
   inherited Destroy;
 end;
@@ -392,6 +392,8 @@ begin
 
   end;
   FRoot := AllNodes[1];
+  AllNodes.Clear;
+  AllNodes.Free;
 
 end;
 

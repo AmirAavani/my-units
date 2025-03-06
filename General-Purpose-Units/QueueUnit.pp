@@ -139,10 +139,9 @@ type
 
   { TGenericBlockingQueue }
 
-  generic TGenericBlockingQueue<T> = class(specialize TGenericCircularQueue<T>)
+  generic TGenericBlockingQueue<T> = class(specialize TGenericQueue<T>)
   private
     Mutex: TMutex;
-    OpenSlots: TSemaphore;
     FullSlots: TSemaphore;
 
     function GetCount: Integer; override;
@@ -155,9 +154,8 @@ type
     function DoGetTop: T; override;
 
     public
-    constructor Create(Size: Integer);
+    constructor Create;
     destructor Destroy; override;
-    procedure Clear; override;
 
   end;
 
@@ -282,7 +280,7 @@ function TGenericBlockingQueue.GetCount: Integer;
 begin
   Mutex.Lock;
 
-  Result:=inherited GetCount;
+  Result :=inherited GetCount;
 
   Mutex.Unlock;
 end;
@@ -291,7 +289,7 @@ function TGenericBlockingQueue.GetIsEmpty: Boolean;
 begin
   Mutex.Lock;
 
-  Result:=inherited GetIsEmpty;
+  Result :=inherited GetIsEmpty;
 
   Mutex.Unlock;
 end;
@@ -300,15 +298,13 @@ function TGenericBlockingQueue.GetIsFull: Boolean;
 begin
   Mutex.Lock;
 
-  Result:=inherited GetIsFull;
+  Result :=inherited GetIsFull;
 
   Mutex.Unlock;
 end;
 
 procedure TGenericBlockingQueue.DoInsert(Entry: T);
 begin
-  OpenSlots.Dec(1);
-
   Mutex.Lock;
   inherited DoInsert(Entry);
   Mutex.Unlock;
@@ -325,36 +321,32 @@ begin
 
   Mutex.Unlock;
 
-  OpenSlots.Inc(1);
 end;
 
 function TGenericBlockingQueue.DoGetTop: T;
 begin
   Mutex.Lock;
 
-  Result:= inherited DoGetTop;
+  Result := inherited DoGetTop;
 
   Mutex.Unlock;
 end;
 
-constructor TGenericBlockingQueue.Create(Size: Integer);
+constructor TGenericBlockingQueue.Create;
 begin
-  inherited Create(Size);
+  inherited Create;
 
   Mutex := TMutex.Create;
-  OpenSlots := TSemaphore.Create(Size);
   FullSlots := TSemaphore.Create(0);
 
 end;
 
 destructor TGenericBlockingQueue.Destroy;
 begin
-  inherited Destroy;
-end;
+  FullSlots.Free;
+  Mutex.Free;
 
-procedure TGenericBlockingQueue.Clear;
-begin
-  inherited Clear;
+  inherited Destroy;
 end;
 
 { TGenericPriorityQueue }
@@ -566,12 +558,7 @@ begin
 end;
 
 destructor TGenericCircularQueue.Destroy;
-var
-  i: Integer;
 begin
-  for i := 0 to Count - 1 do
-    FData[i].Free;
-
   SetLength(FData, 0);
 
   inherited;
