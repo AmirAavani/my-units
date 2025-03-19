@@ -7,24 +7,33 @@ uses
   cthreads,
   {$ENDIF}
   Classes, ThreadPoolUnit, GenericCollectionUnit, HeapUnit, ALoggerUnit,
-  WideStringUnit, DataUnit, sysutils
+  WideStringUnit, DataUnit, QueueUnit, sysutils, Generics.Collections
   { you can add units after this };
 
-function F(Args: TObjectList): Boolean;
+type
+  TObjectList = specialize TList<TObject>;
+
+function F(var Args: TObjectList): Boolean;
 var
   Name: AnsiString;
   WaitTime: Integer;
+  Obj: TObject;
 
 begin
   Name := (Args[0] as TData).DataAsString;
   WaitTime := (Args[1] as TData).DataAsUInt64;
 
-  FMTDebugLn('+Name: %s WaitTime: %d', [Name, WaitTime]);
+  WriteLn(Format('+Name: %s WaitTime: %d', [Name, WaitTime]));
   Sleep(WaitTime );
-  FMTDebugLn('-Name: %s', [Name]);
+  WriteLn(Format('-Name: %s', [Name]));
+  for Obj in Args do
+    Obj.Free;
   Args.Free;
 
 end;
+
+type
+  TThreadPool  = specialize TGenericThreadPool<TObjectList>;
 
 var
   Pool: TThreadPool;
@@ -40,7 +49,7 @@ begin
     Args.Add(TData.CreateString('Run' + IntToStr(i)));
     Args.Add(TData.CreateUInt64(i * 100));
 
-    FMTDebugLn('Adding', []);
+    WriteLn(Format('Adding', []));
     Pool.Run(@F, Args, nil)
   end;
   Pool.Wait;

@@ -12,7 +12,7 @@ type
 
   generic TGenericThreadPool<TArguments>  = class(TObject)
   public type
-    TThreadFunctionPtr = function (Args: TArguments): Boolean;
+    TThreadFunctionPtr = function (var Args: TArguments): Boolean;
 
     { TFuncArgResultArguments }
 
@@ -133,13 +133,7 @@ var
 begin
   Self.Wait;
   FillChar(Arg, SizeOf(Arg), 0);
-  for Thread in Threads do
-    RequestsQueue.Insert(Arg);
-  WriteLn('BEfore Second Wait');
-  Flush(Output);
   Self.Wait;
-  WriteLn('After Second Wait');
-  Flush(Output);
 
   Threads.Free;
   wg.Free;
