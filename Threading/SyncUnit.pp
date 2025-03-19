@@ -14,8 +14,8 @@ type
     CS: TRTLCriticalSection;
 
   public
-    procedure Lock;
-    procedure Unlock;
+    procedure Lock; inline;
+    procedure Unlock; inline;
 
     constructor Create;
     destructor Destroy; override;
@@ -25,7 +25,7 @@ type
 
   TRWMutex = class(TMultiReadExclusiveWriteSynchronizer)
   public
-    procedure RLock;
+    procedure RLock; inline;
     procedure RUnlock;
     procedure WLock;
     procedure WUnlock;
@@ -46,7 +46,7 @@ type
   public
     property Value: Integer read GetValue;
 
-    constructor Create(const v: Integer = 1);
+    constructor Create(const v: Integer);
     destructor Destroy; override;
     procedure Inc(const Delta: Integer);
     procedure Dec(const Delta: Integer);
@@ -292,6 +292,7 @@ end;
 procedure TSemaphore.Dec(const Delta: Integer);
 var
   i: Integer;
+
 begin
   for i := 1 to Delta do
     Self.Dec;
