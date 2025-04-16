@@ -140,7 +140,10 @@ type
   { TGenericBlockingQueue }
 
   generic TGenericBlockingQueue<T> = class(specialize TGenericQueue<T>)
+  private type
+    TState = (stNotStart, stAccepting, stFreeing);
   private
+    State: TState;
     Mutex: TMutex;
     FullSlots: TSemaphore;
 
@@ -153,7 +156,7 @@ type
     procedure DoDelete(var LastElement: T); override;
     function DoGetTop: T; override;
 
-    public
+  public
     constructor Create;
     destructor Destroy; override;
 
@@ -317,6 +320,7 @@ begin
   FullSlots.Dec(1);
 
   Mutex.Lock;
+
   inherited DoDelete(LastElement);
 
   Mutex.Unlock;
@@ -336,13 +340,17 @@ constructor TGenericBlockingQueue.Create;
 begin
   inherited Create;
 
+  State := stNotStart;
   Mutex := TMutex.Create;
   FullSlots := TSemaphore.Create(0);
 
+  State := stAccepting;
 end;
 
 destructor TGenericBlockingQueue.Destroy;
 begin
+
+  State := stFreeing;
   FullSlots.Free;
   Mutex.Free;
 

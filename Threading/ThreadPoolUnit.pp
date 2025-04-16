@@ -17,7 +17,6 @@ type
     { TFuncArgResultArguments }
 
     TFuncArgResultArguments = record
-      IsValid: Boolean;
       Arguments: TArguments;
       FuncPtr: TThreadFunctionPtr;
       PResult: PBoolean;
@@ -76,6 +75,11 @@ begin
 
 end;
 
+generic function EndOfThread<TArguments>(var Args: TArguments): Boolean;
+begin
+  Result := True;
+end;
+
 procedure TGenericThreadPool.TRunnerThread.Execute;
 var
   Args: TFuncArgResultArguments;
@@ -86,8 +90,9 @@ begin
   begin
     FParent.RequestsQueue.Delete(Args);
 
-    if not Args.IsValid then
+    if Args.FuncPtr = nil then
     begin
+      FParent.Wg.Done(1);
       Break;
     end;
 
@@ -125,21 +130,36 @@ begin
 
 end;
 
+generic function DoneThread<TArguments>(Arguments: TArguments): Boolean;
+begin
+  Result := True;
+
+end;
+
 destructor TGenericThreadPool.Destroy;
 var
   Thread: TThread;
-  Arg: TFuncArgResultArguments;
+  Args: TArguments;
 
 begin
   Self.Wait;
-  FillChar(Arg, SizeOf(Arg), 0);
+  for Thread in Threads do
+  begin
+    // TODO: Pointer to Generic Pointer is not implemented yet.
+    // For now, we use the following code instead of
+    //Self.Run(@(specialize DoneThread<TArguments>), Args, nil);
+
+    Self.Run(nil, Args, nil);
+  end;
   Self.Wait;
 
   Threads.Free;
   wg.Free;
+
   RequestsQueue.Free;
 
   inherited Destroy;
+
 end;
 
 procedure TGenericThreadPool.Run(F: TThreadFunctionPtr; Args: TArguments;
@@ -149,7 +169,6 @@ var
 
 begin
   wg.Add(1);
-  Arg.IsValid := True;
   Arg.FuncPtr := F;
   Arg.Arguments := Args;
   Arg.PResult:= OutputResult;

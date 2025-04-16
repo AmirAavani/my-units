@@ -18,6 +18,7 @@ type
     destructor Destroy; override;
 
     function DeepCopy: _TObjectList;
+    function ItemsPtr: Pointer; inline;
   end;
 
   { TSimpleTypeList }
@@ -32,6 +33,8 @@ type
     destructor Destroy; override;
 
     function DeepCopy: TSimpleList;
+    function ItemsPtr: Pointer; inline;
+
   end;
 
 implementation
@@ -52,6 +55,11 @@ begin
   for i := 0 to Self.Count - 1 do
     Result[i] := Self[i];
 
+end;
+
+function TSimpleTypeList.ItemsPtr: Pointer;
+begin
+  Result := @Self.FItems[0];
 end;
 
 constructor TSimpleTypeList.Create;
@@ -92,6 +100,12 @@ begin
   Result.Count := Self.Count;
   for i := 0 to Self.Count - 1 do
     Result[i] := Self[i];
+
+end;
+
+function TObjectList.ItemsPtr: Pointer;
+begin
+  Result := @Self.FItems[0];
 
 end;
 
