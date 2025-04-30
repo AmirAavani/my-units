@@ -166,7 +166,7 @@ function LoadRepeatedByte(Stream: TProtoStreamReader; Data: TBytes): Boolean;
 
 procedure SaveMessage(Stream: TProtoStreamWriter; const Data: TBaseMessage;
   const TagID: Integer);
-function LoadMessage(Stream: TProtoStreamReader; const Data: TBaseMessage): Boolean;
+function LoadMessage(Stream: TProtoStreamReader; Data: TBaseMessage): Boolean;
 generic procedure SaveRepeatedMessage<TMessage>(Stream: TProtoStreamWriter;
   const Data: specialize TObjectList<TMessage>; const TagID: Integer);
 generic function LoadRepeatedMessage<TMessage>(Stream: TProtoStreamReader;
@@ -710,7 +710,7 @@ begin
 
 end;
 
-function LoadMessage(Stream: TProtoStreamReader; const Data: TBaseMessage): Boolean;
+function LoadMessage(Stream: TProtoStreamReader; Data: TBaseMessage): Boolean;
 var
   Len: Integer;
 begin

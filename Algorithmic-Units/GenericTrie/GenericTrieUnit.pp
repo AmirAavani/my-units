@@ -13,8 +13,8 @@ type
   { TGenericTrie }
 
   TGenericTrie = class(TObject)
-  private
-    NextNodeID: TTokenID;
+  protected
+    NextNodeID: TNodeID;
     NextTokenID: TTokenID;
 
   public type
@@ -24,35 +24,41 @@ type
     { TNode }
 
     TNode = class(TObject)
-    private
+    protected
       FID: TNodeID;
       FTokenID: TTokenID;
       FParent: TNode;
       Children: TNodes;
       FTransitionCount, FLeafCount: Uint32;
-      const function GetID: TNodeID; inline;
-      const function GetTokenID: TTokenID; inline;
-
     public
-      property ID: TNodeID read GetID;
-      property TokenID: TTokenID read GetTokenID;
+      property ID: TNodeID read FID;
+      property TokenID: TTokenID read FTokenID;
       property LeafCount: UInt32 read FLeafCount;
-      constructor Create(Parent: TNode; NodeID: TTokenID);
+      property TransitionCount: UInt32 read FTransitionCount;
+
+      property Parent: TNode read FParent;
+      constructor Create(_Parent: TNode; _NodeID: TTokenID);
       constructor Create(_ID: TTokenID);
       destructor Destroy; override;
 
       const procedure Print(const Indent: AnsiString);
-      const procedure PrintPath;
+      const function GetPath: AnsiString;
+
+      const function GetID: TNodeID; inline;
+      const function GetTokenID: TTokenID; inline;
 
     end;
 
 
   private
-    FRoot: TNode;
-
     function CreateNode(Parent: TNode; ID: TTokenID): TNode;
 
+  protected
+    FRoot: TNode;
+
   public
+    property Root: TNode read FRoot;
+
     constructor Create;
     constructor Load(InputStream: TStream);
     destructor Destroy; override;
@@ -70,8 +76,6 @@ type
   end;
 
 implementation
-uses
-  ALoggerUnit;
 
 { TGenericTrie }
 
@@ -138,7 +142,7 @@ begin
   while Ch <= Last do
   begin
 
-    b := Ord(Ch^) and $0F;
+    b := Ord(Ch^) shr 4;
     Next := Current.Children[b];
     if Next = nil then
     begin
@@ -151,7 +155,7 @@ begin
     Current := Next;
     Inc(Current.FTransitionCount);
 
-    b := Ord(Ch^) shr 4;
+    b := Ord(Ch^) and $0F;
     Next := Current.Children[b];
     if Next = nil then
     begin
@@ -257,8 +261,12 @@ procedure TGenericTrie.Save(OutputStream: TStream);
 
       end;
 
-    ALoggerUnit.FmtFatalLnIFFalse(ChildIndex >= 0,
-        'Node.ID: %d', [Node.ID]);
+    if ChildIndex < 0 then
+    begin
+      WriteLn(Format('Node.ID: %d', [Node.ID]));
+      Halt(1);
+
+    end;
     Move(ChildIndex, BytePtr^, 1);
 
   end;
@@ -415,12 +423,12 @@ begin
   Result := FTokenID;
 end;
 
-constructor TGenericTrie.TNode.Create(Parent: TNode; NodeID: TTokenID);
+constructor TGenericTrie.TNode.Create(_Parent: TNode; _NodeID: TTokenID);
 begin
   inherited Create;
 
-  FID := NodeID;
-  FParent := Parent;
+  FID := _NodeID;
+  FParent := _Parent;
   FTransitionCount := 0;
   FLeafCount := 0;
   Children := TNodes.Create;
@@ -464,7 +472,7 @@ begin
   WriteLn(Format('%s</Node>', [Indent]));
 end;
 
-procedure TGenericTrie.TNode.PrintPath;
+function TGenericTrie.TNode.GetPath: AnsiString;
 var
   c, p: TNode;
   i: Integer;
@@ -482,7 +490,7 @@ begin
     for i := 0 to p.Children.Count - 1 do
       if p.Children[i] = c then
       begin
-        b := i shl 4;
+        b := i;
         break
       end;
     c := p;
@@ -492,7 +500,7 @@ begin
     for i := 0 to p.Children.Count - 1 do
       if p.Children[i] = c then
       begin
-        b := b or i;
+        b := b or (i shl 4);
         break
       end;
 
@@ -502,7 +510,7 @@ begin
 
   end;
 
-  Write(Path);
+  Result := Path;
 end;
 
 initialization
