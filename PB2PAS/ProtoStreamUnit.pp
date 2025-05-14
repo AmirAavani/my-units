@@ -539,7 +539,6 @@ var
 
 begin
   Node := Root;
-
   while Node <> nil do
   begin
     FStream.Write(Node.FData, Node.Size);

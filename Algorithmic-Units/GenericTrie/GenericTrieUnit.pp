@@ -141,7 +141,6 @@ begin
   Ch := First;
   while Ch <= Last do
   begin
-
     b := Ord(Ch^) shr 4;
     Next := Current.Children[b];
     if Next = nil then
@@ -195,30 +194,36 @@ var
 
 begin
   Current := FRoot;
+  Inc(Current.FTransitionCount);
 
   Ch := First;
   while Ch <= Last do
   begin
+    b := Ord(Ch^) shr 4;
+    Next := Current.Children[b];
+    if Next = nil then
+    begin
+      Next := CreateNode(Current, NextNodeID);
+      Inc(NextNodeID);
+
+      Current.Children[b] := Next;
+    end;
+
+    Current := Next;
+    Inc(Current.FTransitionCount);
 
     b := Ord(Ch^) and $0F;
     Next := Current.Children[b];
     if Next = nil then
     begin
-      Exit(nil);
+      Next := TNode.Create(Current, NextNodeID);
+      Inc(NextNodeID);
 
+      Current.Children[b] := Next;
     end;
 
     Current := Next;
-
-    b := Ord(Ch^) shr 4;
-    Next := Current.Children[b];
-    if Next = nil then
-    begin
-      Exit(nil);
-
-    end;
-
-    Current := Next;
+    Inc(Current.FTransitionCount);
     Inc(Ch);
 
   end;
@@ -241,7 +246,7 @@ procedure TGenericTrie.Save(OutputStream: TStream);
     Inc(BytePtr, 4);
     Move(Node.TokenID, BytePtr^, 4);
     Inc(BytePtr, 4);
-    Move(Node.FParent.ID, BytePtr^, 4);
+    Move(Node.FParent.GetID, BytePtr^, 4);
     Inc(BytePtr, 4);
     Move(Node.FLeafCount, BytePtr^, 4);
     Inc(BytePtr, 4);

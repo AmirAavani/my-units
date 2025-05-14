@@ -54,6 +54,8 @@ type
       Args: TArguments;
       OutputResult: PBoolean);
     procedure Wait;
+    procedure Terminate;
+
   end;
 
 implementation
@@ -180,6 +182,18 @@ end;
 procedure TGenericThreadPool.Wait;
 begin
   wg.Wait;
+
+end;
+
+procedure TGenericThreadPool.Terminate;
+var
+  Thread: TThread;
+
+begin
+  Self.Wait;
+
+  for Thread in Self.Threads do
+    Thread.Terminate;
 
 end;
 
