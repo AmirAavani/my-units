@@ -17,15 +17,14 @@ type
   public
     destructor Destroy; override;
 
-    function DeepCopy: _TObjectList;
     function ItemsPtr: Pointer; inline;
   end;
 
   { TSimpleTypeList }
 
-  generic TSimpleTypeList<TSimpleObject> = class(specialize TList<TSimpleObject>)
+  generic TSimpleTypeList<TSimpleType> = class(specialize TList<TSimpleType>)
   private type
-    TSimpleList = specialize TSimpleTypeList<TSimpleObject>;
+    TSimpleList = specialize TSimpleTypeList<TSimpleType>;
   protected
 
   public
@@ -42,18 +41,17 @@ implementation
 { TSimpleTypeList }
 
 function TSimpleTypeList.DeepCopy: TSimpleList;
-var
-  i: Integer;
-
 begin
   if Self = nil then
     Exit(nil);
 
   Result := TSimpleList.Create;
   Result.Count := Self.Count;
-
-  for i := 0 to Self.Count - 1 do
-    Result[i] := Self[i];
+  System.Move(
+    Self.ItemsPtr^,
+    Result.ItemsPtr^,
+    Self.Count * SizeOf(TSimpleType)
+  );
 
 end;
 
@@ -85,21 +83,6 @@ begin
     Obj.Free;
 
   inherited Destroy;
-
-end;
-
-function TObjectList.DeepCopy: _TObjectList;
-var
-  i: Integer;
-
-begin
-  if Self = nil then
-    Exit(nil);
-
-  Result := _TObjectList.Create;
-  Result.Count := Self.Count;
-  for i := 0 to Self.Count - 1 do
-    Result[i] := Self[i];
 
 end;
 
