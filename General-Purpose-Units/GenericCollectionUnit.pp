@@ -26,12 +26,11 @@ type
     TPointerEnumerator = specialize TEnumerator<PT>;
 
   protected
-    function GetItemPtr(Index: Integer): PT; virtual;
+    function GetItemsPtr: PT; inline;
     function GetIsEmpty: Boolean; inline;
 
-
   public
-    property ItemPtr[Index: Integer]: PT read GetItemPtr;
+    property ItemsPtr: PT read GetItemsPtr;
     property IsEmpty: Boolean read GetIsEmpty;
 
     procedure AddAnotherCollection(AnotherCollection: TCollection);
@@ -52,37 +51,6 @@ type
     function GetPtrEnumerator: TPointerEnumerator; override;
 
 
-  end;
-
-{  operator Enumerator(aEnum: specialize TEnumerator<TMyList.PT>): specialize TEnumerator<TMyList.PT>;
-  begin
-   Result := aEnum;
-  end;
-}
-type
-  { TObjectCollection }
-
-  generic TObjectCollection<TData>= class(specialize TList<TData>)
-  private
-    type
-      TListData = specialize TList<TData>;
-
-  protected
-    function GetCount: SizeInt; override;
-
-  public
-    property Count: SizeInt read GetCount write SetCount;
-
-    constructor Create;
-    constructor Create(aList: TListData);
-    destructor Destroy; override;
-
-    {
-      Deletes the Index-th item from the list and return it.
-    }
-    function Delete(Index: SizeInt): TData;
-
-    procedure AddAnotherCollection(Another: TListData);
   end;
 
   { TMap }
@@ -113,9 +81,9 @@ uses
 
 { TCollection }
 
-function TCollection.GetItemPtr(Index: Integer): PT;
+function TCollection.GetItemsPtr: PT;
 begin
-  Result := @(Self.FItems[Index]);
+  Result := @(Self.FItems[0]);
 end;
 
 function TCollection.GetIsEmpty: Boolean;
@@ -371,64 +339,6 @@ begin
   it.Free;
 
   inherited Destroy;
-end;
-
-{ TGenericCollection }
-
-constructor TObjectCollection.Create(aList: TListData);
-var
-  i: Integer;
-
-begin
-  inherited Create;
-
-  Self.Count := aList.Count;
-  for i := 0 to aList.Count - 1 do
-    Self.Add(aList[i]);
-
-end;
-
-function TObjectCollection.GetCount: SizeInt;
-begin
-  if Self = nil then
-    Exit(0);
-
-  Result := Self.FLength;
-end;
-
-constructor TObjectCollection.Create;
-begin
-  inherited Create;
-
-end;
-
-destructor TObjectCollection.Destroy;
-var
-  i: Integer;
-
-begin
-  for i := 0 to Count - 1 do
-    Self[i].Free;
-
-  inherited Destroy;
-
-end;
-
-function TObjectCollection.Delete(Index: SizeInt): TData;
-begin
-  inherited Delete(Index);
-
-end;
-
-procedure TObjectCollection.AddAnotherCollection(Another: TListData);
-var
-  i: Integer;
-
-begin
-  Self.Capacity := Self.Count + Another.Count;
-  for i := 0 to Another.Count - 1 do
-    Self.Add(Another[i]);
-
 end;
 
 end.

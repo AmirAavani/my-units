@@ -1,48 +1,82 @@
 program UseHeap;
 
 {$mode objfpc}{$H+}
+{$MODESWITCH ADVANCEDRECORDS}
 
 uses
   {$IFDEF UNIX}{$IFDEF UseCThreads}
   cthreads,
   {$ENDIF}{$ENDIF}
-  Classes, HeapUnit
+  Classes, HeapUnit, sysutils, Generics.Collections
   { you can add units after this };
 
 {$IFDEF WINDOWS}{$R UseHeap.rc}{$ENDIF}
 
 type
-  TIntHeap= specialize THeap<Integer>;
 
-function IntGreaterThan (const a, b: Integer): Boolean;
+  { TPair }
+
+  TPair = record
+    First: Integer;
+    Second: AnsiString;
+
+    function ToString: AnsiString;
+    class operator <(a,b: TPair) : Boolean;
+
+  end;
+
+  TPairHeap = specialize THeap<TPair>;
+  TPairs = specialize TList<TPair>;
+
+function MakePair(n: Integer): TPair;
 begin
-  Result:= b< a;
+  Result.First  := n;
+  Result.Second := IntToStr(n);
 
 end;
 
+
 var
-  Heap: TIntHeap;
+  Heap: TPairHeap;
   n: Integer;
 
+{ TPair }
+
+function TPair.ToString: AnsiString;
 begin
+  Result := Format('(%d:%s)', [Self.First, Self.Second]);
 
-  Heap:= TIntHeap.Create (10, @IntGreaterThan);
+end;
 
-  ReadLn (n);
-  while n<> 0 do
+class operator TPair.<(a, b: TPair): Boolean;
+begin
+  Result := a.First < b.First;
+end;
+
+var
+  Pairs: TPairs;
+
+begin
+  Pairs := TPairs.Create;
+  Heap:= TPairHeap.Create(Pairs);
+
+  ReadLn(n);
+  while n <> 0 do
   begin
-    if n< 0 then
+    if n < 0 then
     begin
-      WriteLn (Heap.Min);
+      WriteLn(Heap.Min.ToString);
       Heap.DeleteMin;
 
     end;
-    if 0< n then
-      Heap.Insert (n);
+    if 0 < n then
+      Heap.Insert(MakePair(n));
 
     Heap.Print;
-    ReadLn (n);
+    ReadLn(n);
   end;
 
+  Heap.Free;
+  Pairs.Free;
 end.
 
