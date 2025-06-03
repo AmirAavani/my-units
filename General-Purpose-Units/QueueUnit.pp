@@ -162,6 +162,7 @@ type
 
   end;
 
+    (*
   { TGenericPriorityQueue }
 
   generic TGenericPriorityQueue<T> = class(specialize TGenericAbstractQueue<T>)
@@ -176,20 +177,19 @@ type
     function DoGetTop: T; override;
 
   type
-    TIsGreaterThanFunction = function(const a: T; const b: T): Boolean;
-    TMaxHeapT = specialize THeap<T>;
+    TMinHeapT = specialize THeap<T>;
 
   protected
-    IsGreaterThan: TIsGreaterThanFunction;
-    MaxHeap: TMaxHeapT;
+    MinHeap: TMinHeapT;
 
   public
 
-    constructor Create(IsGreaterThanFunction: TIsGreaterThanFunction);
+    constructor Create;
     destructor Destroy; override;
     procedure Clear; override;
 
   end;
+  *)
 
 implementation
 
@@ -358,22 +358,22 @@ begin
 end;
 
 { TGenericPriorityQueue }
-
+(*
 function TGenericPriorityQueue.DoGetTop: T;
 begin
-  Result := MaxHeap.Min;
+  Result := MinHeap.Min;
 
 end;
 
 function TGenericPriorityQueue.GetCount: Integer;
 begin
-  Result := MaxHeap.Count;
+  Result := MinHeap.Count;
 
 end;
 
 function TGenericPriorityQueue.GetIsEmpty: Boolean;
 begin
-  Result := MaxHeap.Count = 0;
+  Result := MinHeap.Count = 0;
 
 end;
 
@@ -385,7 +385,7 @@ end;
 
 procedure TGenericPriorityQueue.DoInsert(Entry: T);
 begin
-  MaxHeap.Insert(Entry);
+  MinHeap.Insert(Entry);
 
 end;
 
@@ -394,18 +394,16 @@ begin
   if IsEmpty then
     raise EQueueIsEmpty.Create;
 
-  LastElement := MaxHeap.Min;
-  MaxHeap.DeleteMin;
+  LastElement := MinHeap.Min;
+  MinHeap.DeleteMin;
 
 end;
 
-constructor TGenericPriorityQueue.Create(
-  IsGreaterThanFunction: TIsGreaterThanFunction);
+constructor TGenericPriorityQueue.Create;
 begin
   inherited Create;
 
-  IsGreaterThan := IsGreaterThanFunction;
-  MaxHeap := TMaxHeapT.Create(IsGreaterThanFunction);
+  MinHeap := TMinHeapT.Create;
 
 end;
 
@@ -420,6 +418,7 @@ begin
   MaxHeap.Clear;
 
 end;
+*)
 
 { TGenericAbstractQueue }
 

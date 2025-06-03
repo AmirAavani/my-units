@@ -41,7 +41,7 @@ type
 
     // InitList must have the heap property
     // maybe by calling BuildHeap.
-    constructor Create(InitLlist: TListOfT);
+    constructor Create(InitLlist: TListOfT = nil);
 
     procedure Insert(Data: T);
     procedure DeleteMin;
