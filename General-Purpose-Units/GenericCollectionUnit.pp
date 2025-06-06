@@ -9,6 +9,24 @@ uses
   Classes, SysUtils, Generics.Collections, TupleUnit;
 type
 
+  { TFixedSizeList }
+
+  generic TFixedSizeList<TData> = class(TObject)
+  public type
+    PT = ^TData;
+
+  private
+    function GetItemsPtr: PT;
+  protected
+    FItems: array of TData;
+
+  public
+    property ItemsPtr: PT read GetItemsPtr;
+
+    constructor Create(InitSize: Integer);
+
+  end;
+
   { TCollection }
 
   generic TCollection<TData> = class(specialize TList<TData>)
@@ -78,6 +96,22 @@ implementation
 
 uses
   Generics.Defaults, ALoggerUnit;
+
+{ TFixedSizeList }
+
+function TFixedSizeList.GetItemsPtr: PT;
+begin
+  Result := FItems[0];
+
+end;
+
+constructor TFixedSizeList.Create(InitSize: Integer);
+begin
+  inherited Create;
+
+  SetLength(FItems, InitSize);
+
+end;
 
 { TCollection }
 
