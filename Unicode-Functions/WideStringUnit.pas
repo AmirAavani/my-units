@@ -384,31 +384,39 @@ var
   FinalLength: Integer;
   Current: PWideChar;
   Source: PWideString;
+  It: PWideString;
+
 begin
   Result := '';
   if Self.IsEmpty then
     Exit;
 
   FinalLength := 0;
+  It := Self.ItemsPtr;
   for i := 0 to Self.Count - 1 do
-    Inc(FinalLength, Length(Self.ItemPtr[i]^));
+  begin
+    Inc(FinalLength, Length(It^));
+    Inc(It);
+  end;
   Inc(FinalLength, Length(Separator) * Self.Count - 1);
 
   SetLength(Result, FinalLength);
 
   Current := @(Result[1]);
+  It := Self.ItemsPtr;
   for i := 0 to Self.Count - 2 do
   begin
-    Source := Self.ItemPtr[i];
+    Source := It;
     if Length(Source^) <> 0 then
       System.Move(Source^[1], Current^, SizeOf(WideChar) * Length(Source^));
     Inc(Current, Length(Source^));
     System.Move(Separator[1], Current^, SizeOf(WideChar) * Length(Separator));
     Inc(Current, Length(Separator));
 
+    Inc(It);
+
   end;
-  i := Self.Count - 1;
-  Source := Self.ItemPtr[i];
+  Source := It;
   if Length(Source^) <> 0 then
     System.Move(Source^[1], Current^, SizeOf(WideChar) * Length(Source^));
 
