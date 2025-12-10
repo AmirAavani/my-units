@@ -36,12 +36,8 @@ begin
   if Length(Filename) = 0 then
     Exit(False);
 
-  if Filename[1] = '/' then
-    Exit(True);
-  if Filename[1] = '.' then
-    Exit(True);
+  Result := Filename[1] in ['/', '.', '~'];
 
-  Exit(False);
 end;
 
 function FileExists(const FileName: AnsiString): Boolean;
