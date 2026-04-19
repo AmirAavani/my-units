@@ -95,7 +95,7 @@ type
 implementation
 
 uses
-  Generics.Defaults, ALoggerUnit;
+  Generics.Defaults;
 
 { TFixedSizeList }
 
@@ -149,7 +149,7 @@ begin
   while it.MoveNext do
   begin
     if not DumpFunc(it.Current, Stream) then
-      FmtFatalLnIFFalse(False, 'Something went wrong', []);
+      Halt(1);
 
   end;
 
@@ -228,7 +228,7 @@ function TCollection.Pop(n: Integer): TData;
 begin
   if Count < n then
   begin
-    FmtFatalLnIFFalse(False, 'Count = %d n: %d', [Count, n]);
+    Halt(1);
 
   end;
 

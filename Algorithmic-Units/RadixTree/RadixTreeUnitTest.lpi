@@ -3,13 +3,8 @@
   <ProjectOptions>
     <Version Value="12"/>
     <General>
-      <Flags>
-        <MainUnitHasCreateFormStatements Value="False"/>
-        <MainUnitHasTitleStatement Value="False"/>
-        <MainUnitHasScaledStatement Value="False"/>
-      </Flags>
       <SessionStorage Value="InProjectDir"/>
-      <Title Value="GeneralizedSuffixTreeSearchTest"/>
+      <Title Value="RadixTreeUnitTest"/>
       <UseAppBundle Value="False"/>
       <ResourceType Value="res"/>
     </General>
@@ -23,25 +18,21 @@
     <RunParams>
       <FormatVersion Value="2"/>
     </RunParams>
+    <RequiredPackages>
+      <Item>
+        <PackageName Value="laztestinsight"/>
+      </Item>
+      <Item>
+        <PackageName Value="FCL"/>
+      </Item>
+    </RequiredPackages>
     <Units>
       <Unit>
-        <Filename Value="GeneralizedSuffixTreeSearchTest.lpr"/>
+        <Filename Value="RadixTreeUnitTest.lpr"/>
         <IsPartOfProject Value="True"/>
       </Unit>
       <Unit>
-        <Filename Value="../GeneralizedSuffixTreeUnit.pp"/>
-        <IsPartOfProject Value="True"/>
-      </Unit>
-      <Unit>
-        <Filename Value="../../../General-Purpose-Units/GenericCollectionUnit.pp"/>
-        <IsPartOfProject Value="True"/>
-      </Unit>
-      <Unit>
-        <Filename Value="../../../PB2PAS/ProtoHelperUnit.pp"/>
-        <IsPartOfProject Value="True"/>
-      </Unit>
-      <Unit>
-        <Filename Value="../GeneralizedSuffixTreeSearchUnit.pp"/>
+        <Filename Value="RadixTreeTests.pp"/>
         <IsPartOfProject Value="True"/>
       </Unit>
     </Units>
@@ -49,11 +40,10 @@
   <CompilerOptions>
     <Version Value="11"/>
     <Target>
-      <Filename Value="GeneralizedSuffixTreeSearchTest"/>
+      <Filename Value="RadixTreeUnitTest"/>
     </Target>
     <SearchPaths>
       <IncludeFiles Value="$(ProjOutDir)"/>
-      <OtherUnitFiles Value="..;../../../General-Purpose-Units;../../../PB2PAS"/>
       <UnitOutputDirectory Value="lib/$(TargetCPU)-$(TargetOS)"/>
     </SearchPaths>
     <Linking>

@@ -1,7 +1,7 @@
 unit RadixTreeUnit;
 
-{$mode objfpc}{$H+}
-
+{$mode objfpc}
+{$modeswitch ADVANCEDRECORDS}
 interface
 
 uses
@@ -15,16 +15,25 @@ type
 
     { TNibbles: Splitting bytes into 4-bit chunks }
 
-    TNibbles = class(specialize TCollection<Byte>)
+    TNibbles = record
     private
-      procedure Truncate(NewLength: Integer);
+      function GetItemPtr: PByte; inline;
 
     public
-      constructor Create(const S: AnsiString);
-      constructor Create(const SPtr: PByte; Len: Integer);
-      function ToString: AnsiString; override;
+      FData: TBytes; // Reference counted, auto-managed
+      FLen: Integer;
+      function GetItem(Index: Integer): Byte;
+      // Static "constructors" for records
+      class function Create(const S: AnsiString): TNibbles; static;
+      class function Create(const SPtr: PByte; Len: Integer): TNibbles; static;
 
-  end;
+      function ToString: AnsiString;
+      procedure Truncate(NewLength: Integer);
+
+      property Count: Integer read FLen;
+      property ItemsPtr: PByte read GetItemPtr; // Pointer to raw data
+      property Items[Index: Integer]: Byte read GetItem; default;
+    end;
 
     { TNode: Forward declaration }
 
@@ -219,7 +228,6 @@ begin
 
   Result := CurrentNode;
 
-  Query.Free;
 end;
 
 procedure TTree.Print;
@@ -273,7 +281,6 @@ begin
 
   FID := ID;
   FIsTerminal := False;
-  FillChar(FEdges, SizeOf(FEdges), 0);
 
 end;
 
@@ -284,8 +291,6 @@ var
 begin
   for i := 0 to 15 do
   begin
-    if FEdges[i].Path <> nil then
-      FEdges[i].Path.Free;
     if FEdges[i].Next <> nil then
       FEdges[i].Next.Free;
 
@@ -297,41 +302,40 @@ end;
 
 { TNibbles }
 
-constructor TTree.TNibbles.Create(const S: AnsiString);
-var
-  i: Integer;
-  TPtr: PByte;
-
+function TTree.TNibbles.GetItemPtr: PByte;
 begin
-  inherited Create;
+  Result := (PByte(@FData[0]))
+end;
 
-  Self.Count := Length(S) * 2;
-  TPtr := Self.ItemsPtr;
-
-  for i := 1 to Length(S) do
-  begin
-    TPtr^ := Ord(S[i]) shr 4;
-    Inc(TPtr);
-    TPtr^ := Ord(S[i]) and $F;
-    Inc(TPtr);
-
-  end;
+function TTree.TNibbles.GetItem(Index: Integer): Byte;
+begin
 
 end;
 
-constructor TTree.TNibbles.Create(const SPtr: PByte; Len: Integer);
+class function TTree.TNibbles.Create(const S: AnsiString): TNibbles;
 begin
-  inherited Create;
+  Result.FLen := Length(S);
+  SetLength(Result.FData, Length(S));
 
-  Self.Count := Len;
+  if Result.FLen > 0 then
+    Move(S[1], Result.FData[0], Result.FLen);
+
+end;
+
+class function TTree.TNibbles.Create(const SPtr: PByte; Len: Integer): TNibbles;
+begin
+  Result.FLen := Len;
+  SetLength(Result.FData, Len);
+
   if Len > 0 then
-     System.Move(SPtr^, Self.ItemsPtr^, Len);
+    Move(SPtr^, Result.FData[0], Len);
+
 
 end;
 
 procedure TTree.TNibbles.Truncate(NewLength: Integer);
 begin
-  Self.Count := NewLength;
+  Self.FLen := NewLength;
 
 end;
 
@@ -341,7 +345,7 @@ var
 
 begin
   Result := '';
-  for b in Self do
+  for b in Self.FData do
     Result += IntToHex(b, 1);
 
 end;
