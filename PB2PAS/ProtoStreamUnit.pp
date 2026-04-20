@@ -147,10 +147,11 @@ type
     function ReadNextByte: Byte;
 
     procedure ReadRawData(P: Pointer; Count: Integer);
+    procedure SetPosition(AValue: Int64);
 
   public
     property Size: Int64 read GetSize;
-    property Position: Int64 read GetPosition;
+    property Position: Int64 read GetPosition write SetPosition;
 
     constructor Create(AnStream: TStream; _TakeOwnership: Boolean = True);
     destructor Destroy; override;
@@ -239,6 +240,12 @@ end;
 procedure TProtoStreamReader.ReadRawData(P: Pointer; Count: Integer);
 begin
    FStream.Read(P^, Count);
+
+end;
+
+procedure TProtoStreamReader.SetPosition(AValue: Int64);
+begin
+  Self.FStream.Position := AValue;
 
 end;
 
