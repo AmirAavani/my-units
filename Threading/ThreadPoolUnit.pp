@@ -10,9 +10,9 @@ uses
 type
   { TGenericThreadPool }
 
-  generic TGenericThreadPool<TArguments>  = class(TObject)
+  generic TGenericThreadPool<TArguments> = class(TObject)
   public type
-    TThreadFunctionPtr = function (var Args: TArguments): Boolean;
+    TThreadFunctionPtr = function (Args: TArguments): Boolean;
 
     { TFuncArgResultArguments }
 
@@ -41,9 +41,9 @@ type
 
   private
     RequestsQueue: TRequestsQueue;
-    Done: Boolean;
     Wg: TWaitGroup;
     Threads: TThreads;
+    FCancelled: Boolean;
 
   public
     constructor Create(ThreadCount: Integer);
@@ -65,7 +65,7 @@ implementation
 constructor TGenericThreadPool.TRunnerThread.Create(Parent: TGenericThreadPool);
 begin
   inherited Create(True);
-  FreeOnTerminate := True;
+  FreeOnTerminate := False;
 
   FParent := Parent;
 
@@ -77,18 +77,13 @@ begin
 
 end;
 
-generic function EndOfThread<TArguments>(var Args: TArguments): Boolean;
-begin
-  Result := True;
-end;
-
 procedure TGenericThreadPool.TRunnerThread.Execute;
 var
   Args: TFuncArgResultArguments;
   _Result: Boolean;
 
 begin
-  while True do
+  while not Terminated do
   begin
     FParent.RequestsQueue.Delete(Args);
 
@@ -98,14 +93,28 @@ begin
       Break;
     end;
 
-    _Result := Args.FuncPtr(Args.Arguments);
-    if Args.PResult <> nil then
+    if FParent.FCancelled then
     begin
-      Args.PResult^ := _Result;
-
+      FParent.Wg.Done(1);
+      Continue;
     end;
 
-    FParent.Wg.Done(1);
+    try
+      try
+        _Result := Args.FuncPtr(Args.Arguments);
+        if Args.PResult <> nil then
+        begin
+          Args.PResult^ := _Result;
+
+        end;
+      except
+        // Handle worker exceptions to prevent WaitGroup deadlock.
+        if Args.PResult <> nil then
+          Args.PResult^ := False;
+      end;
+    finally
+      FParent.Wg.Done(1);
+    end;
 
   end;
 end;
@@ -121,20 +130,14 @@ begin
   inherited Create;
 
   RequestsQueue := TRequestsQueue.Create;
-  Done := False;
   Threads := TThreads.Create;
   wg := TWaitGroup.Create;
+  FCancelled := False;
 
   for i := 1 to ThreadCount do
     Threads.Add(TRunnerThread.Create(Self));
   for Thread in Threads do
     Thread.Start;
-
-end;
-
-generic function DoneThread<TArguments>(Arguments: TArguments): Boolean;
-begin
-  Result := True;
 
 end;
 
@@ -145,19 +148,24 @@ var
 
 begin
   Self.Wait;
+
+  Args := Default(TArguments);
   for Thread in Threads do
   begin
-    // TODO: Pointer to Generic Pointer is not implemented yet.
-    // For now, we use the following code instead of
-    //Self.Run(@(specialize DoneThread<TArguments>), Args, nil);
-
+    // Signal threads to exit.
     Self.Run(nil, Args, nil);
   end;
+
   Self.Wait;
+
+  for Thread in Threads do
+  begin
+    Thread.WaitFor;
+    Thread.Free;
+  end;
 
   Threads.Free;
   wg.Free;
-
   RequestsQueue.Free;
 
   inherited Destroy;
@@ -170,6 +178,9 @@ var
   Arg: TFuncArgResultArguments;
 
 begin
+  if FCancelled then
+    Exit;
+
   wg.Add(1);
   Arg.FuncPtr := F;
   Arg.Arguments := Args;
@@ -188,12 +199,18 @@ end;
 procedure TGenericThreadPool.Terminate;
 var
   Thread: TThread;
+  Args: TArguments;
 
 begin
-  Self.Wait;
+  FCancelled := True;
+  Args := Default(TArguments);
 
   for Thread in Self.Threads do
+  begin
     Thread.Terminate;
+    // Wake up threads blocked on queue.
+    Self.Run(nil, Args, nil);
+  end;
 
 end;
 
