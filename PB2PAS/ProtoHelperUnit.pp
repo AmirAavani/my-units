@@ -114,6 +114,7 @@ function LoadSFixed64(Stream: TProtoStreamReader): Int64;
 function LoadString(Stream: TProtoStreamReader): AnsiString;
 function LoadBool(Stream: TProtoStreamReader): Boolean;
 function LoadByte(Stream: TProtoStreamReader): Byte;
+function SkipField(Stream: TProtoStreamReader; WireType: Integer): Boolean;
 
 // TODO(Amir): Maybe replace this methods with a generic function.
 procedure SaveRepeatedFloat(Stream: TProtoStreamWriter; const Data: TSingles;
@@ -1192,6 +1193,47 @@ end;
 function LoadByte(Stream: TProtoStreamReader): Byte;
 begin
   Result := Stream.ReadByte;
+
+end;
+
+function SkipField(Stream: TProtoStreamReader; WireType: Integer): Boolean;
+var
+  Len: UInt32;
+
+begin
+  Result := True;
+  case WireType of
+    0: // WireType 0: Varint (int32, int64, uint32, uint64, sint32, sint64, bool, enum)
+      begin
+        // Reading it as a 64-bit varint safely consumes all its bytes from the stream
+        Stream.ReadVarUInt64;
+      end;
+
+    1: // WireType 1: 64-bit (fixed64, sfixed64, double)
+      begin
+        Stream.Position := Stream.Position + 8;
+      end;
+
+    2: // WireType 2: Length-delimited (string, bytes, embedded messages, packed repeated fields)
+      begin
+        Len := Stream.ReadVarUInt32;
+        Stream.Position := Stream.Position + Len;
+      end;
+
+    5: // WireType 5: 32-bit (fixed32, sfixed32, float)
+      begin
+        Stream.Position := Stream.Position + 4;
+      end;
+
+    3, 4: // Groups (Deprecated in proto3)
+      begin
+        // You should generally not encounter these in proto3.
+        Result := False;
+      end;
+    else
+      Result := False; // Unknown wire type
+
+  end;
 
 end;
 
