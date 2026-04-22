@@ -1,6 +1,7 @@
 unit NamedObjectListUnit;
 
 {$mode objfpc}{$H+}
+{$COPERATORS ON}
 
 interface
 

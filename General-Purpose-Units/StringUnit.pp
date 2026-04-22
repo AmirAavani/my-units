@@ -1,6 +1,7 @@
 unit StringUnit;
 
 {$mode objfpc}{$H+}
+{$COPERATORS ON}
 
 interface
 

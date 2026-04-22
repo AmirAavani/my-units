@@ -1,6 +1,7 @@
 unit MySQLDBConnectorUnit;
 
 {$mode objfpc}{$H+}
+{$COPERATORS ON}
 
 interface
 

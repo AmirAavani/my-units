@@ -1,7 +1,9 @@
 unit RadixTreeUnit;
 
 {$mode objfpc}
+{$COPERATORS ON}
 {$modeswitch ADVANCEDRECORDS}
+{$COPERATORS ON}
 interface
 
 uses

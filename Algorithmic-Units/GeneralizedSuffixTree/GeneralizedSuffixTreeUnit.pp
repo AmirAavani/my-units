@@ -1,6 +1,7 @@
 unit GeneralizedSuffixTreeUnit;
 
 {$mode ObjFPC}{$H+}
+{$COPERATORS ON}
 {$R+}
 interface
 

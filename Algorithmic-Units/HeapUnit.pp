@@ -3,6 +3,7 @@ unit HeapUnit;
   Tested with mowlawn @ USACO OPEN11 GOLD.
 }
 {$mode objfpc}{$H+}
+{$COPERATORS ON}
 
 interface
 

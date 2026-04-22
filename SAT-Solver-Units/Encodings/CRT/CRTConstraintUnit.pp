@@ -2,6 +2,7 @@ unit CRTConstraintUnit;
 {$ASSERTIONS ON}
 
 {$mode objfpc}{$H+}
+{$COPERATORS ON}
 
 interface
 

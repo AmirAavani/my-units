@@ -1,6 +1,7 @@
 unit ClauseUnit;
 
 {$mode objfpc}{$H+}
+{$COPERATORS ON}
 
 interface
 

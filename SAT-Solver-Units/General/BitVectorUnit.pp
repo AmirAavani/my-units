@@ -1,6 +1,7 @@
 unit BitVectorUnit;
 
 {$mode objfpc}{$H+}
+{$COPERATORS ON}
 
 interface
 

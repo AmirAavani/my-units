@@ -1,6 +1,7 @@
 unit DBConnectorUnit;
 
 {$mode objfpc}{$H+}
+{$COPERATORS ON}
 
 interface
 

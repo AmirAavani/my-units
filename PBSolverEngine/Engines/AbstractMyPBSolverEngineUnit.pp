@@ -1,6 +1,7 @@
 unit AbstractMyPBSolverEngineUnit;
 
 {$mode objfpc}{$H+}
+{$COPERATORS ON}
 
 interface
 uses

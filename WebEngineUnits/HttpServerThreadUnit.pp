@@ -1,6 +1,7 @@
 unit HttpServerThreadUnit;
 
 {$mode objfpc}{$H+}{$I-}
+{$COPERATORS ON}
 
 interface
 

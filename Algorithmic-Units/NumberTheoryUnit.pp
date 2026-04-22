@@ -2,6 +2,7 @@
 unit NumberTheoryUnit;
 
 {$mode objfpc}{$H+}
+{$COPERATORS ON}
 
 interface
 

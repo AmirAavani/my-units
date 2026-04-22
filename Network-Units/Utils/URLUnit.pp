@@ -1,6 +1,7 @@
 unit URLUnit;
 
 {$mode objfpc}{$H+}
+{$COPERATORS ON}
 
 interface
 

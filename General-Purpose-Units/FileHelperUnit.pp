@@ -1,6 +1,7 @@
 unit FileHelperUnit;
 
 {$mode objfpc}{$H+}
+{$COPERATORS ON}
 
 interface
 

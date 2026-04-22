@@ -1,6 +1,7 @@
 unit ProblemDescriptionUnit;
 
 {$mode objfpc}{$H+}
+{$COPERATORS ON}
 
 interface
 

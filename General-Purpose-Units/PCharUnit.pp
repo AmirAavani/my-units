@@ -1,6 +1,7 @@
 unit PCharUnit;
 
 {$mode ObjFPC}{$H+}
+{$COPERATORS ON}
 
 interface
 

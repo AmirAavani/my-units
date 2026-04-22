@@ -1,6 +1,7 @@
 unit FindStartIndicesUnit;
 
 {$mode ObjFPC}{$H+}
+{$COPERATORS ON}
 
 interface
 

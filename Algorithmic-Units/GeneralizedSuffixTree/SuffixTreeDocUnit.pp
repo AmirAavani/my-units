@@ -1,6 +1,7 @@
 unit SuffixTreeDocUnit;
 
 {$mode ObjFPC}{$H+}
+{$COPERATORS ON}
 
 interface
 

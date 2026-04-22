@@ -1,6 +1,7 @@
 unit TypesUnit;
 
 {$mode ObjFPC}{$H+}
+{$COPERATORS ON}
 
 interface
 

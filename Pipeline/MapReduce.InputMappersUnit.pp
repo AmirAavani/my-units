@@ -1,6 +1,7 @@
 unit MapReduce.InputMappersUnit;
 
 {$mode ObjFPC}{$H+}
+{$COPERATORS ON}
 
 interface
 

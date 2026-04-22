@@ -1,6 +1,7 @@
 unit TextCompressionUnit;
 {$ASSERTIONS on}
 {$mode objfpc}{$H+}
+{$COPERATORS ON}
 
 interface
 

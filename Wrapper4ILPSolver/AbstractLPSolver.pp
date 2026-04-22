@@ -1,6 +1,7 @@
 unit AbstractLPSolver; 
 
 {$mode objfpc}{$H+}
+{$COPERATORS ON}
 
 interface
 

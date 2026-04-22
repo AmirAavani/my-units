@@ -1,6 +1,7 @@
 unit MiniSatSolverUnit;
 
 {$mode objfpc}{$H+}
+{$COPERATORS ON}
 
 
 interface

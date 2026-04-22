@@ -1,6 +1,7 @@
 unit XMLNode;
 
 {$mode objfpc}{$H+}
+{$COPERATORS ON}
 
 interface
 

@@ -1,6 +1,7 @@
 unit PersaDictionaryUnit;
 
 {$mode objfpc}{$H+}
+{$COPERATORS ON}
 
 interface
 

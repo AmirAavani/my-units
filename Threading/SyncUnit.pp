@@ -1,6 +1,7 @@
 unit SyncUnit;
 
 {$mode objfpc}{$H+}
+{$COPERATORS ON}
 
 interface
 

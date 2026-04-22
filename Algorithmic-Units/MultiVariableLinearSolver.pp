@@ -1,5 +1,6 @@
 unit MultiVariableLinearSolver;
 {$mode objfpc}{$H+}
+{$COPERATORS ON}
 
 interface
 

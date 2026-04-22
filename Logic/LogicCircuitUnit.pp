@@ -1,5 +1,6 @@
 unit LogicCircuitUnit;
 {$mode objfpc}
+{$COPERATORS ON}
 
 interface
 uses

@@ -1,6 +1,7 @@
 unit StorageUnit;
 
 {$mode ObjFPC}{$H+}
+{$COPERATORS ON}
 
 interface
 

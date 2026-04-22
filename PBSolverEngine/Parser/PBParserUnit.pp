@@ -1,6 +1,7 @@
 unit PBParserUnit;
 
 {$mode objfpc}{$H+}
+{$COPERATORS ON}
 
 interface
 

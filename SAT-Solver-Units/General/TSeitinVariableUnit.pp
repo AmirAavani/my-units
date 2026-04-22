@@ -1,6 +1,7 @@
 unit TSeitinVariableUnit;
 
 {$mode objfpc}{$H+}
+{$COPERATORS ON}
 
 interface
 

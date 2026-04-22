@@ -1,6 +1,7 @@
 unit GeomertyUnit;
 
 {$mode objfpc}{$H+}
+{$COPERATORS ON}
 
 interface
 

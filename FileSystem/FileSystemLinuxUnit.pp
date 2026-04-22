@@ -1,6 +1,7 @@
 unit FileSystemLinuxUnit;
 
 {$mode ObjFPC}{$H+}
+{$COPERATORS ON}
 
 interface
 

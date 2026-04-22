@@ -1,6 +1,7 @@
 unit UTF8Unit;
 
 {$mode objfpc}{$H+}
+{$COPERATORS ON}
 
 interface
 

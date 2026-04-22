@@ -1,6 +1,7 @@
 unit MyPBSolverEngineUsingPrimesUnit;
 
 {$mode objfpc}{$H+}
+{$COPERATORS ON}
 
 interface
 uses

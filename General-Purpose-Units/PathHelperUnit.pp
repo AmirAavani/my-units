@@ -1,6 +1,7 @@
 unit PathHelperUnit;
 
 {$mode objfpc}{$H+}
+{$COPERATORS ON}
 
 interface
 

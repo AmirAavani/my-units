@@ -1,6 +1,7 @@
 unit BaseDataModuleUnit;
 
 {$mode objfpc}{$H+}
+{$COPERATORS ON}
 
 interface
 

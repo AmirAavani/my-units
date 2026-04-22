@@ -1,6 +1,7 @@
 unit MatrixUnit;
 
 {$mode objfpc}{$H+}
+{$COPERATORS ON}
 
 interface
 

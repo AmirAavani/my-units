@@ -1,6 +1,7 @@
 unit WebUtilsUnit;
 
 {$mode objfpc}{$H+}
+{$COPERATORS ON}
 
 interface
 

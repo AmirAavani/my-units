@@ -1,6 +1,7 @@
 unit WikiDocUnit;
 
 {$mode ObjFPC}{$H+}
+{$COPERATORS ON}
 
 interface
 
