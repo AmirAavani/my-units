@@ -1,5 +1,6 @@
 unit StreamUnit;
 {$Mode objfpc}
+{$COPERATORS ON}
 interface
 
 uses
