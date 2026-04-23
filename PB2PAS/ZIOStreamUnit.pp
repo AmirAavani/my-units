@@ -88,24 +88,30 @@ var
   Reader: TProtoStreamReader;
   Header: array[0..11] of AnsiChar;
   MsgSize: UInt32;
-  Magic: string[4];
+  Magic: string[8];
 begin
   Result := False;
+
+  // Check header bounds
   if (AMessage = nil) or (FStream.Position + 12 > FStream.Size) then
     Exit;
 
   FStream.ReadBuffer(Header[0], 12);
 
-  SetLength(Magic, 4);
-  Move(Header[0], Magic[1], 4);
-  if Magic <> 'ZIO1' then
+  // Validate full 8-byte magic
+  SetLength(Magic, 8);
+  Move(Header[0], Magic[1], 8);
+  if Magic <> 'ZIO1PBUF' then
     Exit;
-
   Reader := TProtoStreamReader.Create(FStream, False);
   try
     MsgSize := Reader.ReadVarUInt32;
-    Result := TBaseMessageCracker(AMessage).LoadFromStream(Reader, MsgSize);
 
+    // Check message bounds
+    if FStream.Position + MsgSize > FStream.Size then
+      Exit;
+
+    Result := TBaseMessageCracker(AMessage).LoadFromStream(Reader, MsgSize);
   finally
     Reader.Free;
   end;
@@ -113,3 +119,4 @@ begin
 end;
 
 end.
+
