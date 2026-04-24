@@ -431,3 +431,248 @@ begin
   WriteLn('  All tests completed successfully!');
   WriteLn('===========================================');
 end.
+
+procedure TestZioStreamsBasic;
+var
+  ZStreams: TZioStreams;
+  Msg: TTestMessage;
+  TempDir: AnsiString;
+  i: Integer;
+begin
+  WriteLn('TEST: TZioStreams Basic Functionality');
+  
+  TempDir := GetTempDir + 'ziotest_' + IntToStr(Random(10000));
+  try
+    ZStreams := TZioStreams.Create(TempDir, 4);
+    try
+      // Write messages to different shards
+      for i := 0 to 3 do
+      begin
+        Msg := TTestMessage.Create;
+        try
+          Msg.ID := i * 100;
+          Msg.Name := Format('Shard %d message', [i]);
+          ZStreams.WriteMessageToShard(Msg, i);
+        finally
+          Msg.Free;
+        end;
+      end;
+      
+      WriteLn('  Created 4 shard files');
+      WriteLn('  ✓ PASSED');
+      
+    finally
+      ZStreams.Free;
+    end;
+    
+    // Verify files exist
+    for i := 0 to 3 do
+    begin
+      if not FileExists(Format('%s%sshards-%4.4d-%4.4d.zio', 
+                              [IncludeTrailingPathDelimiter(TempDir), PathDelim, i, 4])) then
+      begin
+        WriteLn('  ✗ FAILED: Shard file ', i, ' not created');
+        Exit;
+      end;
+    end;
+    
+  finally
+    // Cleanup
+    DeleteDirectory(TempDir, False);
+  end;
+end;
+
+procedure TestZioStreamsReadBack;
+var
+  ZStreams: TZioStreams;
+  Msg1, Msg2: TTestMessage;
+  TempDir: AnsiString;
+  FileStream: TFileStream;
+  ZStream: TZioStream;
+  i: Integer;
+begin
+  WriteLn('TEST: TZioStreams Read Back Data');
+  
+  TempDir := GetTempDir + 'ziotest_' + IntToStr(Random(10000));
+  try
+    // Write data
+    ZStreams := TZioStreams.Create(TempDir, 3);
+    try
+      for i := 0 to 2 do
+      begin
+        Msg1 := TTestMessage.Create;
+        try
+          Msg1.ID := i * 10;
+          Msg1.Name := Format('Data for shard %d', [i]);
+          ZStreams.WriteMessageToShard(Msg1, i);
+        finally
+          Msg1.Free;
+        end;
+      end;
+    finally
+      ZStreams.Free;
+    end;
+    
+    // Read back and verify
+    for i := 0 to 2 do
+    begin
+      FileStream := TFileStream.Create(
+        Format('%s%sshards-%4.4d-%4.4d.zio', 
+               [IncludeTrailingPathDelimiter(TempDir), PathDelim, i, 3]),
+        fmOpenRead);
+      try
+        ZStream := TZioStream.Create(FileStream, False);
+        try
+          Msg2 := TTestMessage.Create;
+          try
+            if not ZStream.ReadMessage(Msg2) then
+            begin
+              WriteLn('  ✗ FAILED: Could not read from shard ', i);
+              Exit;
+            end;
+            
+            if (Msg2.ID <> i * 10) or (Msg2.Name <> Format('Data for shard %d', [i])) then
+            begin
+              WriteLn('  ✗ FAILED: Shard ', i, ' data mismatch');
+              Exit;
+            end;
+          finally
+            Msg2.Free;
+          end;
+        finally
+          ZStream.Free;
+        end;
+      finally
+        FileStream.Free;
+      end;
+    end;
+    
+    WriteLn('  ✓ PASSED');
+    
+  finally
+    DeleteDirectory(TempDir, False);
+  end;
+end;
+
+procedure TestZioStreamsInvalidShard;
+var
+  ZStreams: TZioStreams;
+  Msg: TTestMessage;
+  TempDir: AnsiString;
+  ExceptionCaught: Boolean;
+begin
+  WriteLn('TEST: TZioStreams Invalid Shard Index');
+  
+  TempDir := GetTempDir + 'ziotest_' + IntToStr(Random(10000));
+  ExceptionCaught := False;
+  
+  try
+    ZStreams := TZioStreams.Create(TempDir, 2);
+    try
+      Msg := TTestMessage.Create;
+      try
+        Msg.ID := 42;
+        Msg.Name := 'Test';
+        
+        try
+          ZStreams.WriteMessageToShard(Msg, 5);  // Invalid: only have 0-1
+        except
+          on E: Exception do
+            ExceptionCaught := True;
+        end;
+        
+      finally
+        Msg.Free;
+      end;
+    finally
+      ZStreams.Free;
+    end;
+    
+    if ExceptionCaught then
+      WriteLn('  ✓ PASSED')
+    else
+      WriteLn('  ✗ FAILED: Should raise exception for invalid shard');
+      
+  finally
+    DeleteDirectory(TempDir, False);
+  end;
+end;
+
+procedure TestZioStreamsMultipleMessagesPerShard;
+var
+  ZStreams: TZioStreams;
+  Msg1, Msg2: TTestMessage;
+  TempDir: AnsiString;
+  FileStream: TFileStream;
+  ZStream: TZioStream;
+  i, j: Integer;
+  ShardPath: AnsiString;
+begin
+  WriteLn('TEST: TZioStreams Multiple Messages Per Shard');
+  
+  TempDir := GetTempDir + 'ziotest_' + IntToStr(Random(10000));
+  try
+    // Write multiple messages to each shard
+    ZStreams := TZioStreams.Create(TempDir, 2);
+    try
+      for i := 0 to 1 do  // For each shard
+      begin
+        for j := 1 to 5 do  // Write 5 messages
+        begin
+          Msg1 := TTestMessage.Create;
+          try
+            Msg1.ID := i * 100 + j;
+            Msg1.Name := Format('Shard %d, Msg %d', [i, j]);
+            ZStreams.WriteMessageToShard(Msg1, i);
+          finally
+            Msg1.Free;
+          end;
+        end;
+      end;
+    finally
+      ZStreams.Free;
+    end;
+    
+    // Verify all messages in each shard
+    for i := 0 to 1 do
+    begin
+      ShardPath := Format('%s%sshards-%4.4d-%4.4d.zio',
+                         [IncludeTrailingPathDelimiter(TempDir), PathDelim, i, 2]);
+      FileStream := TFileStream.Create(ShardPath, fmOpenRead);
+      try
+        ZStream := TZioStream.Create(FileStream, False);
+        try
+          for j := 1 to 5 do
+          begin
+            Msg2 := TTestMessage.Create;
+            try
+              if not ZStream.ReadMessage(Msg2) then
+              begin
+                WriteLn('  ✗ FAILED: Could not read message ', j, ' from shard ', i);
+                Exit;
+              end;
+              
+              if (Msg2.ID <> i * 100 + j) or 
+                 (Msg2.Name <> Format('Shard %d, Msg %d', [i, j])) then
+              begin
+                WriteLn('  ✗ FAILED: Message ', j, ' in shard ', i, ' data mismatch');
+                Exit;
+              end;
+            finally
+              Msg2.Free;
+            end;
+          end;
+        finally
+          ZStream.Free;
+        end;
+      finally
+        FileStream.Free;
+      end;
+    end;
+    
+    WriteLn('  ✓ PASSED');
+    
+  finally
+    DeleteDirectory(TempDir, False);
+  end;
+end;

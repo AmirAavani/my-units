@@ -5,7 +5,7 @@ unit ZIOStreamUnit;
 interface
 
 uses
-  Classes, SysUtils, ProtoStreamUnit, ProtoHelperUnit;
+  Classes, SysUtils, ProtoStreamUnit, ProtoHelperUnit, Generics.Collections;
 
 type
 
@@ -24,6 +24,20 @@ type
     function ReadMessage(AMessage: TBaseMessage): Boolean;
 
     property Stream: TStream read FStream;
+  end;
+
+  { TZioStreams }
+
+  TZioStreams = class(specialize TList<TZioStream>)
+  private
+    FPath: AnsiString;
+    FNumStreams: Integer;
+
+  public
+    constructor Create(const APath: AnsiString; ANumStreams: Integer);
+    destructor Destroy; override;
+
+    procedure WriteMessageToShard(AMessage: TBaseMessage; ShardIndex: Integer);
   end;
 
 implementation
@@ -118,5 +132,52 @@ begin
 
 end;
 
-end.
+{ TZioStreams }
 
+constructor TZioStreams.Create(const APath: AnsiString; ANumStreams: Integer);
+var
+  i: Integer;
+  ShardPath: AnsiString;
+  FileStream: TFileStream;
+  ZioStream: TZioStream;
+begin
+  inherited Create;
+  
+  FPath := APath;
+  FNumStreams := ANumStreams;
+  
+  // Ensure directory exists
+  ForceDirectories(FPath);
+  
+  // Create all shard files: shards-0000-NumStreams.zio to shards-{NumStreams-1}-NumStreams.zio
+  for i := 0 to ANumStreams - 1 do
+  begin
+    ShardPath := Format('%sshards-%4.4d-%4.4d.zio', 
+                        [IncludeTrailingPathDelimiter(FPath), i, ANumStreams]);
+    
+    FileStream := TFileStream.Create(ShardPath, fmCreate);
+    ZioStream := TZioStream.Create(FileStream, True);
+    Add(ZioStream);
+  end;
+end;
+
+destructor TZioStreams.Destroy;
+var
+  ZioStream: TZioStream;
+begin
+  // Free all TZioStream objects (they will free their underlying streams)
+  for ZioStream in Self do
+    ZioStream.Free;
+  
+  inherited Destroy;
+end;
+
+procedure TZioStreams.WriteMessageToShard(AMessage: TBaseMessage; ShardIndex: Integer);
+begin
+  if (ShardIndex < 0) or (ShardIndex >= Count) then
+    raise Exception.CreateFmt('Invalid shard index: %d (must be 0..%d)', [ShardIndex, Count - 1]);
+  
+  Items[ShardIndex].WriteMessage(AMessage);
+end;
+
+end.

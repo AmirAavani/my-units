@@ -110,37 +110,18 @@ var
   _Result: Boolean;
 
 begin
-  WriteLn('[Thread ', PtrUInt(Self), '] Started');
-  Flush(Output);
-  
   while not Terminated do
   begin
-    WriteLn('[Thread ', PtrUInt(Self), '] Waiting for task...');
-    Flush(Output);
-    
     // Block until task available in queue
     FParent.RequestsQueue.Delete(Args);
 
-    WriteLn('[Thread ', PtrUInt(Self), '] Got task, FuncPtr=', PtrUInt(Args.FuncPtr));
-    Flush(Output);
-
     // Check Terminated flag again after unblocking
     if Terminated then
-    begin
-      WriteLn('[Thread ', PtrUInt(Self), '] Terminated flag set, exiting');
-      Flush(Output);
       Break;
-    end;
 
     // nil function pointer = shutdown signal
     if Args.FuncPtr = nil then
-    begin
-      WriteLn('[Thread ', PtrUInt(Self), '] Got shutdown signal, exiting');
-      Flush(Output);
-      // Don't call Wg.Done for shutdown signals sent during destructor
-      // (those weren't added to wait group)
       Break;
-    end;
 
     // Skip task if pool is shutting down
     if FParent.FCancelled then
@@ -181,24 +162,19 @@ var
 
 begin
   inherited Create;
-  WriteLn('Create.1');
+
   RequestsQueue := TRequestsQueue.Create;
-  WriteLn('Create.2');
   Threads := TThreads.Create;
-  WriteLn('Create.3');
   wg := TWaitGroup.Create;
-  WriteLn('Create.4');
   FCancelled := False;
 
   // Create worker threads (suspended)
   for i := 1 to ThreadCount do
     Threads.Add(TRunnerThread.Create(Self));
-  WriteLn('Create.5');
     
   // Start all workers
   for Thread in Threads do
     Thread.Start;
-  WriteLn('Create.6');
 
 end;
 
