@@ -110,15 +110,35 @@ var
   _Result: Boolean;
 
 begin
+  WriteLn('[Thread ', PtrUInt(Self), '] Started');
+  Flush(Output);
+  
   while not Terminated do
   begin
+    WriteLn('[Thread ', PtrUInt(Self), '] Waiting for task...');
+    Flush(Output);
+    
     // Block until task available in queue
     FParent.RequestsQueue.Delete(Args);
+
+    WriteLn('[Thread ', PtrUInt(Self), '] Got task, FuncPtr=', PtrUInt(Args.FuncPtr));
+    Flush(Output);
+
+    // Check Terminated flag again after unblocking
+    if Terminated then
+    begin
+      WriteLn('[Thread ', PtrUInt(Self), '] Terminated flag set, exiting');
+      Flush(Output);
+      Break;
+    end;
 
     // nil function pointer = shutdown signal
     if Args.FuncPtr = nil then
     begin
-      FParent.Wg.Done(1);
+      WriteLn('[Thread ', PtrUInt(Self), '] Got shutdown signal, exiting');
+      Flush(Output);
+      // Don't call Wg.Done for shutdown signals sent during destructor
+      // (those weren't added to wait group)
       Break;
     end;
 
@@ -185,25 +205,31 @@ end;
 destructor TGenericThreadPool.Destroy;
 var
   Thread: TThread;
-  Args: TArguments;
+  Arg: TFuncArgResultArguments;
+  i: Integer;
 
 begin
-  WriteLn(1);
-  Flush(Output);
   // Wait for all pending tasks to complete
   Self.Wait;
-  WriteLn(2);
-  Flush(Output);
-
-  // Send shutdown signal to each worker (nil function pointer)
-  Args := Default(TArguments);
+  
+  // Set Terminated flag on all threads
   for Thread in Threads do
-  begin
-    Self.Run(nil, Args, nil);
-  end;
+    Thread.Terminate;
+  
+  // Send shutdown signal to each worker (nil function pointer)
+  // This wakes up threads blocked in RequestsQueue.Delete()
+  Arg.FuncPtr := nil;
+  Arg.Arguments := Default(TArguments);
+  Arg.PResult := nil;
+  
+  // Send LOTS of signals to ensure ALL threads get woken up
+  // (threads check Terminated flag, so extra signals are harmless)
+  for i := 1 to Threads.Count * 10 do
+    RequestsQueue.Insert(Arg);
 
-  WriteLn(5);
-  Flush(Output);
+  // Give threads time to fully exit
+  Sleep(100);
+  
   // Wait for threads to exit and free them
   for Thread in Threads do
   begin
@@ -276,3 +302,7 @@ begin
 
   WriteLn(5);
   Flush(Output);
+
+end;
+
+end.
