@@ -9,7 +9,7 @@ unit SyncUnit;
 interface
 
 uses
-  cthreads, pthreads, Classes, SysUtils, Contnrs;
+  cthreads, Classes, SysUtils, Contnrs;
 
 type
   { TMutex }
@@ -37,10 +37,14 @@ type
   end;
 
   { TSemaphore }
+  { Cross-platform counting semaphore using RTLEvent
+    Works on macOS (which doesn't support sem_init) }
 
   TSemaphore = class(TObject)
   private
-    Sem: psem_t;
+    Mutex: TRTLCriticalSection;
+    Event: PRTLEvent;
+    Counter: Integer;
 
     function GetValue: Integer;
 
@@ -99,7 +103,7 @@ type
 implementation
 
 uses
-  ALoggerUnit, BaseUnix;
+  ALoggerUnit;
 
   { TAtomic }
 
@@ -246,52 +250,75 @@ end;
 
 function TSemaphore.GetValue: Integer;
 begin
-  if sem_getvalue(Sem, @Result) <> 0 then
-  begin
-    Result := -MaxInt;
-    WriteLn(Format('Failed in getting value, (err: %d)', [fpgeterrno]));
-  end;
-
+  EnterCriticalSection(Mutex);
+  Result := Counter;
+  LeaveCriticalSection(Mutex);
 end;
 
 constructor TSemaphore.Create(const v: Integer);
 begin
   inherited Create;
 
-  New(Sem);
-  if sem_init(Sem, 0, v) <> 0 then
-    ALoggerUnit.GetLogger.FmtFatalLn('Failed in sem_init, (err: %d)', [fpgeterrno]);
+  InitCriticalSection(Mutex);
+  Event := RTLEventCreate;
+  Counter := v;
+  
+  // If counter > 0, set event to signaled state
+  if Counter > 0 then
+    RTLEventSetEvent(Event);
 end;
 
 destructor TSemaphore.Destroy;
 begin
-  {$IFNDEF SYNC_MACOS}
-  // On macOS, sem_destroy can fail with ENOSYS (78) - Function not implemented
-  // This is a known limitation of macOS's semaphore implementation
-  if sem_destroy(Sem) <> 0 then
-    WriteLn(Format('Failed in sem_destroy, (err: %d)', [fpgeterrno]));
-  {$ENDIF}
-  Dispose(Sem);
+  RTLEventDestroy(Event);
+  DoneCriticalSection(Mutex);
 
   inherited Destroy;
 end;
 
 procedure TSemaphore.Inc;
 begin
-  if sem_post(Sem) <> 0 then
-  begin
-    ALoggerUnit.GetLogger.FmtFatalLn('Failed in getting value, (err: %d)', [fpgeterrno]);
-  end;
-
+  EnterCriticalSection(Mutex);
+  
+  System.Inc(Counter);
+  
+  // Signal waiting threads
+  if Counter > 0 then
+    RTLEventSetEvent(Event);
+    
+  LeaveCriticalSection(Mutex);
 end;
 
 procedure TSemaphore.Dec;
+var
+  NeedWait: Boolean;
 begin
-  if sem_wait(Sem) <> 0 then
+  NeedWait := False;
+  
+  EnterCriticalSection(Mutex);
+  
+  // If counter is 0, we need to wait
+  while Counter <= 0 do
   begin
-    ALoggerUnit.GetLogger.FatalLn(
-      Format('Failed in getting value, (err: %d)', [fpgeterrno]));
+    NeedWait := True;
+    RTLEventResetEvent(Event);
+    LeaveCriticalSection(Mutex);
+    
+    // Wait outside the mutex to avoid deadlock
+    RTLEventWaitFor(Event);
+    
+    // Re-acquire mutex after waking up
+    EnterCriticalSection(Mutex);
   end;
+  
+  // Decrement counter
+  System.Dec(Counter);
+  
+  // If counter is still > 0, keep event signaled for other waiters
+  if Counter <= 0 then
+    RTLEventResetEvent(Event);
+    
+  LeaveCriticalSection(Mutex);
 end;
 
 procedure TSemaphore.Inc(const Delta: Integer);

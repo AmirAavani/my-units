@@ -161,19 +161,24 @@ var
 
 begin
   inherited Create;
-
+  WriteLn('Create.1');
   RequestsQueue := TRequestsQueue.Create;
+  WriteLn('Create.2');
   Threads := TThreads.Create;
+  WriteLn('Create.3');
   wg := TWaitGroup.Create;
+  WriteLn('Create.4');
   FCancelled := False;
 
   // Create worker threads (suspended)
   for i := 1 to ThreadCount do
     Threads.Add(TRunnerThread.Create(Self));
+  WriteLn('Create.5');
     
   // Start all workers
   for Thread in Threads do
     Thread.Start;
+  WriteLn('Create.6');
 
 end;
 
@@ -183,8 +188,12 @@ var
   Args: TArguments;
 
 begin
+  WriteLn(1);
+  Flush(Output);
   // Wait for all pending tasks to complete
   Self.Wait;
+  WriteLn(2);
+  Flush(Output);
 
   // Send shutdown signal to each worker (nil function pointer)
   Args := Default(TArguments);
@@ -193,9 +202,8 @@ begin
     Self.Run(nil, Args, nil);
   end;
 
-  // Wait for shutdown signals to be processed
-  Self.Wait;
-
+  WriteLn(5);
+  Flush(Output);
   // Wait for threads to exit and free them
   for Thread in Threads do
   begin
@@ -262,6 +270,9 @@ begin
     Self.Run(nil, Args, nil);
   end;
 
-end;
+  // NOTE: Removed second Self.Wait() here - it causes hangs because threads
+  // exit after processing their nil signal and won't process additional signals.
+  // Thread.WaitFor() below is sufficient to wait for thread termination.
 
-end.
+  WriteLn(5);
+  Flush(Output);
