@@ -159,6 +159,9 @@ type
   public
     constructor Create;
     destructor Destroy; override;
+    
+    { Signal the queue to shut down - wakes all blocked threads }
+    procedure Shutdown;
 
   end;
 
@@ -317,14 +320,37 @@ end;
 
 procedure TGenericBlockingQueue.DoDelete(var LastElement: T);
 begin
+  // If shutting down, return default value immediately
+  if State = stFreeing then
+  begin
+    LastElement := Default(T);
+    Exit;
+  end;
+
   FullSlots.Dec(1);
+  
+  // Check again after waking up - state may have changed while blocked
+  if State = stFreeing then
+  begin
+    LastElement := Default(T);
+    Exit;
+  end;
 
   Mutex.Lock;
+  try
+    inherited DoDelete(LastElement);
+  finally
+    Mutex.Unlock;
+  end;
 
-  inherited DoDelete(LastElement);
+end;
 
-  Mutex.Unlock;
-
+procedure TGenericBlockingQueue.Shutdown;
+begin
+  State := stFreeing;
+  // Wake up all blocked threads by incrementing semaphore many times
+  // This ensures all threads blocked in DoDelete will wake up
+  FullSlots.Inc(1000);
 end;
 
 function TGenericBlockingQueue.DoGetTop: T;

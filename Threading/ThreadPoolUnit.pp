@@ -140,10 +140,14 @@ begin
 
         end;
       except
-        // Handle worker exceptions to prevent WaitGroup deadlock
-        // Return False on exception if result pointer provided
-        if Args.PResult <> nil then
-          Args.PResult^ := False;
+        on E: Exception do
+        begin
+          // Handle worker exceptions to prevent WaitGroup deadlock
+          WriteLn(Format('[Thread] Exception in worker: %s: %s', [E.ClassName, E.Message]));
+          // Return False on exception if result pointer provided
+          if Args.PResult <> nil then
+            Args.PResult^ := False;
+        end;
       end;
     finally
       // ALWAYS decrement wait group to prevent deadlock
@@ -185,38 +189,43 @@ var
   i: Integer;
 
 begin
+  WriteLn('[Destroy] Waiting for pending tasks...');
+  Flush(Output);
   // Wait for all pending tasks to complete
   Self.Wait;
   
+  WriteLn('[Destroy] Shutting down queue...');
+  Flush(Output);
+  // Shutdown the queue first - this wakes all blocked threads
+  RequestsQueue.Shutdown;
+  
+  WriteLn('[Destroy] Setting Terminated flag on all threads...');
+  Flush(Output);
   // Set Terminated flag on all threads
   for Thread in Threads do
     Thread.Terminate;
   
-  // Send shutdown signal to each worker (nil function pointer)
-  // This wakes up threads blocked in RequestsQueue.Delete()
-  Arg.FuncPtr := nil;
-  Arg.Arguments := Default(TArguments);
-  Arg.PResult := nil;
-  
-  // Send LOTS of signals to ensure ALL threads get woken up
-  // (threads check Terminated flag, so extra signals are harmless)
-  for i := 1 to Threads.Count * 10 do
-    RequestsQueue.Insert(Arg);
-
-  // Give threads time to fully exit
-  Sleep(100);
-  
+  WriteLn('[Destroy] Waiting for threads to terminate...');
+  Flush(Output);
   // Wait for threads to exit and free them
-  for Thread in Threads do
+  for i := 0 to Threads.Count - 1 do
   begin
-    Thread.WaitFor;  // Block until thread terminates
-    Thread.Free;
+    WriteLn(Format('[Destroy]   WaitFor thread %d/%d...', [i+1, Threads.Count]));
+    Flush(Output);
+    Threads[i].WaitFor;  // Block until thread terminates
+    WriteLn(Format('[Destroy]   Thread %d terminated, freeing...', [i+1]));
+    Flush(Output);
+    Threads[i].Free;
   end;
 
+  WriteLn('[Destroy] Cleaning up resources...');
+  Flush(Output);
   Threads.Free;
   wg.Free;  
   RequestsQueue.Free;
 
+  WriteLn('[Destroy] Done!');
+  Flush(Output);
   inherited Destroy;
 
 end;
