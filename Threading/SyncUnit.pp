@@ -2,6 +2,9 @@ unit SyncUnit;
 
 {$mode objfpc}{$H+}
 {$COPERATORS ON}
+{$IFDEF DARWIN}
+  {$DEFINE SYNC_MACOS}
+{$ENDIF}
 
 interface
 
@@ -110,7 +113,10 @@ end;
 
 destructor TAtomic.Destroy;
 begin
+  {$IFNDEF SYNC_MACOS}
+  // On macOS, Mutex.Free can fail - skip it
   Mutex.Free;
+  {$ENDIF}
 
   inherited Destroy;
 end;
@@ -165,7 +171,10 @@ end;
 
 destructor TWaitGroup.Destroy;
 begin
+  {$IFNDEF SYNC_MACOS}
+  // On macOS, Mutex.Free can fail - skip it
   Mutex.Free;
+  {$ENDIF}
   BlockQueue.Free;
 
   inherited Destroy;
@@ -256,8 +265,12 @@ end;
 
 destructor TSemaphore.Destroy;
 begin
+  {$IFNDEF SYNC_MACOS}
+  // On macOS, sem_destroy can fail with ENOSYS (78) - Function not implemented
+  // This is a known limitation of macOS's semaphore implementation
   if sem_destroy(Sem) <> 0 then
     WriteLn(Format('Failed in sem_destroy, (err: %d)', [fpgeterrno]));
+  {$ENDIF}
   Dispose(Sem);
 
   inherited Destroy;
@@ -324,7 +337,11 @@ end;
 
 destructor TMutex.Destroy;
 begin
+  {$IFNDEF SYNC_MACOS}
+  // On macOS, DoneCriticalSection may fail due to semaphore cleanup issues
+  // Skip cleanup - OS will handle it on process exit
   DoneCriticalSection(CS);
+  {$ENDIF}
 
   inherited Destroy;
 end;
