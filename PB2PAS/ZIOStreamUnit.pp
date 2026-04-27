@@ -94,8 +94,8 @@ type
     constructor Create(APattern: TPattern); overload;
     destructor Destroy; override;
 
-    function ReadMessage(out AMessage: T): Boolean;
-    function ReadMessageFromShard(ShardIndex: Integer; out AMessage: T): Boolean;
+    function ReadMessage(var AMessage: T): Boolean;
+    function ReadMessageFromShard(ShardIndex: Integer; var AMessage: T): Boolean;
   end;
 
   { TZioWriter - Generic thread-safe ZIO writer }
@@ -450,12 +450,11 @@ begin
   inherited Destroy;
 end;
 
-function TZioReader.ReadMessage(out AMessage: T): Boolean;
+function TZioReader.ReadMessage(var AMessage: T): Boolean;
 var
   LocalStreamIndex: Integer;
 begin
   Result := False;
-  AMessage := nil;
   
   // Use global mutex to get next stream index safely
   FGlobalMutex.Enter;
@@ -474,13 +473,10 @@ begin
     // Lock only the specific shard we're reading from
     FShardMutexes[LocalStreamIndex].Enter;
     try
-      Result := FStreams[LocalStreamIndex].ReadMessage(FMessage);
+      Result := FStreams[LocalStreamIndex].ReadMessage(AMessage);
       
       if Result then
-      begin
-        AMessage := FMessage;
         Exit; // Successfully read a message
-      end;
     finally
       FShardMutexes[LocalStreamIndex].Leave;
     end;
@@ -505,10 +501,9 @@ begin
   Result := False;
 end;
 
-function TZioReader.ReadMessageFromShard(ShardIndex: Integer; out AMessage: T): Boolean;
+function TZioReader.ReadMessageFromShard(ShardIndex: Integer; var AMessage: T): Boolean;
 begin
   Result := False;
-  AMessage := nil;
   
   // Validate shard index (no lock needed for validation)
   if (ShardIndex < 0) or (ShardIndex >= FStreams.Count) then
@@ -518,10 +513,7 @@ begin
   // Lock only the specific shard we're reading from
   FShardMutexes[ShardIndex].Enter;
   try
-    Result := FStreams[ShardIndex].ReadMessage(FMessage);
-    
-    if Result then
-      AMessage := FMessage;
+    Result := FStreams[ShardIndex].ReadMessage(AMessage);
   finally
     FShardMutexes[ShardIndex].Leave;
   end;

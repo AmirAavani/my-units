@@ -26,6 +26,7 @@ type
 
   TRWMutex = class(TMultiReadExclusiveWriteSynchronizer)
   public
+    constructor Create;
     procedure RLock; inline;
     procedure RUnlock;
     procedure WLock;
@@ -131,6 +132,11 @@ begin
 end;
 
 { TRWMutex }
+
+constructor TRWMutex.Create;
+begin
+  inherited Create;
+end;
 
 procedure TRWMutex.RLock;
 begin
