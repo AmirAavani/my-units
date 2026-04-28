@@ -42,11 +42,13 @@ type
 
   TZioStream = class(TObject)
   private
-    FStream: TStream;
-    FOwnsStream: Boolean;
+    FStream: TStream;          // The buffered stream (for I/O)
+    FFileStream: TFileStream;  // The underlying file stream (may be nil)
+    FOwnsStreams: Boolean;
 
   public
-    constructor Create(AStream: TStream; AOwnsStream: Boolean = False);
+    constructor Create(AStream: TStream; AOwnsStreams: Boolean = False); overload;
+    constructor Create(AFileStream: TFileStream; ABufferedStream: TStream; AOwnsStreams: Boolean = False); overload;
     destructor Destroy; override;
 
     procedure WriteMessage(AMessage: TBaseMessage);
@@ -183,21 +185,35 @@ end;
 
 { TZioStream }
 
-constructor TZioStream.Create(AStream: TStream; AOwnsStream: Boolean);
+constructor TZioStream.Create(AStream: TStream; AOwnsStreams: Boolean);
 begin
   inherited Create;
   FStream := AStream;
-  FOwnsStream := AOwnsStream;
+  FFileStream := nil;
+  FOwnsStreams := AOwnsStreams;
+end;
 
+constructor TZioStream.Create(AFileStream: TFileStream; ABufferedStream: TStream; AOwnsStreams: Boolean);
+begin
+  inherited Create;
+  FStream := ABufferedStream;
+  FFileStream := AFileStream;
+  FOwnsStreams := AOwnsStreams;
 end;
 
 destructor TZioStream.Destroy;
 begin
-  if FOwnsStream then
-    FStream.Free;
+  if FOwnsStreams then
+  begin
+    // Free buffered stream first (this flushes buffers to underlying stream)
+    if FStream <> nil then
+      FStream.Free;
+    // Then free underlying file stream (this closes the file)
+    if FFileStream <> nil then
+      FFileStream.Free;
+  end;
 
   inherited Destroy;
-
 end;
 
 procedure TZioStream.WriteMessage(AMessage: TBaseMessage);
@@ -295,7 +311,7 @@ begin
       
       FileStream := TFileStream.Create(ShardPath, fmCreate);
       BufferedStream := TWriteBufStream.Create(FileStream, 65536);  // 64KB write buffer
-      ZioStream := TZioStream.Create(BufferedStream, True);
+      ZioStream := TZioStream.Create(FileStream, BufferedStream, True);
       Add(ZioStream);
     end;
   finally
@@ -326,7 +342,7 @@ begin
     
     FileStream := TFileStream.Create(ShardPath, fmCreate);
     BufferedStream := TWriteBufStream.Create(FileStream, 65536);  // 64KB write buffer
-    ZioStream := TZioStream.Create(BufferedStream, True);
+    ZioStream := TZioStream.Create(FileStream, BufferedStream, True);
     Add(ZioStream);
   end;
 end;
@@ -374,19 +390,18 @@ begin
   begin
     Path := APaths[i];
     FPaths.Add(Path);
-    
     if not FileExists(Path) then
       raise EStreamException.CreateFmt('File not found: %s', [Path]);
     
     try
-      FileStream := TFileStream.Create(Path, fmOpenRead or fmShareDenyWrite);
+      FileStream := TFileStream.Create(Path, fmOpenRead);
       BufferedStream := TReadBufStream.Create(FileStream, 131072);  // 128KB read buffer
     except
       on E: Exception do
         raise EStreamException.CreateFmt('Failed to open file "%s": %s', [Path, E.Message]);
     end;
     
-    ZioStream := TZioStream.Create(BufferedStream, True);
+    ZioStream := TZioStream.Create(FileStream, BufferedStream, True);
     FStreams.Add(ZioStream);
     
     // Create a mutex for this shard
@@ -421,14 +436,14 @@ begin
       raise EStreamException.CreateFmt('File not found: %s', [Path]);
     
     try
-      FileStream := TFileStream.Create(Path, fmOpenRead or fmShareDenyWrite);
+      FileStream := TFileStream.Create(Path, fmOpenRead);
       BufferedStream := TReadBufStream.Create(FileStream, 131072);  // 128KB read buffer
     except
       on E: Exception do
         raise EStreamException.CreateFmt('Failed to open file "%s": %s', [Path, E.Message]);
     end;
     
-    ZioStream := TZioStream.Create(BufferedStream, True);
+    ZioStream := TZioStream.Create(FileStream, BufferedStream, True);
     FStreams.Add(ZioStream);
     
     // Create a mutex for this shard
@@ -463,7 +478,6 @@ var
   LocalStreamIndex: Integer;
 begin
   Result := False;
-  
   // Use global mutex to get next stream index safely
   FGlobalMutex.Enter;
   try
@@ -570,7 +584,7 @@ begin
         raise EStreamException.CreateFmt('Failed to create file "%s": %s', [Path, E.Message]);
     end;
     
-    ZioStream := TZioStream.Create(BufferedStream, True);
+    ZioStream := TZioStream.Create(FileStream, BufferedStream, True);
     FStreams.Add(ZioStream);
     
     // Create a mutex for this shard
@@ -611,7 +625,7 @@ begin
         raise EStreamException.CreateFmt('Failed to create file "%s": %s', [Path, E.Message]);
     end;
     
-    ZioStream := TZioStream.Create(BufferedStream, True);
+    ZioStream := TZioStream.Create(FileStream, BufferedStream, True);
     FStreams.Add(ZioStream);
     
     // Create a mutex for this shard
