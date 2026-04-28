@@ -344,7 +344,8 @@ var
 begin
   Nib := TNibbles.Create('hello');
   
-  AssertEquals('Count should match string length', 5, Nib.Count);
+  // 'hello' = 5 bytes = 10 nibbles
+  AssertEquals('Count should be 10 nibbles for 5 bytes', 10, Nib.Count);
   AssertEquals('ToString should return original string', 'hello', Nib.ToString);
 end;
 
@@ -373,14 +374,16 @@ var
   Nib: TNibbles;
 begin
   Nib := TNibbles.Create('testing');
-  AssertEquals('Initial count should be 7', 7, Nib.Count);
+  // 'testing' = 7 bytes = 14 nibbles
+  AssertEquals('Initial count should be 14 nibbles', 14, Nib.Count);
   
-  Nib.Truncate(4);
-  AssertEquals('Count should be 4 after truncate', 4, Nib.Count);
+  // Truncate to 8 nibbles (4 bytes)
+  Nib.Truncate(8);
+  AssertEquals('Count should be 8 after truncate', 8, Nib.Count);
   AssertEquals('ToString should reflect truncation', 'test', Nib.ToString);
   
-  Nib.Truncate(10);
-  AssertEquals('Truncate beyond length should not extend', 4, Nib.Count);
+  Nib.Truncate(20);
+  AssertEquals('Truncate beyond length should not extend', 8, Nib.Count);
   
   Nib.Truncate(-1);
   AssertEquals('Negative truncate should set to 0', 0, Nib.Count);
@@ -393,9 +396,12 @@ var
 begin
   Nib := TNibbles.Create('abc');
   
-  AssertEquals('First byte should be "a"', Ord('a'), Nib[0]);
-  AssertEquals('Second byte should be "b"', Ord('b'), Nib[1]);
-  AssertEquals('Third byte should be "c"', Ord('c'), Nib[2]);
+  // 'a' = 0x61, high nibble = 6, low nibble = 1
+  AssertEquals('First nibble (high) of "a" should be 6', 6, Nib[0]);
+  AssertEquals('Second nibble (low) of "a" should be 1', 1, Nib[1]);
+  // 'b' = 0x62, high nibble = 6, low nibble = 2  
+  AssertEquals('Third nibble (high) of "b" should be 6', 6, Nib[2]);
+  AssertEquals('Fourth nibble (low) of "b" should be 2', 2, Nib[3]);
   
   Failed := False;
   try

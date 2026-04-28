@@ -27,7 +27,7 @@ type
     FLen: Integer;
     function GetItem(Index: Integer): Byte;
     class function Create(const S: AnsiString): TNibbles; static;
-    class function Create(const SPtr: PByte; Len: Integer): TNibbles; static;
+    class function CreateFromNibbles(const SPtr: PByte; Len: Integer): TNibbles; static;
 
     function ToString: AnsiString;
     procedure Truncate(NewLength: Integer);
@@ -121,16 +121,29 @@ begin
 end;
 
 class function TNibbles.Create(const S: AnsiString): TNibbles;
+var
+  i, NibbleIdx: Integer;
 begin
-  Result.FLen := Length(S);
-  SetLength(Result.FData, Length(S));
+  // Each byte becomes 2 nibbles (4-bit values)
+  Result.FLen := Length(S) * 2;
+  SetLength(Result.FData, Result.FLen);
 
-  if Result.FLen > 0 then
-    Move(S[1], Result.FData[0], Result.FLen);
+  NibbleIdx := 0;
+  for i := 1 to Length(S) do
+  begin
+    // High nibble (bits 4-7)
+    Result.FData[NibbleIdx] := (Ord(S[i]) shr 4) and $0F;
+    Inc(NibbleIdx);
+    
+    // Low nibble (bits 0-3)
+    Result.FData[NibbleIdx] := Ord(S[i]) and $0F;
+    Inc(NibbleIdx);
+  end;
 end;
 
-class function TNibbles.Create(const SPtr: PByte; Len: Integer): TNibbles;
+class function TNibbles.CreateFromNibbles(const SPtr: PByte; Len: Integer): TNibbles;
 begin
+  // Copy existing nibbles directly (no conversion)
   Result.FLen := Len;
   SetLength(Result.FData, Len);
 
@@ -184,10 +197,27 @@ end;
 function TNibbles.ToString: AnsiString;
 var
   i: Integer;
+  B: Byte;
 begin
   Result := '';
-  for i := 0 to FLen - 1 do
-    Result += Chr(FData[i]);
+  // Convert nibbles back to bytes for display
+  i := 0;
+  while i < FLen do
+  begin
+    if i + 1 < FLen then
+    begin
+      // Combine high and low nibbles back into a byte
+      B := (FData[i] shl 4) or FData[i + 1];
+      Result += Chr(B);
+      Inc(i, 2);
+    end
+    else
+    begin
+      // Odd nibble, just show as hex
+      Result += IntToHex(FData[i], 1);
+      Inc(i);
+    end;
+  end;
 end;
 
 { TTree }
@@ -275,7 +305,7 @@ begin
       NewTerminalNode.FIsTerminal := True;
       NewTerminalNode.FData := TData.Create;  // Create data instance
       RegisterNode(NewTerminalNode);
-      EdgePtr^.Path := TNibbles.Create(QPtr, Query.Count - QueryOffset);
+      EdgePtr^.Path := TNibbles.CreateFromNibbles(QPtr, Query.Count - QueryOffset);
       EdgePtr^.Next := NewTerminalNode;
       Inc(FSize);
       Exit(NewTerminalNode);
@@ -313,7 +343,7 @@ begin
     // Old suffix becomes a child of SplitNode
     SuffixPtr := EdgePathPtr + CommonLen;
     SuffixIndex := SuffixPtr^;
-    SplitNode.FEdges[SuffixIndex].Path := TNibbles.Create(SuffixPtr, EdgePtr^.Path.Count - CommonLen);
+    SplitNode.FEdges[SuffixIndex].Path := TNibbles.CreateFromNibbles(SuffixPtr, EdgePtr^.Path.Count - CommonLen);
     SplitNode.FEdges[SuffixIndex].Next := EdgePtr^.Next;
 
     // Current edge becomes the prefix pointing to SplitNode
@@ -338,7 +368,7 @@ begin
       RegisterNode(NewTerminalNode);
       SuffixPtr := QPtr + CommonLen;
       NewQueryIndex := SuffixPtr^;
-      SplitNode.FEdges[NewQueryIndex].Path := TNibbles.Create(SuffixPtr, RemainingQueryLen);
+      SplitNode.FEdges[NewQueryIndex].Path := TNibbles.CreateFromNibbles(SuffixPtr, RemainingQueryLen);
       SplitNode.FEdges[NewQueryIndex].Next := NewTerminalNode;
       Inc(FSize);
       Result := NewTerminalNode;

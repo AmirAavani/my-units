@@ -403,7 +403,7 @@ begin
     
     ZioStream := TZioStream.Create(FileStream, BufferedStream, True);
     FStreams.Add(ZioStream);
-    
+
     // Create a mutex for this shard
     FShardMutexes.Add(TCriticalSection.Create);
   end;
@@ -445,7 +445,7 @@ begin
     
     ZioStream := TZioStream.Create(FileStream, BufferedStream, True);
     FStreams.Add(ZioStream);
-    
+
     // Create a mutex for this shard
     FShardMutexes.Add(TCriticalSection.Create);
   end;
@@ -463,7 +463,7 @@ begin
   // Free all shard mutexes
   for Mutex in FShardMutexes do
     Mutex.Free;
-  
+
   FStreams.Free;
   FPaths.Free;
   FShardMutexes.Free;
@@ -496,7 +496,7 @@ begin
     FShardMutexes[LocalStreamIndex].Enter;
     try
       Result := FStreams[LocalStreamIndex].ReadMessage(AMessage);
-      
+
       if Result then
         Exit; // Successfully read a message
     finally
@@ -526,7 +526,7 @@ end;
 function TZioReader.ReadMessageFromShard(ShardIndex: Integer; var AMessage: T): Boolean;
 begin
   Result := False;
-  
+
   // Validate shard index (no lock needed for validation)
   if (ShardIndex < 0) or (ShardIndex >= FStreams.Count) then
     raise EShardException.CreateFmt('Invalid shard index: %d (must be 0..%d)', 
