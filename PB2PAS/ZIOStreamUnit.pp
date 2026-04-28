@@ -5,7 +5,7 @@ unit ZIOStreamUnit;
 interface
 
 uses
-  Classes, SysUtils, ProtoStreamUnit, ProtoHelperUnit, Generics.Collections, SyncObjs;
+  Classes, SysUtils, bufstream, ProtoStreamUnit, ProtoHelperUnit, Generics.Collections, SyncObjs;
 
 type
   TAnsiStringArray = array of AnsiString;
@@ -274,6 +274,7 @@ var
   i: Integer;
   ShardPath: AnsiString;
   FileStream: TFileStream;
+  BufferedStream: TWriteBufStream;
   ZioStream: TZioStream;
   Pattern: TPattern;
 begin
@@ -293,7 +294,8 @@ begin
       ShardPath := Pattern.GetShardPath(i);
       
       FileStream := TFileStream.Create(ShardPath, fmCreate);
-      ZioStream := TZioStream.Create(FileStream, True);
+      BufferedStream := TWriteBufStream.Create(FileStream, 65536);  // 64KB write buffer
+      ZioStream := TZioStream.Create(BufferedStream, True);
       Add(ZioStream);
     end;
   finally
@@ -306,6 +308,7 @@ var
   i: Integer;
   ShardPath: AnsiString;
   FileStream: TFileStream;
+  BufferedStream: TWriteBufStream;
   ZioStream: TZioStream;
 begin
   inherited Create;
@@ -322,7 +325,8 @@ begin
     ShardPath := APattern.GetShardPath(i);
     
     FileStream := TFileStream.Create(ShardPath, fmCreate);
-    ZioStream := TZioStream.Create(FileStream, True);
+    BufferedStream := TWriteBufStream.Create(FileStream, 65536);  // 64KB write buffer
+    ZioStream := TZioStream.Create(BufferedStream, True);
     Add(ZioStream);
   end;
 end;
@@ -352,6 +356,7 @@ constructor TZioReader.Create(const APaths: array of AnsiString);
 var
   i: Integer;
   FileStream: TFileStream;
+  BufferedStream: TReadBufStream;
   ZioStream: TZioStream;
   Path: AnsiString;
 begin
@@ -375,12 +380,13 @@ begin
     
     try
       FileStream := TFileStream.Create(Path, fmOpenRead or fmShareDenyWrite);
+      BufferedStream := TReadBufStream.Create(FileStream, 131072);  // 128KB read buffer
     except
       on E: Exception do
         raise EStreamException.CreateFmt('Failed to open file "%s": %s', [Path, E.Message]);
     end;
     
-    ZioStream := TZioStream.Create(FileStream, True);
+    ZioStream := TZioStream.Create(BufferedStream, True);
     FStreams.Add(ZioStream);
     
     // Create a mutex for this shard
@@ -392,6 +398,7 @@ constructor TZioReader.Create(APattern: TPattern);
 var
   i: Integer;
   FileStream: TFileStream;
+  BufferedStream: TReadBufStream;
   ZioStream: TZioStream;
   Path: AnsiString;
 begin
@@ -415,12 +422,13 @@ begin
     
     try
       FileStream := TFileStream.Create(Path, fmOpenRead or fmShareDenyWrite);
+      BufferedStream := TReadBufStream.Create(FileStream, 131072);  // 128KB read buffer
     except
       on E: Exception do
         raise EStreamException.CreateFmt('Failed to open file "%s": %s', [Path, E.Message]);
     end;
     
-    ZioStream := TZioStream.Create(FileStream, True);
+    ZioStream := TZioStream.Create(BufferedStream, True);
     FStreams.Add(ZioStream);
     
     // Create a mutex for this shard
@@ -530,6 +538,7 @@ constructor TZioWriter.Create(const APaths: array of AnsiString);
 var
   i: Integer;
   FileStream: TFileStream;
+  BufferedStream: TWriteBufStream;
   ZioStream: TZioStream;
   Path: AnsiString;
   DirPath: AnsiString;
@@ -555,12 +564,13 @@ begin
     
     try
       FileStream := TFileStream.Create(Path, fmCreate);
+      BufferedStream := TWriteBufStream.Create(FileStream, 65536);  // 64KB write buffer
     except
       on E: Exception do
         raise EStreamException.CreateFmt('Failed to create file "%s": %s', [Path, E.Message]);
     end;
     
-    ZioStream := TZioStream.Create(FileStream, True);
+    ZioStream := TZioStream.Create(BufferedStream, True);
     FStreams.Add(ZioStream);
     
     // Create a mutex for this shard
@@ -572,6 +582,7 @@ constructor TZioWriter.Create(APattern: TPattern);
 var
   i: Integer;
   FileStream: TFileStream;
+  BufferedStream: TWriteBufStream;
   ZioStream: TZioStream;
   Path: AnsiString;
 begin
@@ -594,12 +605,13 @@ begin
     
     try
       FileStream := TFileStream.Create(Path, fmCreate);
+      BufferedStream := TWriteBufStream.Create(FileStream, 65536);  // 64KB write buffer
     except
       on E: Exception do
         raise EStreamException.CreateFmt('Failed to create file "%s": %s', [Path, E.Message]);
     end;
     
-    ZioStream := TZioStream.Create(FileStream, True);
+    ZioStream := TZioStream.Create(BufferedStream, True);
     FStreams.Add(ZioStream);
     
     // Create a mutex for this shard
