@@ -86,14 +86,15 @@ type
     FCurrentStreamIndex: Integer;
     FGlobalMutex: TCriticalSection;  // For protecting FCurrentStreamIndex
     FMessage: T;
+    FBufferSize: Integer;
 
   protected
     function GetTotalStreams: Integer;
 
   public
     property NumShards: Integer read GetTotalStreams;
-    constructor Create(const APaths: array of AnsiString); overload;
-    constructor Create(APattern: TPattern); overload;
+    constructor Create(const APaths: array of AnsiString; ABufferSize: Integer = 131072); overload;
+    constructor Create(APattern: TPattern; ABufferSize: Integer = 131072); overload;
     destructor Destroy; override;
 
     function ReadMessage(var AMessage: T): Boolean;
@@ -109,14 +110,15 @@ type
     FShardMutexes: TCriticalSectionList;
     FCurrentShardIndex: Integer;
     FGlobalMutex: TCriticalSection;  // For protecting FCurrentShardIndex
+    FBufferSize: Integer;
 
   protected
     function GetTotalStreams: Integer;
 
   public
     property NumShards: Integer read GetTotalStreams;
-    constructor Create(const APaths: array of AnsiString); overload;
-    constructor Create(APattern: TPattern); overload;
+    constructor Create(const APaths: array of AnsiString; ABufferSize: Integer = 65536); overload;
+    constructor Create(APattern: TPattern; ABufferSize: Integer = 65536); overload;
     destructor Destroy; override;
 
     procedure WriteMessage(AMessage: T);
@@ -368,7 +370,7 @@ end;
 
 { TZioReader }
 
-constructor TZioReader.Create(const APaths: array of AnsiString);
+constructor TZioReader.Create(const APaths: array of AnsiString; ABufferSize: Integer = 131072);
 var
   i: Integer;
   FileStream: TFileStream;
@@ -384,6 +386,7 @@ begin
   FGlobalMutex := TCriticalSection.Create;
   FCurrentStreamIndex := 0;
   FMessage := T.Create;
+  FBufferSize := ABufferSize;
   
   // Store paths and open all files
   for i := 0 to High(APaths) do
@@ -395,7 +398,7 @@ begin
     
     try
       FileStream := TFileStream.Create(Path, fmOpenRead);
-      BufferedStream := TReadBufStream.Create(FileStream, 131072);  // 128KB read buffer
+      BufferedStream := TReadBufStream.Create(FileStream, FBufferSize);
     except
       on E: Exception do
         raise EStreamException.CreateFmt('Failed to open file "%s": %s', [Path, E.Message]);
@@ -409,7 +412,7 @@ begin
   end;
 end;
 
-constructor TZioReader.Create(APattern: TPattern);
+constructor TZioReader.Create(APattern: TPattern; ABufferSize: Integer = 131072);
 var
   i: Integer;
   FileStream: TFileStream;
@@ -425,6 +428,7 @@ begin
   FGlobalMutex := TCriticalSection.Create;
   FCurrentStreamIndex := 0;
   FMessage := T.Create;
+  FBufferSize := ABufferSize;
   
   // Use pattern to open all shard files
   for i := 0 to APattern.NumShards - 1 do
@@ -437,7 +441,7 @@ begin
     
     try
       FileStream := TFileStream.Create(Path, fmOpenRead);
-      BufferedStream := TReadBufStream.Create(FileStream, 131072);  // 128KB read buffer
+      BufferedStream := TReadBufStream.Create(FileStream, FBufferSize);
     except
       on E: Exception do
         raise EStreamException.CreateFmt('Failed to open file "%s": %s', [Path, E.Message]);
@@ -548,7 +552,7 @@ end;
 
 { TZioWriter }
 
-constructor TZioWriter.Create(const APaths: array of AnsiString);
+constructor TZioWriter.Create(const APaths: array of AnsiString; ABufferSize: Integer = 65536);
 var
   i: Integer;
   FileStream: TFileStream;
@@ -564,6 +568,7 @@ begin
   FShardMutexes := TCriticalSectionList.Create;
   FGlobalMutex := TCriticalSection.Create;
   FCurrentShardIndex := 0;
+  FBufferSize := ABufferSize;
   
   // Create all shard files
   for i := 0 to High(APaths) do
@@ -578,7 +583,7 @@ begin
     
     try
       FileStream := TFileStream.Create(Path, fmCreate);
-      BufferedStream := TWriteBufStream.Create(FileStream, 65536);  // 64KB write buffer
+      BufferedStream := TWriteBufStream.Create(FileStream, FBufferSize);
     except
       on E: Exception do
         raise EStreamException.CreateFmt('Failed to create file "%s": %s', [Path, E.Message]);
@@ -592,7 +597,7 @@ begin
   end;
 end;
 
-constructor TZioWriter.Create(APattern: TPattern);
+constructor TZioWriter.Create(APattern: TPattern; ABufferSize: Integer = 65536);
 var
   i: Integer;
   FileStream: TFileStream;
@@ -607,6 +612,7 @@ begin
   FShardMutexes := TCriticalSectionList.Create;
   FGlobalMutex := TCriticalSection.Create;
   FCurrentShardIndex := 0;
+  FBufferSize := ABufferSize;
   
   // Ensure directory exists
   ForceDirectories(APattern.BasePath);
@@ -619,7 +625,7 @@ begin
     
     try
       FileStream := TFileStream.Create(Path, fmCreate);
-      BufferedStream := TWriteBufStream.Create(FileStream, 65536);  // 64KB write buffer
+      BufferedStream := TWriteBufStream.Create(FileStream, FBufferSize);
     except
       on E: Exception do
         raise EStreamException.CreateFmt('Failed to create file "%s": %s', [Path, E.Message]);
