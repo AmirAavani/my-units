@@ -5,7 +5,7 @@ unit ZIOStreamUnit;
 interface
 
 uses
-  Classes, SysUtils, bufstream, ProtoStreamUnit, ProtoHelperUnit, Generics.Collections, SyncObjs;
+  Classes, SysUtils, bufstream, ProtoStreamUnit, ProtoHelperUnit, Generics.Collections;
 
 type
   TAnsiStringArray = array of AnsiString;
@@ -59,7 +59,6 @@ type
 
   TZioStreamList = specialize TList<TZioStream>;
   TAnsiStringList = specialize TList<AnsiString>;
-  TCriticalSectionList = specialize TList<TCriticalSection>;
 
   { TZioStreams }
 
@@ -76,15 +75,13 @@ type
     procedure WriteMessageToShard(AMessage: TBaseMessage; ShardIndex: Integer);
   end;
 
-  { TZioReader - Generic thread-safe ZIO reader }
+  { TZioReader - Generic ZIO reader }
 
   generic TZioReader<T: TBaseMessage> = class(TObject)
   private
     FStreams: TZioStreamList;
     FPaths: TAnsiStringList;
-    FShardMutexes: TCriticalSectionList;
     FCurrentStreamIndex: Integer;
-    FGlobalMutex: TCriticalSection;  // For protecting FCurrentStreamIndex
     FMessage: T;
     FBufferSize: Integer;
 
@@ -101,15 +98,13 @@ type
     function ReadMessageFromShard(ShardIndex: Integer; var AMessage: T): Boolean;
   end;
 
-  { TZioWriter - Generic thread-safe ZIO writer }
+  { TZioWriter - Generic ZIO writer }
 
   generic TZioWriter<T: TBaseMessage> = class(TObject)
   private
     FStreams: TZioStreamList;
     FPaths: TAnsiStringList;
-    FShardMutexes: TCriticalSectionList;
     FCurrentShardIndex: Integer;
-    FGlobalMutex: TCriticalSection;  // For protecting FCurrentShardIndex
     FBufferSize: Integer;
 
   protected
@@ -382,8 +377,6 @@ begin
   
   FStreams := TZioStreamList.Create;
   FPaths := TAnsiStringList.Create;
-  FShardMutexes := TCriticalSectionList.Create;
-  FGlobalMutex := TCriticalSection.Create;
   FCurrentStreamIndex := 0;
   FMessage := T.Create;
   FBufferSize := ABufferSize;
@@ -406,9 +399,6 @@ begin
     
     ZioStream := TZioStream.Create(FileStream, BufferedStream, True);
     FStreams.Add(ZioStream);
-
-    // Create a mutex for this shard
-    FShardMutexes.Add(TCriticalSection.Create);
   end;
 end;
 
@@ -424,8 +414,6 @@ begin
   
   FStreams := TZioStreamList.Create;
   FPaths := TAnsiStringList.Create;
-  FShardMutexes := TCriticalSectionList.Create;
-  FGlobalMutex := TCriticalSection.Create;
   FCurrentStreamIndex := 0;
   FMessage := T.Create;
   FBufferSize := ABufferSize;
@@ -449,78 +437,38 @@ begin
     
     ZioStream := TZioStream.Create(FileStream, BufferedStream, True);
     FStreams.Add(ZioStream);
-
-    // Create a mutex for this shard
-    FShardMutexes.Add(TCriticalSection.Create);
   end;
 end;
 
 destructor TZioReader.Destroy;
 var
   ZioStream: TZioStream;
-  Mutex: TCriticalSection;
 begin
   // Free all TZioStream objects (they will free their underlying streams)
   for ZioStream in FStreams do
     ZioStream.Free;
-  
-  // Free all shard mutexes
-  for Mutex in FShardMutexes do
-    Mutex.Free;
 
   FStreams.Free;
   FPaths.Free;
-  FShardMutexes.Free;
-  FGlobalMutex.Free;
   FMessage.Free;
   
   inherited Destroy;
 end;
 
 function TZioReader.ReadMessage(var AMessage: T): Boolean;
-var
-  LocalStreamIndex: Integer;
 begin
   Result := False;
-  // Use global mutex to get next stream index safely
-  FGlobalMutex.Enter;
-  try
-    if FCurrentStreamIndex >= FStreams.Count then
-      Exit; // All streams exhausted
-    
-    LocalStreamIndex := FCurrentStreamIndex;
-  finally
-    FGlobalMutex.Leave;
-  end;
   
-  // Try to read from streams sequentially until we find a message or exhaust all streams
-  while LocalStreamIndex < FStreams.Count do
+  // Read from streams sequentially until we find a message or exhaust all streams
+  while FCurrentStreamIndex < FStreams.Count do
   begin
-    // Lock only the specific shard we're reading from
-    FShardMutexes[LocalStreamIndex].Enter;
-    try
-      Result := FStreams[LocalStreamIndex].ReadMessage(AMessage);
-
-      if Result then
-        Exit; // Successfully read a message
-    finally
-      FShardMutexes[LocalStreamIndex].Leave;
-    end;
+    Result := FStreams[FCurrentStreamIndex].ReadMessage(AMessage);
+    
+    if Result then
+      Exit; // Successfully read a message
     
     // Current stream is exhausted, move to next
-    FGlobalMutex.Enter;
-    try
-      // Re-check in case another thread advanced it
-      if FCurrentStreamIndex = LocalStreamIndex then
-        Inc(FCurrentStreamIndex);
-      
-      if FCurrentStreamIndex >= FStreams.Count then
-        Exit; // All streams exhausted
-      
-      LocalStreamIndex := FCurrentStreamIndex;
-    finally
-      FGlobalMutex.Leave;
-    end;
+    Inc(FCurrentStreamIndex);
   end;
   
   // All streams exhausted
@@ -531,18 +479,12 @@ function TZioReader.ReadMessageFromShard(ShardIndex: Integer; var AMessage: T): 
 begin
   Result := False;
 
-  // Validate shard index (no lock needed for validation)
+  // Validate shard index
   if (ShardIndex < 0) or (ShardIndex >= FStreams.Count) then
     raise EShardException.CreateFmt('Invalid shard index: %d (must be 0..%d)', 
                               [ShardIndex, FStreams.Count - 1]);
   
-  // Lock only the specific shard we're reading from
-  FShardMutexes[ShardIndex].Enter;
-  try
-    Result := FStreams[ShardIndex].ReadMessage(AMessage);
-  finally
-    FShardMutexes[ShardIndex].Leave;
-  end;
+  Result := FStreams[ShardIndex].ReadMessage(AMessage);
 end;
 
 function TZioReader.GetTotalStreams: Integer;
@@ -565,8 +507,6 @@ begin
   
   FStreams := TZioStreamList.Create;
   FPaths := TAnsiStringList.Create;
-  FShardMutexes := TCriticalSectionList.Create;
-  FGlobalMutex := TCriticalSection.Create;
   FCurrentShardIndex := 0;
   FBufferSize := ABufferSize;
   
@@ -591,9 +531,6 @@ begin
     
     ZioStream := TZioStream.Create(FileStream, BufferedStream, True);
     FStreams.Add(ZioStream);
-    
-    // Create a mutex for this shard
-    FShardMutexes.Add(TCriticalSection.Create);
   end;
 end;
 
@@ -609,8 +546,6 @@ begin
   
   FStreams := TZioStreamList.Create;
   FPaths := TAnsiStringList.Create;
-  FShardMutexes := TCriticalSectionList.Create;
-  FGlobalMutex := TCriticalSection.Create;
   FCurrentShardIndex := 0;
   FBufferSize := ABufferSize;
   
@@ -633,29 +568,19 @@ begin
     
     ZioStream := TZioStream.Create(FileStream, BufferedStream, True);
     FStreams.Add(ZioStream);
-    
-    // Create a mutex for this shard
-    FShardMutexes.Add(TCriticalSection.Create);
   end;
 end;
 
 destructor TZioWriter.Destroy;
 var
   ZioStream: TZioStream;
-  Mutex: TCriticalSection;
 begin
   // Free all TZioStream objects (they will free their underlying streams)
   for ZioStream in FStreams do
     ZioStream.Free;
   
-  // Free all shard mutexes
-  for Mutex in FShardMutexes do
-    Mutex.Free;
-  
   FStreams.Free;
   FPaths.Free;
-  FShardMutexes.Free;
-  FGlobalMutex.Free;
   
   inherited Destroy;
 end;
@@ -668,21 +593,11 @@ begin
     Exit;
   
   // Get current shard in round-robin fashion
-  FGlobalMutex.Enter;
-  try
-    ShardIndex := FCurrentShardIndex;
-    FCurrentShardIndex := (FCurrentShardIndex + 1) mod FStreams.Count;
-  finally
-    FGlobalMutex.Leave;
-  end;
+  ShardIndex := FCurrentShardIndex;
+  FCurrentShardIndex := (FCurrentShardIndex + 1) mod FStreams.Count;
   
-  // Write to the selected shard (protected by shard-specific mutex)
-  FShardMutexes[ShardIndex].Enter;
-  try
-    FStreams[ShardIndex].WriteMessage(AMessage);
-  finally
-    FShardMutexes[ShardIndex].Leave;
-  end;
+  // Write to the selected shard
+  FStreams[ShardIndex].WriteMessage(AMessage);
 end;
 
 procedure TZioWriter.WriteMessageToShard(AMessage: T; ShardIndex: Integer);
@@ -695,13 +610,8 @@ begin
     raise EShardException.CreateFmt('Invalid shard index: %d (must be 0..%d)', 
                               [ShardIndex, FStreams.Count - 1]);
   
-  // Write to the specific shard (protected by shard-specific mutex)
-  FShardMutexes[ShardIndex].Enter;
-  try
-    FStreams[ShardIndex].WriteMessage(AMessage);
-  finally
-    FShardMutexes[ShardIndex].Leave;
-  end;
+  // Write to the specific shard
+  FStreams[ShardIndex].WriteMessage(AMessage);
 end;
 
 function TZioWriter.GetTotalStreams: Integer;
