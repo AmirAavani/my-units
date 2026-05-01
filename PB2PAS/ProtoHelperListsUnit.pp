@@ -13,8 +13,12 @@ type
   generic TObjectList<TMyObject> = class(specialize TList<TMyObject>)
   private type
     _TObjectList = specialize TObjectList<TMyObject>;
+  protected
+    function GetCount: SizeInt; override;
 
   public
+    property Count: SizeInt read GetCount;  // Redeclare to use overridden getter
+    
     destructor Destroy; override;
 
     function ItemsPtr: Pointer; inline;
@@ -26,8 +30,11 @@ type
   private type
     TSimpleList = specialize TSimpleTypeList<TSimpleType>;
   protected
+    function GetCount: SizeInt; override;
 
   public
+    property Count: SizeInt read GetCount;  // Redeclare to use overridden getter
+    
     constructor Create;
     destructor Destroy; override;
 
@@ -41,24 +48,43 @@ implementation
 { TSimpleTypeList }
 
 function TSimpleTypeList.DeepCopy: TSimpleList;
+var
+  NewCount: SizeInt;
 begin
   if Self = nil then
     Exit(nil);
 
   Result := TSimpleList.Create;
-  Result.Count := Self.Count;
+  NewCount := Self.Count;
+  Result.SetCapacity(NewCount);  // Pre-allocate
   System.Move(
     Self.ItemsPtr^,
     Result.ItemsPtr^,
-    Self.Count * SizeOf(TSimpleType)
+    NewCount * SizeOf(TSimpleType)
   );
 
 end;
 
 function TSimpleTypeList.ItemsPtr: Pointer;
 begin
+  if Self = nil then
+    Exit(nil);
+
   Result := @Self.FItems[0];
 end;
+
+function TSimpleTypeList.GetCount: SizeInt;
+begin
+  if Self = nil then
+  begin
+    WriteLn('I am doing my job!');
+    Flush(Output);
+    Exit(0);
+  end;
+
+  Result := inherited GetCount;
+end;
+
 
 constructor TSimpleTypeList.Create;
 begin
@@ -73,6 +99,14 @@ begin
 end;
 
 { TObjectList }
+
+function TObjectList.GetCount: SizeInt;
+begin
+  if Self = nil then
+    Exit(0);
+
+  Result := inherited GetCount;
+end;
 
 destructor TObjectList.Destroy;
 var

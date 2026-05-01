@@ -8,6 +8,7 @@ uses
   Classes, SysUtils, bufstream, ProtoStreamUnit, ProtoHelperUnit, Generics.Collections;
 
 type
+  TIntList = specialize TList<Integer>;
   TAnsiStringArray = array of AnsiString;
 
   { Exception Classes }
@@ -26,16 +27,23 @@ type
   private
     FBasePath: AnsiString;
     FNumShards: Integer;
+    FRemainder: Integer;
+    FModulo: Integer;
+    
+    function GetFilteredNumShards: Integer;
     
   public
     constructor Create(const Pattern: AnsiString);
     constructor Create(const ABasePath: AnsiString; ANumShards: Integer);
+    destructor Destroy; override;
     
     function GetShardPath(ShardIndex: Integer): AnsiString;
-    function GetAllPaths: TAnsiStringArray;
+    
+    { Create a filtered pattern that only includes shards where (shard_index mod ModuloValue) = Remainder }
+    function WithModulo(Remainder, ModuloValue: Integer): TPattern;
     
     property BasePath: AnsiString read FBasePath;
-    property NumShards: Integer read FNumShards;
+    property NumShards: Integer read GetFilteredNumShards;
   end;
 
   { TZioStream }
@@ -149,6 +157,9 @@ begin
   
   if FNumShards <= 0 then
     raise EPatternException.CreateFmt('Number of shards must be positive: %d', [FNumShards]);
+  
+  FRemainder := 0;
+  FModulo := 1;
 end;
 
 constructor TPattern.Create(const ABasePath: AnsiString; ANumShards: Integer);
@@ -157,27 +168,68 @@ begin
   
   FBasePath := ABasePath;
   FNumShards := ANumShards;
+  FRemainder := 0;
+  FModulo := 1;
   
   if FNumShards <= 0 then
     raise EPatternException.CreateFmt('Number of shards must be positive: %d', [FNumShards]);
 end;
 
-function TPattern.GetShardPath(ShardIndex: Integer): AnsiString;
+destructor TPattern.Destroy;
 begin
-  if (ShardIndex < 0) or (ShardIndex >= FNumShards) then
-    raise EShardException.CreateFmt('Shard index %d out of range [0..%d]', [ShardIndex, FNumShards - 1]);
-  
-  Result := Format('%sshards-%4.4d-%4.4d.zio',
-                   [IncludeTrailingPathDelimiter(FBasePath), ShardIndex, FNumShards]);
+  inherited Destroy;
 end;
 
-function TPattern.GetAllPaths: TAnsiStringArray;
+function TPattern.GetFilteredNumShards: Integer;
 var
-  i: Integer;
+  i, Count: Integer;
 begin
-  SetLength(Result, FNumShards);
+  if FModulo = 1 then
+    Exit(FNumShards);
+  
+  // Count how many shards match the filter
+  Count := 0;
   for i := 0 to FNumShards - 1 do
-    Result[i] := GetShardPath(i);
+  begin
+    if i mod FModulo = FRemainder then
+      Inc(Count);
+  end;
+  Result := Count;
+end;
+
+function TPattern.GetShardPath(ShardIndex: Integer): AnsiString;
+var
+  ActualShardIndex, i, Count: Integer;
+begin
+  // TODO(Amir): This is a naive implementation! Improve this.
+  Count := 0;
+  ActualShardIndex := -1;
+  for i := 0 to FNumShards - 1 do
+  begin
+    if i mod FModulo = FRemainder then
+    begin
+      if Count = ShardIndex then
+      begin
+        ActualShardIndex := i;
+        Break;
+      end;
+      Inc(Count);
+    end;
+  end;
+  
+  if ActualShardIndex = -1 then
+    raise EShardException.CreateFmt('Shard index %d out of range [0..%d] for filtered pattern',
+      [ShardIndex, GetFilteredNumShards - 1]);
+ 
+  Result := Format('%sshards-%4.4d-%4.4d.zio',
+                   [IncludeTrailingPathDelimiter(FBasePath), ActualShardIndex, FNumShards]);
+end;
+
+function TPattern.WithModulo(Remainder, ModuloValue: Integer): TPattern;
+begin
+  Result := TPattern.Create(FBasePath, FNumShards);
+  Result.FRemainder := Remainder;
+  Result.FModulo := ModuloValue;
 end;
 
 { TZioStream }

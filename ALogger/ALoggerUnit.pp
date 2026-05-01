@@ -112,10 +112,10 @@ var
 begin
   Message := Format(Fmt, Args);
   if (Filename <> 'UNKNOWN') and (LineNumber <> -1) then
-    _Writeln(Format('%d-%s-%s:%d] %s', [ThreadID, DateTimeToStr(Now),
+    _Writeln(Format('%d-%s-%s:%d] %s', [UInt64(ThreadID), DateTimeToStr(Now),
       Filename, LineNumber, Message]))
   else
-    _Writeln(Format('%s] %s', [DateTimeToStr(Now), Message]));
+    _Writeln(Format('%d-%s] %s', [UInt64(ThreadID), DateTimeToStr(Now), Message]));
 
 end;
 
@@ -177,7 +177,7 @@ begin
 
   if b then
   begin
-    _Writeln(Format('%d-%s-%s:%d] %s', [ThreadID, DateTimeToStr(Now),
+    _Writeln(Format('%d-%s-%s:%d] %s', [UInt64(ThreadID), DateTimeToStr(Now),
       Filename, LineNumber, Format(Fmt, Args)]));
 
   end;

@@ -110,10 +110,16 @@ var
   _Result: Boolean;
 
 begin
+
   while not Terminated do
-  begin
+  begin    
+
     // Block until task available in queue
     FParent.RequestsQueue.Delete(Args);
+
+    // Check if queue is shutting down (after Delete returns)
+    if FParent.RequestsQueue.State = stFreeing then
+      Break;
 
     // Check Terminated flag again after unblocking
     if Terminated then
@@ -133,6 +139,7 @@ begin
     try
       try
         // Execute worker function
+
         _Result := Args.FuncPtr(Args.Arguments);
         if Args.PResult <> nil then
         begin
@@ -196,7 +203,7 @@ begin
   
   WriteLn('[Destroy] Shutting down queue...');
   Flush(Output);
-  // Shutdown the queue first - this wakes all blocked threads
+  // Shutdown the queue - this sets state and wakes threads
   RequestsQueue.Shutdown;
   
   WriteLn('[Destroy] Setting Terminated flag on all threads...');
@@ -204,6 +211,13 @@ begin
   // Set Terminated flag on all threads
   for Thread in Threads do
     Thread.Terminate;
+  
+  WriteLn('[Destroy] Waking up blocked threads...');
+  Flush(Output);
+  // Ensure each thread gets woken up by incrementing semaphore once per thread
+  // The Shutdown() already did Inc(1000), but let's be explicit
+  for i := 1 to Threads.Count do
+    RequestsQueue.FullSlots.Inc(1);
   
   WriteLn('[Destroy] Waiting for threads to terminate...');
   Flush(Output);

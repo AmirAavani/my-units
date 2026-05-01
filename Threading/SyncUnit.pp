@@ -311,8 +311,11 @@ begin
   // Decrement counter
   System.Dec(Counter);
   
-  // If counter is still > 0, keep event signaled for other waiters
-  if Counter <= 0 then
+  // Signal event if resources still available so other waiters can proceed
+  // Reset event if no resources left
+  if Counter > 0 then
+    RTLEventSetEvent(Event)
+  else
     RTLEventResetEvent(Event);
     
   LeaveCriticalSection(Mutex);

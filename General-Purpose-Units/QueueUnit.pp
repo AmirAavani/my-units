@@ -320,28 +320,32 @@ end;
 
 procedure TGenericBlockingQueue.DoDelete(var LastElement: T);
 begin
-  // If shutting down, return default value immediately
-  if State = stFreeing then
+  // Loop to handle spurious wakeups during shutdown
+  while True do
   begin
-    LastElement := Default(T);
-    Exit;
-  end;
+    // If shutting down, return default value immediately
+    if State = stFreeing then
+    begin
+      LastElement := Default(T);
+      Exit;
+    end;
 
-  FullSlots.Dec(1);
-  
-  // Check again after waking up - state may have changed while blocked
-  if State = stFreeing then
-  begin
-    LastElement := Default(T);
-    Exit;
+    FullSlots.Dec(1);  // Block until item available
+    
+    // Check again after waking up - state may have changed while blocked
+    if State = stFreeing then
+    begin
+      LastElement := Default(T);
+      Exit;
+    end;
+    
+    // State is still accepting, proceed with deletion
+    Break;
   end;
 
   Mutex.Lock;
-  try
-    inherited DoDelete(LastElement);
-  finally
-    Mutex.Unlock;
-  end;
+  inherited DoDelete(LastElement);
+  Mutex.Unlock;
 
 end;
 
