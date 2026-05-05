@@ -90,7 +90,6 @@ type
     FStreams: TZioStreamList;
     FPaths: TAnsiStringList;
     FCurrentStreamIndex: Integer;
-    FMessage: T;
     FBufferSize: Integer;
 
   protected
@@ -430,7 +429,6 @@ begin
   FStreams := TZioStreamList.Create;
   FPaths := TAnsiStringList.Create;
   FCurrentStreamIndex := 0;
-  FMessage := T.Create;
   FBufferSize := ABufferSize;
   
   // Store paths and open all files
@@ -467,7 +465,6 @@ begin
   FStreams := TZioStreamList.Create;
   FPaths := TAnsiStringList.Create;
   FCurrentStreamIndex := 0;
-  FMessage := T.Create;
   FBufferSize := ABufferSize;
   
   // Use pattern to open all shard files
@@ -502,7 +499,6 @@ begin
 
   FStreams.Free;
   FPaths.Free;
-  FMessage.Free;
   
   inherited Destroy;
 end;

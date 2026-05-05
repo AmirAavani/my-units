@@ -26,6 +26,35 @@ procedure SortZioFile(const InputPath, OutputPath: AnsiString; FieldNumberOneTyp
 { Sort sharded ZIO files by field number 1 }
 procedure SortZioFiles(InputPattern, OutputPattern: TPattern; FieldNumberOneType: TProtoBasicType);
 
+{ TODO: Implement external merge sort for datasets larger than RAM
+  
+  For files that don't fit in memory, implement:
+  1. Phase 1: Split input into sorted runs that fit in memory
+     - Read chunks of records (e.g., 100MB at a time)
+     - Sort each chunk in memory
+     - Write sorted chunks to temporary files
+  
+  2. Phase 2: K-way merge of sorted runs
+     - Open all temporary sorted files
+     - Use priority queue/heap to merge
+     - Write merged output to final destination
+  
+  Algorithm:
+    function ExternalMergeSortZioFile(InputPath, OutputPath: string; 
+                                       FieldType: TProtoBasicType;
+                                       MemoryLimit: Int64 = 1GB)
+    
+    - CreateSortedRuns(InputPath, TempDir, MemoryLimit) -> TStringList of run files
+    - MergeSortedRuns(RunFiles, OutputPath)
+    
+  Benefits:
+    - Can sort arbitrarily large files
+    - Configurable memory limit
+    - Only small overhead (2 passes over data)
+    
+  Similar pattern for SortZioFiles with sharded inputs.
+}
+
 implementation
 
 type
@@ -310,29 +339,19 @@ begin
   WriteLn(Format('Successfully wrote %d sorted records', [Count]));
 end;
 
-{ Sort sharded ZIO files }
+{ Sort sharded ZIO files - per-shard sort }
 procedure SortZioFiles(InputPattern, OutputPattern: TPattern; FieldNumberOneType: TProtoBasicType);
 var
   InputPaths, OutputPaths: TAnsiStringArray;
-  InputFileStream: TFileStream;
-  InputBufferedStream: TReadBufStream;
-  OutputFileStream: TFileStream;
-  OutputBufferedStream: TWriteBufStream;
-  Reader: TProtoStreamReader;
-  Writer: TProtoStreamWriter;
-  Records: TSortRecordArray;
-  Count, Capacity: Integer;
-  Header: array[0..11] of AnsiChar;
-  Magic: string[8];
-  MsgSize: UInt32;
-  SortKey: Variant;
-  MessageBytes: TBytes;
-  MessageStartPos: Int64;
-  i, ShardIdx: Integer;
-  CurrentOutputShard: Integer;
-  RecordsPerShard: Integer;
+  i: Integer;
 begin
-  // Get all input and output paths from patterns
+  // Simply call SortZioFile for each shard independently.
+  // Each shard is sorted on its own - this is NOT a global sort across all shards.
+  // For global sort (all shards combined), you would need to:
+  //   1. Concatenate all input shards into a temp file
+  //   2. Call SortZioFile on the temp file
+  //   3. Split the sorted temp file back into output shards
+  
   InputPaths := InputPattern.GetAllPaths;
   OutputPaths := OutputPattern.GetAllPaths;
   
@@ -341,141 +360,16 @@ begin
       'Input and output patterns must have same number of shards: %d vs %d',
       [InputPattern.NumShards, OutputPattern.NumShards]);
   
-  WriteLn(Format('Sorting %d sharded ZIO files', [InputPattern.NumShards]));
+  WriteLn(Format('Sorting %d sharded ZIO files (per-shard sort)', [InputPattern.NumShards]));
   
-  // Phase 1: Read all records from all shards
-  Count := 0;
-  Capacity := 1000;
-  SetLength(Records, Capacity);
-  
-  for ShardIdx := 0 to High(InputPaths) do
+  for i := 0 to High(InputPaths) do
   begin
-    if not FileExists(InputPaths[ShardIdx]) then
-      raise ESortZioException.CreateFmt('Input file not found: %s', [InputPaths[ShardIdx]]);
-    
-    WriteLn(Format('Reading shard %d/%d: %s', [ShardIdx + 1, Length(InputPaths), InputPaths[ShardIdx]]));
-    
-    InputFileStream := TFileStream.Create(InputPaths[ShardIdx], fmOpenRead);
-    InputBufferedStream := TReadBufStream.Create(InputFileStream, 131072);
-    
-    while InputBufferedStream.Position < InputBufferedStream.Size do
-    begin
-      // Read ZIO header (12 bytes)
-      if InputBufferedStream.Position + 12 > InputBufferedStream.Size then
-        Break;
-      
-      InputBufferedStream.ReadBuffer(Header[0], 12);
-      
-      // Validate magic
-      SetLength(Magic, 8);
-      Move(Header[0], Magic[1], 8);
-      if Magic <> 'ZIO1PBUF' then
-        raise ESortZioException.CreateFmt('Invalid ZIO magic at position %d in %s',
-          [InputBufferedStream.Position - 12, InputPaths[ShardIdx]]);
-      
-      // Read message size
-      Reader := TProtoStreamReader.Create(InputBufferedStream, False);
-      MsgSize := Reader.ReadVarUInt32;
-      
-      // Check bounds
-      if InputBufferedStream.Position + MsgSize > InputBufferedStream.Size then
-        Break;
-      
-      // Save position before reading message
-      MessageStartPos := InputBufferedStream.Position;
-      
-      // Extract field 1 (partial parse - optimization!)
-      if not ExtractField1(Reader, MsgSize, FieldNumberOneType, SortKey) then
-        raise ESortZioException.CreateFmt('Field 1 not found in message at position %d in %s',
-          [MessageStartPos, InputPaths[ShardIdx]]);
-      
-      Reader.Free;
-      
-      // Read entire message into byte array
-      SetLength(MessageBytes, MsgSize);
-      InputBufferedStream.Position := MessageStartPos;
-      InputBufferedStream.ReadBuffer(MessageBytes[0], MsgSize);
-      
-      // Grow array if needed
-      if Count >= Capacity then
-      begin
-        Capacity := Capacity * 2;
-        SetLength(Records, Capacity);
-      end;
-      
-      // Store record
-      Records[Count].SortKey := SortKey;
-      Records[Count].MessageData := MessageBytes;
-      Inc(Count);
-    end;
-    
-    InputBufferedStream.Free;
-    InputFileStream.Free;
+    WriteLn(Format('Sorting shard %d/%d: %s -> %s', 
+      [i + 1, Length(InputPaths), InputPaths[i], OutputPaths[i]]));
+    SortZioFile(InputPaths[i], OutputPaths[i], FieldNumberOneType);
   end;
   
-  SetLength(Records, Count);
-  WriteLn(Format('Read %d total records from all shards', [Count]));
-  
-  // Phase 2: Sort records by field 1
-  WriteLn('Sorting records...');
-  if Count > 0 then
-    QuickSort(Records, 0, Count - 1);
-  
-  // Phase 3: Write sorted records back to output shards (round-robin distribution)
-  WriteLn(Format('Writing sorted records to %d output shards', [OutputPattern.NumShards]));
-  RecordsPerShard := Count div OutputPattern.NumShards;
-  if RecordsPerShard = 0 then
-    RecordsPerShard := 1;
-  
-  // Ensure output directory exists
-  ForceDirectories(OutputPattern.BasePath);
-  
-  CurrentOutputShard := 0;
-  OutputFileStream := nil;
-  OutputBufferedStream := nil;
-  
-  for i := 0 to Count - 1 do
-  begin
-    // Open new shard if needed (round-robin)
-    if (i mod RecordsPerShard = 0) and (CurrentOutputShard < OutputPattern.NumShards) then
-    begin
-      // Close previous shard
-      if OutputBufferedStream <> nil then
-      begin
-        OutputBufferedStream.Free;
-        OutputFileStream.Free;
-      end;
-      
-      // Open new shard
-      WriteLn(Format('Writing to shard %d/%d: %s', 
-        [CurrentOutputShard + 1, OutputPattern.NumShards, OutputPaths[CurrentOutputShard]]));
-      OutputFileStream := TFileStream.Create(OutputPaths[CurrentOutputShard], fmCreate);
-      OutputBufferedStream := TWriteBufStream.Create(OutputFileStream, 65536);
-      Inc(CurrentOutputShard);
-    end;
-    
-    // Write ZIO header
-    FillChar(Header, SizeOf(Header), #32);
-    Move(PAnsiChar('ZIO1PBUF')^, Header[0], 8);
-    OutputBufferedStream.WriteBuffer(Header[0], 12);
-    
-    // Write message size
-    Writer := TProtoStreamWriter.Create(OutputBufferedStream, False);
-    Writer.WriteRawVarint32(Length(Records[i].MessageData));
-    Writer.Free;
-    
-    // Write message data
-    OutputBufferedStream.WriteBuffer(Records[i].MessageData[0], Length(Records[i].MessageData));
-  end;
-  
-  // Close last shard
-  if OutputBufferedStream <> nil then
-  begin
-    OutputBufferedStream.Free;
-    OutputFileStream.Free;
-  end;
-  
-  WriteLn(Format('Successfully wrote %d sorted records to %d shards', [Count, OutputPattern.NumShards]));
+  WriteLn(Format('Successfully sorted %d shards', [Length(InputPaths)]));
 end;
 
 end.
