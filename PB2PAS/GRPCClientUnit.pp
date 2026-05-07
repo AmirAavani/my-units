@@ -80,7 +80,7 @@ begin
   FConfig := AConfig;
   FOwnsConfig := False;
   FServiceName := AServiceName;
-  FTransport := THTTPGRPCTransport.Create(FConfig);
+  FTransport := THTTPGRPCTransport.Create(FConfig, True); // True = use gRPC-Web
   FLastStatusCode := 0;
   FLastStatusMessage := '';
   FRaiseOnError := False;
@@ -95,7 +95,7 @@ begin
   FConfig.Port := APort;
   FOwnsConfig := True;
   FServiceName := AServiceName;
-  FTransport := THTTPGRPCTransport.Create(FConfig);
+  FTransport := THTTPGRPCTransport.Create(FConfig, True); // True = use gRPC-Web
   FLastStatusCode := 0;
   FLastStatusMessage := '';
   FRaiseOnError := False;

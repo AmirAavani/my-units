@@ -5,7 +5,7 @@ unit GRPCTransportUnit;
 interface
 
 uses
-  Classes, SysUtils, GRPCClientConfigUnit, Math;
+  Classes, SysUtils, GRPCClientConfigUnit, Math, base64;
 
 type
   TByteArray = array of Byte;
@@ -25,13 +25,16 @@ type
   THTTPGRPCTransport = class(TInterfacedObject, IGRPCTransport)
   private
     FConfig: TGRPCClientConfig;
+    FUseGRPCWeb: Boolean; // Use gRPC-Web instead of standard gRPC
     
     function BuildURL(const MethodPath: string): string;
     function FrameMessage(const Data: TByteArray): TByteArray;
     function UnframeMessage(const FramedData: TByteArray): TByteArray;
+    function ExtractGRPCWebResponse(const ResponseBody: TByteArray; 
+      out StatusCode: Integer; out StatusMessage: string): TByteArray;
     
   public
-    constructor Create(AConfig: TGRPCClientConfig);
+    constructor Create(AConfig: TGRPCClientConfig; AUseGRPCWeb: Boolean = True);
     destructor Destroy; override;
     
     function SendUnary(
@@ -41,6 +44,8 @@ type
       out StatusCode: Integer;
       out StatusMessage: string
     ): Boolean;
+    
+    property UseGRPCWeb: Boolean read FUseGRPCWeb write FUseGRPCWeb;
   end;
 
 implementation
@@ -51,11 +56,17 @@ uses
 const
   GRPC_STATUS_OK = 0;
   GRPC_CONTENT_TYPE = 'application/grpc+proto';
+  GRPC_WEB_CONTENT_TYPE = 'application/grpc-web+proto';
+  GRPC_WEB_TEXT_CONTENT_TYPE = 'application/grpc-web-text+proto';
+  
+  // Frame types for gRPC-Web trailers
+  GRPC_WEB_FLAG_TRAILER = $80;
 
-constructor THTTPGRPCTransport.Create(AConfig: TGRPCClientConfig);
+constructor THTTPGRPCTransport.Create(AConfig: TGRPCClientConfig; AUseGRPCWeb: Boolean);
 begin
   inherited Create;
   FConfig := AConfig;
+  FUseGRPCWeb := AUseGRPCWeb;
 end;
 
 destructor THTTPGRPCTransport.Destroy;
@@ -121,6 +132,94 @@ begin
     Result[i] := FramedData[5 + i];
 end;
 
+function THTTPGRPCTransport.ExtractGRPCWebResponse(const ResponseBody: TByteArray;
+  out StatusCode: Integer; out StatusMessage: string): TByteArray;
+var
+  BytePos: Integer;
+  MessageLen: UInt32;
+  Flags: Byte;
+  TrailerData: TByteArray;
+  TrailerStr: string;
+  TrailerLines: TStringList;
+  i: Integer;
+  Line: string;
+begin
+  Result := nil;
+  StatusCode := -1;
+  StatusMessage := '';
+  
+  if Length(ResponseBody) < 5 then
+    Exit;
+  
+  BytePos := 0;
+  
+  // Read first frame (should be the data frame)
+  Flags := ResponseBody[BytePos];
+  Inc(BytePos);
+  
+  MessageLen := (UInt32(ResponseBody[BytePos]) shl 24) or
+                (UInt32(ResponseBody[BytePos + 1]) shl 16) or
+                (UInt32(ResponseBody[BytePos + 2]) shl 8) or
+                UInt32(ResponseBody[BytePos + 3]);
+  Inc(BytePos, 4);
+  
+  // Extract message data
+  if (Flags and GRPC_WEB_FLAG_TRAILER) = 0 then
+  begin
+    // This is the data frame
+    SetLength(Result, MessageLen);
+    if MessageLen > 0 then
+      Move(ResponseBody[BytePos], Result[0], MessageLen);
+    Inc(BytePos, MessageLen);
+  end;
+  
+  // Read trailers frame if present
+  if BytePos < Length(ResponseBody) - 5 then
+  begin
+    Flags := ResponseBody[BytePos];
+    Inc(BytePos);
+    
+    MessageLen := (UInt32(ResponseBody[BytePos]) shl 24) or
+                  (UInt32(ResponseBody[BytePos + 1]) shl 16) or
+                  (UInt32(ResponseBody[BytePos + 2]) shl 8) or
+                  UInt32(ResponseBody[BytePos + 3]);
+    Inc(BytePos, 4);
+    
+    if (Flags and GRPC_WEB_FLAG_TRAILER) <> 0 then
+    begin
+      // This is the trailers frame
+      SetLength(TrailerData, MessageLen);
+      if MessageLen > 0 then
+        Move(ResponseBody[BytePos], TrailerData[0], MessageLen);
+      
+      // Parse trailers (text format: "grpc-status: 0\r\ngrpc-message: OK\r\n")
+      SetLength(TrailerStr, MessageLen);
+      if MessageLen > 0 then
+        Move(TrailerData[0], TrailerStr[1], MessageLen);
+      
+      TrailerLines := TStringList.Create;
+      try
+        TrailerLines.Text := TrailerStr;
+        
+        for i := 0 to TrailerLines.Count - 1 do
+        begin
+          Line := TrailerLines[i];
+          if Pos('grpc-status:', Line) = 1 then
+            StatusCode := StrToIntDef(Trim(Copy(Line, 13, 100)), -1)
+          else if Pos('grpc-message:', Line) = 1 then
+            StatusMessage := Trim(Copy(Line, 14, 1000));
+        end;
+      finally
+        TrailerLines.Free;
+      end;
+    end;
+  end;
+  
+  // Default status if not found in trailers
+  if StatusCode = -1 then
+    StatusCode := GRPC_STATUS_OK;
+end;
+
 function THTTPGRPCTransport.SendUnary(
   const MethodPath: string;
   const RequestData: TByteArray;
@@ -134,9 +233,9 @@ var
   ResponseStream: TMemoryStream;
   URL: string;
   FramedRequest: TByteArray;
-  FramedResponse: TByteArray;
+  ResponseBody: TByteArray;
   i: Integer;
-  GRPCStatus: string;
+  ContentType: string;
 begin
   Result := False;
   StatusCode := -1;
@@ -150,10 +249,16 @@ begin
   try
     URL := BuildURL(MethodPath);
     
-    // Add headers directly
-    HTTPClient.AddHeader('Content-Type', GRPC_CONTENT_TYPE);
-    HTTPClient.AddHeader('TE', 'trailers');
-    HTTPClient.AddHeader('grpc-accept-encoding', 'identity');
+    // Choose content type based on mode
+    if FUseGRPCWeb then
+      ContentType := GRPC_WEB_CONTENT_TYPE
+    else
+      ContentType := GRPC_CONTENT_TYPE;
+    
+    // Add headers
+    HTTPClient.AddHeader('Content-Type', ContentType);
+    HTTPClient.AddHeader('X-User-Agent', 'grpc-web-pascal/1.0');
+    HTTPClient.AddHeader('X-Grpc-Web', '1');
     
     // Add auth token if present
     if FConfig.AuthToken <> '' then
@@ -191,12 +296,29 @@ begin
         Exit;
       end;
       
-      GRPCStatus := HTTPClient.GetHeader(HTTPClient.ResponseHeaders, 'grpc-status');
-      if GRPCStatus = '' then
-        GRPCStatus := '0';
+      // Read response body
+      ResponseStream.Position := 0;
+      SetLength(ResponseBody, ResponseStream.Size);
+      if ResponseStream.Size > 0 then
+        ResponseStream.Read(ResponseBody[0], ResponseStream.Size);
+      
+      // Extract response data and trailers
+      if FUseGRPCWeb then
+      begin
+        // gRPC-Web: trailers are in the body
+        ResponseData := ExtractGRPCWebResponse(ResponseBody, StatusCode, StatusMessage);
+      end
+      else
+      begin
+        // Standard gRPC: trailers are in HTTP headers
+        ResponseData := UnframeMessage(ResponseBody);
         
-      StatusCode := StrToIntDef(GRPCStatus, -1);
-      StatusMessage := HTTPClient.GetHeader(HTTPClient.ResponseHeaders, 'grpc-message');
+        // Get status from headers
+        StatusCode := StrToIntDef(
+          HTTPClient.GetHeader(HTTPClient.ResponseHeaders, 'grpc-status'), 0);
+        StatusMessage := 
+          HTTPClient.GetHeader(HTTPClient.ResponseHeaders, 'grpc-message');
+      end;
       
       if StatusCode <> GRPC_STATUS_OK then
       begin
@@ -204,13 +326,6 @@ begin
           StatusMessage := Format('gRPC error: status code %d', [StatusCode]);
         Exit;
       end;
-      
-      ResponseStream.Position := 0;
-      SetLength(FramedResponse, ResponseStream.Size);
-      if ResponseStream.Size > 0 then
-        ResponseStream.Read(FramedResponse[0], ResponseStream.Size);
-      
-      ResponseData := UnframeMessage(FramedResponse);
       
       Result := (ResponseData <> nil) and (Length(ResponseData) > 0);
       
