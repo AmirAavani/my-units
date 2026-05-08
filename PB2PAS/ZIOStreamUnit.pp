@@ -205,15 +205,15 @@ begin
   ActualShardIndex := -1;
   for i := 0 to FNumShards - 1 do
   begin
-    if i mod FModulo = FRemainder then
+    if i mod FModulo <> FRemainder then
+      Continue;
+
+    if Count = ShardIndex then
     begin
-      if Count = ShardIndex then
-      begin
-        ActualShardIndex := i;
-        Break;
-      end;
-      Inc(Count);
+      ActualShardIndex := i;
+      Break;
     end;
+    Inc(Count);
   end;
   
   if ActualShardIndex = -1 then
