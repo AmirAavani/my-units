@@ -715,8 +715,13 @@ function LoadMessage(Stream: TProtoStreamReader; Data: TBaseMessage): Boolean;
 var
   Len: Integer;
 begin
-  Len := Stream.ReadVarUInt32;
+  if Data = nil then
+  begin
+    WriteLn('Data Cannot be nil');
+    Halt(1);
+  end;
 
+  Len := Stream.ReadVarUInt32;
   Result := Data.LoadFromStream(Stream, Len);
 
 end;

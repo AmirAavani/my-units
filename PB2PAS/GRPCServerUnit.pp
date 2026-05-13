@@ -191,6 +191,7 @@ begin
   FLock.Enter;
   try
     Index := FServices.IndexOf(ServiceName);
+
     if Index < 0 then
     begin
       StatusCode := 5; // NOT_FOUND
@@ -218,10 +219,10 @@ begin
     StatusMessage := 'OK';
     
   except
-    on E: Exception do
+    on e: Exception do
     begin
       StatusCode := 13; // INTERNAL
-      StatusMessage := 'Internal error: ' + E.Message;
+      StatusMessage := 'Internal error: ' + e.Message;
       ResponseData := nil;
     end;
   end;
