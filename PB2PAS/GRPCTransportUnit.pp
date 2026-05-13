@@ -2,6 +2,21 @@ unit GRPCTransportUnit;
 
 {$mode objfpc}{$H+}
 
+{ ============================================================================
+  gRPC-Web Transport Layer
+  
+  Handles HTTP/1.1 communication with gRPC-Web protocol:
+  - 5-byte frame headers (compression flag + message length)
+  - Binary protobuf payloads
+  - Text-based trailers for status codes
+  
+  Frame Format:
+    [1 byte: compression][4 bytes: length (big-endian)][N bytes: data]
+  
+  Trailer Frame (0x80 flag):
+    [0x80][4 bytes: length][text: "grpc-status: 0\r\ngrpc-message: OK\r\n"]
+  ============================================================================ }
+
 interface
 
 uses
@@ -25,7 +40,7 @@ type
   THTTPGRPCTransport = class(TInterfacedObject, IGRPCTransport)
   private
     FConfig: TGRPCClientConfig;
-    FUseGRPCWeb: Boolean; // Use gRPC-Web instead of standard gRPC
+    FUseGRPCWeb: Boolean; // Use gRPC-Web (always true for this implementation)
     
     function BuildURL(const MethodPath: string): string;
     function FrameMessage(const Data: TByteArray): TByteArray;
@@ -34,6 +49,7 @@ type
       out StatusCode: Integer; out StatusMessage: string): TByteArray;
     
   public
+    // AUseGRPCWeb should always be True (default) for this implementation
     constructor Create(AConfig: TGRPCClientConfig; AUseGRPCWeb: Boolean = True);
     destructor Destroy; override;
     
@@ -96,15 +112,20 @@ var
   Len: UInt32;
   i: Integer;
 begin
+  // gRPC-Web framing: [compression flag][4-byte length][data]
   Len := Length(Data);
   SetLength(Result, 5 + Len);
   
+  // Compression flag: 0 = no compression
   Result[0] := 0;
+  
+  // Message length in big-endian format
   Result[1] := Byte((Len shr 24) and $FF);
   Result[2] := Byte((Len shr 16) and $FF);
   Result[3] := Byte((Len shr 8) and $FF);
   Result[4] := Byte(Len and $FF);
   
+  // Copy message data
   for i := 0 to Integer(Len) - 1 do
     Result[5 + i] := Data[i];
 end;
@@ -116,17 +137,21 @@ var
 begin
   Result := nil;
   
+  // gRPC-Web frame: [compression flag][4-byte length][message]
   if Length(FramedData) < 5 then
     Exit;
     
+  // Read message length (big-endian)
   MessageLen := (UInt32(FramedData[1]) shl 24) or
                 (UInt32(FramedData[2]) shl 16) or
                 (UInt32(FramedData[3]) shl 8) or
                 UInt32(FramedData[4]);
   
+  // Verify we have enough data
   if Length(FramedData) < 5 + Integer(MessageLen) then
     Exit;
     
+  // Extract message
   SetLength(Result, MessageLen);
   for i := 0 to Integer(MessageLen) - 1 do
     Result[i] := FramedData[5 + i];
@@ -249,13 +274,13 @@ begin
   try
     URL := BuildURL(MethodPath);
     
-    // Choose content type based on mode
+    // Choose content type (always gRPC-Web for this implementation)
     if FUseGRPCWeb then
       ContentType := GRPC_WEB_CONTENT_TYPE
     else
       ContentType := GRPC_CONTENT_TYPE;
     
-    // Add headers
+    // Add gRPC-Web headers
     HTTPClient.AddHeader('Content-Type', ContentType);
     HTTPClient.AddHeader('X-User-Agent', 'grpc-web-pascal/1.0');
     HTTPClient.AddHeader('X-Grpc-Web', '1');

@@ -235,8 +235,6 @@ begin
   if FServices.Count = 0 then
     raise EGRPCServerError.Create(-1, 'No services registered');
   
-
-
   // Create gRPC-Web transport
   // Note: This uses gRPC-Web protocol (HTTP/1.1 + binary framing)
   // For standard gRPC (HTTP/2) clients, use a gRPC-Web proxy
