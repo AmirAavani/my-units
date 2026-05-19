@@ -28,21 +28,21 @@ uses
   fgl, syncobjs;
 
 type
-  TByteArray = array of Byte;
-  
+  TByteArray = array of byte;
+
   { TGRPCServiceHandler - Base class for all generated service stubs }
   TGRPCServiceHandler = class
   public
     // Override this in generated service classes
-    function HandleRequest(const Method: AnsiString; 
+    function HandleRequest(const Method: ansistring;
       ReqData: TByteArray): TByteArray; virtual; abstract;
-    
+
     // Get the service name (override in generated classes)
-    function GetServiceName: AnsiString; virtual; abstract;
+    function GetServiceName: ansistring; virtual; abstract;
   end;
 
   { TGRPCServiceHandlerList }
-  TGRPCServiceHandlerList = specialize TFPGMap<AnsiString, TGRPCServiceHandler>;
+  TGRPCServiceHandlerList = specialize TFPGMap<ansistring, TGRPCServiceHandler>;
 
   { TGRPCServer - Main server class }
   TGRPCServer = class
@@ -50,54 +50,53 @@ type
     FConfig: TGRPCServerConfig;
     FTransport: IGRPCServerTransport;
     FServices: TGRPCServiceHandlerList;
-    FRunning: Boolean;
-    FOwnsConfig: Boolean;
+    FRunning: boolean;
+    FOwnsConfig: boolean;
     FLock: TCriticalSection;
-    
-    procedure HandleIncomingRequest(const ServiceName, MethodNameStr: AnsiString;
+
+    procedure HandleIncomingRequest(const ServiceName, MethodNameStr: ansistring;
       RequestData: TByteArray; out ResponseData: TByteArray;
-      out StatusCode: Integer; out StatusMessage: AnsiString);
-    
+      out StatusCode: integer; out StatusMessage: ansistring);
   public
     // Constructor with config
     constructor Create(AConfig: TGRPCServerConfig); overload;
-    
+
     // Simple constructor
-    constructor CreateSimple(APort: Integer); overload;
-    
+    constructor CreateSimple(APort: integer); overload;
+
     destructor Destroy; override;
-    
+
     // Register a service handler
-    procedure RegisterService(const ServiceName: AnsiString; 
+    procedure RegisterService(const ServiceName: ansistring;
       Handler: TGRPCServiceHandler);
-    
+
     // Unregister a service
-    procedure UnregisterService(const ServiceName: AnsiString);
-    
+    procedure UnregisterService(const ServiceName: ansistring);
+
     // Server lifecycle
     procedure Start;
     procedure Stop;
-    function IsRunning: Boolean;
-    
+    function IsRunning: boolean;
+
     // Properties
     property Config: TGRPCServerConfig read FConfig;
-    property Running: Boolean read FRunning;
+    property Running: boolean read FRunning;
   end;
-  
+
   { EGRPCServerError - Exception for server errors }
   EGRPCServerError = class(Exception)
   private
-    FStatusCode: Integer;
+    FStatusCode: integer;
   public
-    constructor Create(AStatusCode: Integer; const AMessage: string);
-    property StatusCode: Integer read FStatusCode;
+    constructor Create(AStatusCode: integer; const AMessage: string);
+    property StatusCode: integer read FStatusCode;
   end;
 
 implementation
 
 { EGRPCServerError }
 
-constructor EGRPCServerError.Create(AStatusCode: Integer; const AMessage: string);
+constructor EGRPCServerError.Create(AStatusCode: integer; const AMessage: string);
 begin
   inherited Create(AMessage);
   FStatusCode := AStatusCode;
@@ -117,7 +116,7 @@ begin
   FTransport := nil;
 end;
 
-constructor TGRPCServer.CreateSimple(APort: Integer);
+constructor TGRPCServer.CreateSimple(APort: integer);
 begin
   inherited Create;
   FConfig := TGRPCServerConfig.Create;
@@ -134,35 +133,35 @@ destructor TGRPCServer.Destroy;
 begin
   if FRunning then
     Stop;
-    
+
   FTransport := nil; // Interface will be freed automatically
   FServices.Free;
   FLock.Free;
-  
+
   if FOwnsConfig then
     FConfig.Free;
-    
+
   inherited Destroy;
 end;
 
-procedure TGRPCServer.RegisterService(const ServiceName: AnsiString;
+procedure TGRPCServer.RegisterService(const ServiceName: ansistring;
   Handler: TGRPCServiceHandler);
 begin
   FLock.Enter;
   try
     if FServices.IndexOf(ServiceName) >= 0 then
-      raise EGRPCServerError.Create(-1, 
+      raise EGRPCServerError.Create(-1,
         Format('Service "%s" is already registered', [ServiceName]));
-    
+
     FServices.Add(ServiceName, Handler);
   finally
     FLock.Leave;
   end;
 end;
 
-procedure TGRPCServer.UnregisterService(const ServiceName: AnsiString);
+procedure TGRPCServer.UnregisterService(const ServiceName: ansistring);
 var
-  Index: Integer;
+  Index: integer;
 begin
   FLock.Enter;
   try
@@ -175,19 +174,17 @@ begin
 end;
 
 procedure TGRPCServer.HandleIncomingRequest(
-  const ServiceName, MethodNameStr: AnsiString;
-  RequestData: TByteArray; 
-  out ResponseData: TByteArray;
-  out StatusCode: Integer; 
-  out StatusMessage: AnsiString);
+  const ServiceName, MethodNameStr: ansistring;
+  RequestData: TByteArray; out ResponseData: TByteArray; out StatusCode: integer;
+  out StatusMessage: ansistring);
 var
-  Index: Integer;
+  Index: integer;
   Handler: TGRPCServiceHandler;
 begin
   ResponseData := nil;
   StatusCode := 12; // UNIMPLEMENTED in gRPC status codes
   StatusMessage := 'Service not found';
-  
+
   FLock.Enter;
   try
     Index := FServices.IndexOf(ServiceName);
@@ -198,26 +195,26 @@ begin
       StatusMessage := Format('Service "%s" not found', [ServiceName]);
       Exit;
     end;
-    
+
     Handler := FServices.Data[Index];
   finally
     FLock.Leave;
   end;
-  
+
   try
     // Call the service handler
     ResponseData := Handler.HandleRequest(MethodNameStr, RequestData);
-    
+
     if ResponseData = nil then
     begin
       StatusCode := 2; // UNKNOWN
       StatusMessage := 'Handler returned nil response';
       Exit;
     end;
-    
+
     StatusCode := 0; // OK
     StatusMessage := 'OK';
-    
+
   except
     on e: Exception do
     begin
@@ -232,15 +229,15 @@ procedure TGRPCServer.Start;
 begin
   if FRunning then
     raise EGRPCServerError.Create(-1, 'Server is already running');
-  
+
   if FServices.Count = 0 then
     raise EGRPCServerError.Create(-1, 'No services registered');
-  
+
   // Create gRPC-Web transport
   // Note: This uses gRPC-Web protocol (HTTP/1.1 + binary framing)
   // For standard gRPC (HTTP/2) clients, use a gRPC-Web proxy
   FTransport := THTTPGRPCServerTransport.Create(FConfig, @HandleIncomingRequest, True);
-  
+
   // Start listening
   FTransport.Start;
   FRunning := True;
@@ -250,14 +247,14 @@ procedure TGRPCServer.Stop;
 begin
   if not FRunning then
     Exit;
-    
+
   if FTransport <> nil then
     FTransport.Stop;
-    
+
   FRunning := False;
 end;
 
-function TGRPCServer.IsRunning: Boolean;
+function TGRPCServer.IsRunning: boolean;
 begin
   Result := FRunning;
 end;
