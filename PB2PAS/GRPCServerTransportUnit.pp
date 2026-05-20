@@ -145,26 +145,33 @@ begin
 end;
 
 procedure THTTPGRPCServerTransport.Stop;
+var
+  DummySocket: TSocket;
+  Addr: TInetSockAddr;
 begin
   if not FRunning then
     Exit;
 
   FRunning := False;
 
-  // Stop listener thread
-  if FListenerThread <> nil then
-  begin
-    FListenerThread.Terminate;
-    FListenerThread.WaitFor;
-    FListenerThread.Free;
-    FListenerThread := nil;
-  end;
-
-  // Close server socket
+  // Close server socket first to unblock fpAccept
   if FServerSocket >= 0 then
   begin
     CloseSocket(FServerSocket);
     FServerSocket := -1;
+  end;
+
+  // Stop listener thread
+  if FListenerThread <> nil then
+  begin
+    FListenerThread.Terminate;
+    
+    // Optional: Make a dummy connection to unblock accept if closing socket doesn't work
+    // (Closing the socket should be enough on most platforms)
+    
+    FListenerThread.WaitFor;
+    FListenerThread.Free;
+    FListenerThread := nil;
   end;
 end;
 
@@ -184,10 +191,17 @@ begin
     AddrLen := SizeOf(ClientAddr);
     ClientSocket := fpAccept(FServerSocket, @ClientAddr, @AddrLen);
 
+    // Check if we're shutting down (socket was closed)
+    if not FRunning then
+      Break;
+
     if ClientSocket < 0 then
     begin
-      if FRunning then
-        Sleep(100); // Avoid busy loop on error
+      // Accept failed - could be because socket was closed during shutdown
+      if not FRunning then
+        Break;
+        
+      Sleep(100); // Avoid busy loop on error
       Continue;
     end;
 

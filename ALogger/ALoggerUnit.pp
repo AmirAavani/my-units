@@ -215,8 +215,7 @@ end;
 procedure _FatalLn(constref FileName: AnsiString; LineNumber: Integer;
   constref Msg: AnsiString);
 begin
-  _Writeln(Format('%s-%s:%d] %s', [DateTimeToStr(Now),
-    Filename, LineNumber, Msg]));
+  _Writeln(Format('%s-%s:%d] %s', [DateTimeToStr(Now), Filename, LineNumber, Msg]));
 
   Halt(1);
 

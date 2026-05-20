@@ -130,6 +130,8 @@ begin
 end;
 
 destructor TGRPCServer.Destroy;
+var
+  i: Integer;
 begin
   if FRunning then
     Stop;
