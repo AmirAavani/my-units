@@ -108,17 +108,32 @@ procedure TGenericThreadPool.TRunnerThread.Execute;
 var
   Args: TFuncArgResultArguments;
   _Result: Boolean;
+  MyThreadID: PtrUInt;
 
 begin
+  // FIRST THING: print that we entered Execute
+  WriteLn('[Thread] Execute ENTERED');
+  Flush(Output);
+  
+  MyThreadID := PtrUInt(ThreadID);
+  
+  WriteLn(Format('[Thread-%d] Execute method started', [MyThreadID]));
+  Flush(Output);
 
   while not Terminated do
   begin    
+    WriteLn(Format('[Thread-%d] About to call RequestsQueue.Delete...', [MyThreadID]));
+    Flush(Output);
 
     // Block until task available in queue
     FParent.RequestsQueue.Delete(Args);
+    
+    WriteLn(Format('[Thread-%d] Got task: FuncPtr=%p, Args=%p, Terminated=%d, FCancelled=%d', 
+      [MyThreadID, Pointer(@Args.FuncPtr), Pointer(Args.Arguments), Ord(Terminated), Ord(FParent.FCancelled)]));
+    Flush(Output);
 
     // Check if queue is shutting down (after Delete returns)
-    if FParent.RequestsQueue.State = stFreeing then
+    if FParent.RequestsQueue.IsShuttingDown then
       Break;
 
     // Check Terminated flag again after unblocking
@@ -132,34 +147,27 @@ begin
     // Skip task if pool is shutting down
     if FParent.FCancelled then
     begin
+      WriteLn(Format('[Thread-%d] Skipping task (FCancelled=true)', [MyThreadID]));
+      Flush(Output);
       FParent.Wg.Done(1);
       Continue;
     end;
 
-    try
-      try
-        // Execute worker function
+    // Execute worker function
+    WriteLn(Format('[Thread-%d] Executing task with Args=%p...', [MyThreadID, Pointer(Args.Arguments)]));
+    Flush(Output);
 
-        _Result := Args.FuncPtr(Args.Arguments);
-        if Args.PResult <> nil then
-        begin
-          Args.PResult^ := _Result;
-
-        end;
-      except
-        on E: Exception do
-        begin
-          // Handle worker exceptions to prevent WaitGroup deadlock
-          WriteLn(Format('[Thread] Exception in worker: %s: %s', [E.ClassName, E.Message]));
-          // Return False on exception if result pointer provided
-          if Args.PResult <> nil then
-            Args.PResult^ := False;
-        end;
-      end;
-    finally
-      // ALWAYS decrement wait group to prevent deadlock
-      FParent.Wg.Done(1);
+    _Result := Args.FuncPtr(Args.Arguments);
+    
+    WriteLn(Format('[Thread-%d] Task completed successfully (Args=%p)', [MyThreadID, Pointer(Args.Arguments)]));
+    Flush(Output);
+    if Args.PResult <> nil then
+    begin
+      Args.PResult^ := _Result;
     end;
+    
+    // Decrement wait group
+    FParent.Wg.Done(1);
 
   end;
 end;
@@ -174,6 +182,9 @@ var
 begin
   inherited Create;
 
+  WriteLn(Format('[Create] Creating thread pool with %d threads...', [ThreadCount]));
+  Flush(Output);
+
   RequestsQueue := TRequestsQueue.Create;
   Threads := TThreads.Create;
   wg := TWaitGroup.Create;
@@ -181,12 +192,27 @@ begin
 
   // Create worker threads (suspended)
   for i := 1 to ThreadCount do
+  begin
+    WriteLn(Format('[Create] Creating thread %d/%d...', [i, ThreadCount]));
+    Flush(Output);
     Threads.Add(TRunnerThread.Create(Self));
+  end;
     
+  WriteLn(Format('[Create] Starting %d threads...', [Threads.Count]));
+  Flush(Output);
+  
   // Start all workers
-  for Thread in Threads do
-    Thread.Start;
+  for i := 0 to Threads.Count - 1 do
+  begin
+    WriteLn(Format('[Create] Starting thread %d (ID will be assigned)...', [i]));
+    Flush(Output);
+    Threads[i].Start;
+    WriteLn(Format('[Create] Thread %d started', [i]));
+    Flush(Output);
+  end;
 
+  WriteLn('[Create] Thread pool created and started');
+  Flush(Output);
 end;
 
 destructor TGenericThreadPool.Destroy;
@@ -217,7 +243,7 @@ begin
   // Ensure each thread gets woken up by incrementing semaphore once per thread
   // The Shutdown() already did Inc(1000), but let's be explicit
   for i := 1 to Threads.Count do
-    RequestsQueue.FullSlots.Inc(1);
+    RequestsQueue.WakeOne;
   
   WriteLn('[Destroy] Waiting for threads to terminate...');
   Flush(Output);
@@ -252,7 +278,11 @@ var
 begin
   // Don't accept new tasks during shutdown
   if FCancelled then
+  begin
+    WriteLn(Format('[Run] Rejecting task (FCancelled=true, Args=%p)', [Pointer(Args)]));
+    Flush(Output);
     Exit;
+  end;
 
   // Increment wait group BEFORE queuing task
   wg.Add(1);
@@ -262,6 +292,9 @@ begin
   Arg.Arguments := Args;
   Arg.PResult:= OutputResult;
 
+  WriteLn(Format('[Run] Queuing task: FuncPtr=%p, Args=%p', [Pointer(@F), Pointer(Args)]));
+  Flush(Output);
+  
   // Add to queue - worker will pick it up
   RequestsQueue.Insert(Arg);
 

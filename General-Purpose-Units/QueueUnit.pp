@@ -162,6 +162,12 @@ type
     
     { Signal the queue to shut down - wakes all blocked threads }
     procedure Shutdown;
+    
+    { Check if queue is in freeing/shutdown state }
+    function IsShuttingDown: Boolean; inline;
+    
+    { Wake up one waiting thread (used during shutdown) }
+    procedure WakeOne; inline;
 
   end;
 
@@ -355,6 +361,16 @@ begin
   // Wake up all blocked threads by incrementing semaphore many times
   // This ensures all threads blocked in DoDelete will wake up
   FullSlots.Inc(1000);
+end;
+
+function TGenericBlockingQueue.IsShuttingDown: Boolean;
+begin
+  Result := State = stFreeing;
+end;
+
+procedure TGenericBlockingQueue.WakeOne;
+begin
+  FullSlots.Inc(1);
 end;
 
 function TGenericBlockingQueue.DoGetTop: T;
