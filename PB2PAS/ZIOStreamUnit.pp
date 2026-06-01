@@ -5,7 +5,7 @@ unit ZIOStreamUnit;
 interface
 
 uses
-  Classes, SysUtils, bufstream, ProtoStreamUnit, ProtoHelperUnit, Generics.Collections;
+  Classes, SysUtils, bufstream, ProtoStreamUnit, ProtoHelperUnit, Generics.Collections, DateUtils;
 
 type
   TIntList = specialize TList<Integer>;
@@ -108,23 +108,40 @@ type
   { TZioWriter - Generic ZIO writer }
 
   generic TZioWriter<T: TBaseMessage> = class(TObject)
+  public
+    type
+      { TZioPartWriter - Writes to a single part file }
+      TZioPartWriter = class(TObject)
+      private
+        FZioStream: TZioStream;
+        FPartPath: AnsiString;
+      public
+        constructor Create(const APartPath: AnsiString; ABufferSize: Integer = 65536);
+        destructor Destroy; override;
+        
+        procedure WriteMessage(AMessage: T);
+        
+        property PartPath: AnsiString read FPartPath;
+      end;
+      
   private
-    FStreams: TZioStreamList;
-    FPaths: TAnsiStringList;
-    FCurrentShardIndex: Integer;
+    FPattern: TPattern;
     FBufferSize: Integer;
-
-  protected
+    FCurrentShardIndex: Integer;
+    FShardSequences: array of Integer; // Sequence counter per shard
+    
+    function GetShardDirectoryPath(ShardIndex: Integer): AnsiString;
+    function GeneratePartPath(ShardIndex: Integer): AnsiString;
+    procedure EnsureShardDirectoryExists(ShardIndex: Integer);
     function GetTotalStreams: Integer;
 
   public
     property NumShards: Integer read GetTotalStreams;
-    constructor Create(const APaths: array of AnsiString; ABufferSize: Integer = 65536); overload;
-    constructor Create(APattern: TPattern; ABufferSize: Integer = 65536); overload;
+    constructor Create(APattern: TPattern; ABufferSize: Integer = 65536);
     destructor Destroy; override;
 
-    procedure WriteMessage(AMessage: T);
-    procedure WriteMessageToShard(AMessage: T; ShardIndex: Integer);
+    { Creates a new part writer (round-robin shard selection) }
+    function NewPartWriter: TZioPartWriter;
   end;
 
 
@@ -540,131 +557,146 @@ begin
   Result := FStreams.Count;
 end;
 
-{ TZioWriter }
+{ TZioWriter.TZioPartWriter }
 
-constructor TZioWriter.Create(const APaths: array of AnsiString; ABufferSize: Integer = 65536);
+constructor TZioWriter.TZioPartWriter.Create(const APartPath: AnsiString; ABufferSize: Integer = 65536);
 var
-  i: Integer;
   FileStream: TFileStream;
   BufferedStream: TWriteBufStream;
-  ZioStream: TZioStream;
-  Path: AnsiString;
-  DirPath: AnsiString;
 begin
   inherited Create;
   
-  FStreams := TZioStreamList.Create;
-  FPaths := TAnsiStringList.Create;
-  FCurrentShardIndex := 0;
-  FBufferSize := ABufferSize;
+  FPartPath := APartPath;
   
-  // Create all shard files
-  for i := 0 to High(APaths) do
-  begin
-    Path := APaths[i];
-    FPaths.Add(Path);
-    
-    // Ensure directory exists
-    DirPath := ExtractFileDir(Path);
-    if DirPath <> '' then
-      ForceDirectories(DirPath);
-    
-    try
-      FileStream := TFileStream.Create(Path, fmCreate);
-      BufferedStream := TWriteBufStream.Create(FileStream, FBufferSize);
-    except
-      on E: Exception do
-        raise EStreamException.CreateFmt('Failed to create file "%s": %s', [Path, E.Message]);
-    end;
-    
-    ZioStream := TZioStream.Create(FileStream, BufferedStream, True);
-    FStreams.Add(ZioStream);
+  try
+    FileStream := TFileStream.Create(APartPath, fmCreate);
+    BufferedStream := TWriteBufStream.Create(FileStream, ABufferSize);
+    FZioStream := TZioStream.Create(FileStream, BufferedStream, True);
+  except
+    on E: Exception do
+      raise EStreamException.CreateFmt('Failed to create part file "%s": %s', [APartPath, E.Message]);
   end;
 end;
+
+destructor TZioWriter.TZioPartWriter.Destroy;
+begin
+  FZioStream.Free;
+  inherited Destroy;
+end;
+
+procedure TZioWriter.TZioPartWriter.WriteMessage(AMessage: T);
+begin
+  if AMessage = nil then
+    Exit;
+  FZioStream.WriteMessage(AMessage);
+end;
+
+{ TZioWriter }
 
 constructor TZioWriter.Create(APattern: TPattern; ABufferSize: Integer = 65536);
 var
   i: Integer;
-  FileStream: TFileStream;
-  BufferedStream: TWriteBufStream;
-  ZioStream: TZioStream;
-  Path: AnsiString;
 begin
   inherited Create;
   
-  FStreams := TZioStreamList.Create;
-  FPaths := TAnsiStringList.Create;
-  FCurrentShardIndex := 0;
+  FPattern := APattern;
   FBufferSize := ABufferSize;
+  FCurrentShardIndex := 0;
   
-  // Ensure directory exists
-  ForceDirectories(APattern.BasePath);
-  
-  // Use pattern to create all shard files
-  for i := 0 to APattern.NumShards - 1 do
-  begin
-    Path := APattern.GetShardPath(i);
-    FPaths.Add(Path);
-    
-    try
-      FileStream := TFileStream.Create(Path, fmCreate);
-      BufferedStream := TWriteBufStream.Create(FileStream, FBufferSize);
-    except
-      on E: Exception do
-        raise EStreamException.CreateFmt('Failed to create file "%s": %s', [Path, E.Message]);
-    end;
-    
-    ZioStream := TZioStream.Create(FileStream, BufferedStream, True);
-    FStreams.Add(ZioStream);
-  end;
+  // Initialize sequence counters for each shard
+  SetLength(FShardSequences, APattern.NumShards);
+  for i := 0 to High(FShardSequences) do
+    FShardSequences[i] := 0;
 end;
 
 destructor TZioWriter.Destroy;
-var
-  ZioStream: TZioStream;
 begin
-  // Free all TZioStream objects (they will free their underlying streams)
-  for ZioStream in FStreams do
-    ZioStream.Free;
-  
-  FStreams.Free;
-  FPaths.Free;
-  
   inherited Destroy;
 end;
 
-procedure TZioWriter.WriteMessage(AMessage: T);
+function TZioWriter.GetShardDirectoryPath(ShardIndex: Integer): AnsiString;
 var
-  ShardIndex: Integer;
+  ActualShardIndex, i, Count: Integer;
 begin
-  if AMessage = nil then
-    Exit;
+  // Handle filtered patterns (with modulo)
+  Count := 0;
+  ActualShardIndex := -1;
+  for i := 0 to FPattern.FNumShards - 1 do
+  begin
+    if i mod FPattern.FModulo <> FPattern.FRemainder then
+      Continue;
+
+    if Count = ShardIndex then
+    begin
+      ActualShardIndex := i;
+      Break;
+    end;
+    Inc(Count);
+  end;
   
-  // Get current shard in round-robin fashion
-  ShardIndex := FCurrentShardIndex;
-  FCurrentShardIndex := (FCurrentShardIndex + 1) mod FStreams.Count;
+  if ActualShardIndex = -1 then
+    raise EShardException.CreateFmt('Shard index %d out of range [0..%d]',
+      [ShardIndex, FPattern.NumShards - 1]);
   
-  // Write to the selected shard
-  FStreams[ShardIndex].WriteMessage(AMessage);
+  Result := Format('%sshard-%4.4d-of-%4.4d',
+                   [IncludeTrailingPathDelimiter(FPattern.BasePath), 
+                    ActualShardIndex, FPattern.FNumShards]);
 end;
 
-procedure TZioWriter.WriteMessageToShard(AMessage: T; ShardIndex: Integer);
+function TZioWriter.GeneratePartPath(ShardIndex: Integer): AnsiString;
+var
+  ShardDir: AnsiString;
+  Timestamp: Int64;
+  SeqNum: Integer;
 begin
-  if AMessage = nil then
-    Exit;
+  if (ShardIndex < 0) or (ShardIndex >= Length(FShardSequences)) then
+    raise EShardException.CreateFmt('Invalid shard index: %d (must be 0..%d)',
+      [ShardIndex, Length(FShardSequences) - 1]);
   
-  // Validate shard index
-  if (ShardIndex < 0) or (ShardIndex >= FStreams.Count) then
-    raise EShardException.CreateFmt('Invalid shard index: %d (must be 0..%d)', 
-                              [ShardIndex, FStreams.Count - 1]);
+  ShardDir := GetShardDirectoryPath(ShardIndex);
   
-  // Write to the specific shard
-  FStreams[ShardIndex].WriteMessage(AMessage);
+  // Get current Unix timestamp in milliseconds
+  Timestamp := DateTimeToUnix(Now, False) * 1000 + MilliSecondOf(Now);
+  
+  // Get and increment sequence number for this shard
+  SeqNum := FShardSequences[ShardIndex];
+  Inc(FShardSequences[ShardIndex]);
+  
+  Result := Format('%s%spart-%d-%4.4d.zio',
+                   [ShardDir, PathDelim, Timestamp, SeqNum]);
+end;
+
+procedure TZioWriter.EnsureShardDirectoryExists(ShardIndex: Integer);
+var
+  ShardDir: AnsiString;
+begin
+  ShardDir := GetShardDirectoryPath(ShardIndex);
+  if not DirectoryExists(ShardDir) then
+    ForceDirectories(ShardDir);
+end;
+
+function TZioWriter.NewPartWriter: TZioPartWriter;
+var
+  ShardIndex: Integer;
+  PartPath: AnsiString;
+begin
+  // Get current shard in round-robin fashion
+  ShardIndex := FCurrentShardIndex;
+  FCurrentShardIndex := (FCurrentShardIndex + 1) mod FPattern.NumShards;
+  
+  // Ensure shard directory exists
+  EnsureShardDirectoryExists(ShardIndex);
+  
+  // Generate unique part path
+  PartPath := GeneratePartPath(ShardIndex);
+  
+  // Create and return new part writer
+  Result := TZioPartWriter.Create(PartPath, FBufferSize);
 end;
 
 function TZioWriter.GetTotalStreams: Integer;
 begin
-  Result := FStreams.Count;
+  Result := FPattern.NumShards;
 end;
 
 end.

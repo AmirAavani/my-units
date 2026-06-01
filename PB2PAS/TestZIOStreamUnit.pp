@@ -3,7 +3,7 @@ program TestZIOStreamUnit;
 {$mode objfpc}{$H+}
 
 uses
-  SysUtils, Classes, ZIOStreamUnit, ProtoHelperUnit;
+  SysUtils, Classes, ZIOStreamUnit, ProtoHelperUnit, ProtoStreamUnit;
 
 type
   { Simple test message }
@@ -28,10 +28,8 @@ end;
 
 procedure TTestMessage.SaveToStream(Stream: TProtoStreamWriter);
 begin
-  if FValue <> 0 then
-    Stream.WriteInt32(1, FValue);
-  if FText <> '' then
-    Stream.WriteString(2, FText);
+  SaveInt32(Stream, FValue, 1);
+  SaveString(Stream, FText, 2);
 end;
 
 function TTestMessage.LoadFromStream(Stream: TProtoStreamReader; Len: Integer): Boolean;
@@ -43,13 +41,13 @@ begin
   begin
     Stream.ReadTag(FieldNumber, WireType);
     case FieldNumber of
-      1: FValue := Stream.ReadInt32;
-      2: FText := Stream.ReadString;
+      1: FValue := LoadInt32(Stream);
+      2: FText := LoadString(Stream);
     else
-      Stream.SkipField(WireType);
+      SkipField(Stream, WireType);
     end;
   end;
-  Result := Stream.Position = StartPos + Len;
+  Result := StartPos + Len = Stream.Position;
 end;
 
 { Test Suite }
@@ -199,56 +197,205 @@ begin
   WriteLn('');
 end;
 
-procedure TestZIOReadWrite;
+procedure TestMultiPartWriters;
 var
   Writer: specialize TZioWriter<TTestMessage>;
-  Reader: specialize TZioReader<TTestMessage>;
+  PartWriter1, PartWriter2, PartWriter3: specialize TZioWriter<TTestMessage>.TZioPartWriter;
   Pattern: TPattern;
-  Msg, ReadMsg: TTestMessage;
+  Msg: TTestMessage;
   TempDir: AnsiString;
   i: Integer;
+  HasPart1, HasPart2, HasPart3: Boolean;
 begin
-  WriteLn('=== TestZIOReadWrite ===');
+  WriteLn('=== TestMultiPartWriters ===');
   
-  TempDir := '/tmp/zio_test_' + IntToStr(Random(1000000));
+  TempDir := '/tmp/zio_multipart_test_' + IntToStr(Random(1000000));
   ForceDirectories(TempDir);
   
-  // Write messages
+  // Create writer with 4 shards
   Pattern := TPattern.Create(TempDir, 4);
   Writer := specialize TZioWriter<TTestMessage>.Create(Pattern);
   
-  for i := 0 to 9 do
+  // Create three part writers (round-robin across shards)
+  PartWriter1 := Writer.NewPartWriter;  // shard 0
+  PartWriter2 := Writer.NewPartWriter;  // shard 1
+  PartWriter3 := Writer.NewPartWriter;  // shard 2
+  
+  // Verify part paths are not empty
+  HasPart1 := PartWriter1.PartPath <> '';
+  HasPart2 := PartWriter2.PartPath <> '';
+  HasPart3 := PartWriter3.PartPath <> '';
+  
+  AssertTrue(HasPart1, 'Part 1 path should be generated');
+  AssertTrue(HasPart2, 'Part 2 path should be generated');
+  AssertTrue(HasPart3, 'Part 3 path should be generated');
+  
+  // Write to first part
+  for i := 0 to 2 do
   begin
     Msg := TTestMessage.Create;
     Msg.Value := i;
-    Msg.Text := 'Message ' + IntToStr(i);
-    Writer.WriteMessageToShard(Msg, i mod 4);  // Distribute across shards
+    Msg.Text := 'Part1-Message-' + IntToStr(i);
+    PartWriter1.WriteMessage(Msg);
     Msg.Free;
   end;
   
-  Writer.Free;
-  
-  // Read messages back
-  Reader := specialize TZioReader<TTestMessage>.Create(Pattern);
-  Pattern.Free;
-  
-  ReadMsg := TTestMessage.Create;
-  i := 0;
-  while Reader.ReadMessage(ReadMsg) do
+  // Write to second part
+  for i := 10 to 12 do
   begin
-    AssertTrue(ReadMsg.Value >= 0, 'Read value should be valid');
-    AssertTrue(ReadMsg.Text <> '', 'Read text should not be empty');
-    Inc(i);
-    ReadMsg.Clear;
+    Msg := TTestMessage.Create;
+    Msg.Value := i;
+    Msg.Text := 'Part2-Message-' + IntToStr(i);
+    PartWriter2.WriteMessage(Msg);
+    Msg.Free;
   end;
   
-  AssertEquals(10, i, 'Should read 10 messages');
+  // Write to third part
+  for i := 20 to 22 do
+  begin
+    Msg := TTestMessage.Create;
+    Msg.Value := i;
+    Msg.Text := 'Part3-Message-' + IntToStr(i);
+    PartWriter3.WriteMessage(Msg);
+    Msg.Free;
+  end;
   
-  ReadMsg.Free;
-  Reader.Free;
+  // Verify files exist
+  AssertTrue(FileExists(PartWriter1.PartPath), 'Part 1 file should exist');
+  AssertTrue(FileExists(PartWriter2.PartPath), 'Part 2 file should exist');
+  AssertTrue(FileExists(PartWriter3.PartPath), 'Part 3 file should exist');
   
   // Cleanup
-  DeleteDirectory(TempDir, False);
+  PartWriter1.Free;
+  PartWriter2.Free;
+  PartWriter3.Free;
+  Writer.Free;
+  Pattern.Free;
+  
+  // Cleanup directory
+  WriteLn('  Note: Cleanup directory manually if needed: ', TempDir);
+  WriteLn('');
+end;
+
+procedure TestMultiplePartsInSameShard;
+var
+  Writer: specialize TZioWriter<TTestMessage>;
+  PartWriter1, PartWriter2: specialize TZioWriter<TTestMessage>.TZioPartWriter;
+  TempPW: specialize TZioWriter<TTestMessage>.TZioPartWriter;
+  Pattern: TPattern;
+  Msg: TTestMessage;
+  TempDir: AnsiString;
+  i: Integer;
+  Path1, Path2: AnsiString;
+begin
+  WriteLn('=== TestMultiplePartsInSameShard ===');
+  
+  TempDir := '/tmp/zio_sameshard_test_' + IntToStr(Random(1000000));
+  ForceDirectories(TempDir);
+  
+  // Create writer with 2 shards
+  Pattern := TPattern.Create(TempDir, 2);
+  Writer := specialize TZioWriter<TTestMessage>.Create(Pattern);
+  
+  // Create first part writer (shard 0)
+  PartWriter1 := Writer.NewPartWriter;
+  Path1 := PartWriter1.PartPath;
+  
+  // Skip shard 1
+  TempPW := Writer.NewPartWriter;
+  TempPW.Free;
+  
+  // Create second part writer (shard 0 again)
+  PartWriter2 := Writer.NewPartWriter;
+  Path2 := PartWriter2.PartPath;
+  
+  // Verify both parts are in shard 0
+  AssertTrue(Pos('shard-0000-of-0002', Path1) > 0, 'Part 1 should be in shard 0');
+  AssertTrue(Pos('shard-0000-of-0002', Path2) > 0, 'Part 2 should be in shard 0');
+  
+  // Verify different filenames (different sequence numbers)
+  AssertTrue(Path1 <> Path2, 'Part files should have different names');
+  
+  // Write to both parts
+  for i := 0 to 2 do
+  begin
+    Msg := TTestMessage.Create;
+    Msg.Value := i;
+    Msg.Text := 'FirstPart-' + IntToStr(i);
+    PartWriter1.WriteMessage(Msg);
+    Msg.Free;
+  end;
+  
+  for i := 100 to 102 do
+  begin
+    Msg := TTestMessage.Create;
+    Msg.Value := i;
+    Msg.Text := 'SecondPart-' + IntToStr(i);
+    PartWriter2.WriteMessage(Msg);
+    Msg.Free;
+  end;
+  
+  // Verify both files exist
+  AssertTrue(FileExists(Path1), 'Part 1 file should exist');
+  AssertTrue(FileExists(Path2), 'Part 2 file should exist');
+  
+  // Cleanup
+  PartWriter1.Free;
+  PartWriter2.Free;
+  Writer.Free;
+  Pattern.Free;
+  
+  WriteLn('  Note: Cleanup directory manually if needed: ', TempDir);
+  WriteLn('');
+end;
+
+procedure TestPartWriterRoundRobin;
+var
+  Writer: specialize TZioWriter<TTestMessage>;
+  PartWriter1, PartWriter2, PartWriter3, PartWriter4, PartWriter5: specialize TZioWriter<TTestMessage>.TZioPartWriter;
+  Pattern: TPattern;
+  TempDir: AnsiString;
+  Path1, Path2, Path3, Path4, Path5: AnsiString;
+begin
+  WriteLn('=== TestPartWriterRoundRobin ===');
+  
+  TempDir := '/tmp/zio_roundrobin_test_' + IntToStr(Random(1000000));
+  ForceDirectories(TempDir);
+  
+  // Create writer with 3 shards
+  Pattern := TPattern.Create(TempDir, 3);
+  Writer := specialize TZioWriter<TTestMessage>.Create(Pattern);
+  
+  // Create 5 part writers, should cycle: shard 0, 1, 2, 0, 1
+  PartWriter1 := Writer.NewPartWriter;
+  PartWriter2 := Writer.NewPartWriter;
+  PartWriter3 := Writer.NewPartWriter;
+  PartWriter4 := Writer.NewPartWriter;
+  PartWriter5 := Writer.NewPartWriter;
+  
+  Path1 := PartWriter1.PartPath;
+  Path2 := PartWriter2.PartPath;
+  Path3 := PartWriter3.PartPath;
+  Path4 := PartWriter4.PartPath;
+  Path5 := PartWriter5.PartPath;
+  
+  // Verify round-robin distribution
+  AssertTrue(Pos('shard-0000-of-0003', Path1) > 0, 'Part 1 should be in shard 0');
+  AssertTrue(Pos('shard-0001-of-0003', Path2) > 0, 'Part 2 should be in shard 1');
+  AssertTrue(Pos('shard-0002-of-0003', Path3) > 0, 'Part 3 should be in shard 2');
+  AssertTrue(Pos('shard-0000-of-0003', Path4) > 0, 'Part 4 should be in shard 0 (wrap around)');
+  AssertTrue(Pos('shard-0001-of-0003', Path5) > 0, 'Part 5 should be in shard 1 (wrap around)');
+  
+  // Cleanup
+  PartWriter1.Free;
+  PartWriter2.Free;
+  PartWriter3.Free;
+  PartWriter4.Free;
+  PartWriter5.Free;
+  Writer.Free;
+  Pattern.Free;
+  
+  WriteLn('  Note: Cleanup directory manually if needed: ', TempDir);
   WriteLn('');
 end;
 
@@ -266,7 +413,9 @@ begin
   TestTPatternModulo;
   TestTPatternModuloDifferentRemainder;
   TestTPatternModuloUneven;
-  TestZIOReadWrite;
+  TestMultiPartWriters;
+  TestMultiplePartsInSameShard;
+  TestPartWriterRoundRobin;
   
   WriteLn('===========================');
   WriteLn(Format('Tests Passed: %d', [TestsPassed]));
