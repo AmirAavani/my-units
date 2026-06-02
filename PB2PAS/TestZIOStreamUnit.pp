@@ -92,12 +92,12 @@ begin
   AssertEquals('/tmp/test', Pattern.BasePath, 'BasePath should match');
   AssertEquals(16, Pattern.NumShards, 'NumShards should be 16');
   
-  // Test GetShardPath
+  // Test GetShardPath (now returns directory)
   Path := Pattern.GetShardPath(0);
-  AssertEquals('/tmp/test/shards-0000-0016.zio', Path, 'First shard path');
+  AssertEquals('/tmp/test/shard-0000-of-0016', Path, 'First shard directory');
   
   Path := Pattern.GetShardPath(15);
-  AssertEquals('/tmp/test/shards-0015-0016.zio', Path, 'Last shard path');
+  AssertEquals('/tmp/test/shard-0015-of-0016', Path, 'Last shard directory');
   
   Pattern.Free;
   WriteLn('');
@@ -120,19 +120,19 @@ begin
   
   // Logical index 0 -> actual shard 0
   Path := FilteredPattern.GetShardPath(0);
-  AssertEquals('/tmp/test/shards-0000-0016.zio', Path, 'Filtered shard 0');
+  AssertEquals('/tmp/test/shard-0000-of-0016', Path, 'Filtered shard 0');
   
   // Logical index 1 -> actual shard 4
   Path := FilteredPattern.GetShardPath(1);
-  AssertEquals('/tmp/test/shards-0004-0016.zio', Path, 'Filtered shard 1');
+  AssertEquals('/tmp/test/shard-0004-of-0016', Path, 'Filtered shard 1');
   
   // Logical index 2 -> actual shard 8
   Path := FilteredPattern.GetShardPath(2);
-  AssertEquals('/tmp/test/shards-0008-0016.zio', Path, 'Filtered shard 2');
+  AssertEquals('/tmp/test/shard-0008-of-0016', Path, 'Filtered shard 2');
   
   // Logical index 3 -> actual shard 12
   Path := FilteredPattern.GetShardPath(3);
-  AssertEquals('/tmp/test/shards-0012-0016.zio', Path, 'Filtered shard 3');
+  AssertEquals('/tmp/test/shard-0012-of-0016', Path, 'Filtered shard 3');
   
   FilteredPattern.Free;
   Pattern.Free;
@@ -156,11 +156,11 @@ begin
   
   // Logical index 0 -> actual shard 1
   Path := FilteredPattern.GetShardPath(0);
-  AssertEquals('/tmp/test/shards-0001-0016.zio', Path, 'Filtered shard 0 (rem=1)');
+  AssertEquals('/tmp/test/shard-0001-of-0016', Path, 'Filtered shard 0 (rem=1)');
   
   // Logical index 1 -> actual shard 5
   Path := FilteredPattern.GetShardPath(1);
-  AssertEquals('/tmp/test/shards-0005-0016.zio', Path, 'Filtered shard 1 (rem=1)');
+  AssertEquals('/tmp/test/shard-0005-of-0016', Path, 'Filtered shard 1 (rem=1)');
   
   FilteredPattern.Free;
   Pattern.Free;
@@ -399,6 +399,285 @@ begin
   WriteLn('');
 end;
 
+procedure TestWriteReadRoundTrip;
+var
+  Writer: specialize TZioWriter<TTestMessage>;
+  Reader: specialize TZioReader<TTestMessage>;
+  PartWriter1, PartWriter2, PartWriter3: specialize TZioWriter<TTestMessage>.TZioPartWriter;
+  Pattern: TPattern;
+  Msg, ReadMsg: TTestMessage;
+  TempDir: AnsiString;
+  i, ReadCount: Integer;
+  ExpectedValues: array[0..8] of Integer;
+begin
+  WriteLn('=== TestWriteReadRoundTrip ===');
+  
+  TempDir := '/tmp/zio_roundtrip_test_' + IntToStr(Random(1000000));
+  ForceDirectories(TempDir);
+  
+  // Write messages using multiple part writers
+  Pattern := TPattern.Create(TempDir, 3);
+  Writer := specialize TZioWriter<TTestMessage>.Create(Pattern);
+  
+  // Create part writers for different shards
+  PartWriter1 := Writer.NewPartWriter;  // shard 0
+  PartWriter2 := Writer.NewPartWriter;  // shard 1
+  PartWriter3 := Writer.NewPartWriter;  // shard 2
+  
+  // Write to shard 0 (part 1)
+  for i := 0 to 2 do
+  begin
+    Msg := TTestMessage.Create;
+    Msg.Value := i;
+    Msg.Text := 'Shard0-' + IntToStr(i);
+    PartWriter1.WriteMessage(Msg);
+    ExpectedValues[i] := i;
+    Msg.Free;
+  end;
+  
+  // Write to shard 1 (part 1)
+  for i := 10 to 12 do
+  begin
+    Msg := TTestMessage.Create;
+    Msg.Value := i;
+    Msg.Text := 'Shard1-' + IntToStr(i);
+    PartWriter2.WriteMessage(Msg);
+    ExpectedValues[i - 7] := i;
+    Msg.Free;
+  end;
+  
+  // Write to shard 2 (part 1)
+  for i := 20 to 22 do
+  begin
+    Msg := TTestMessage.Create;
+    Msg.Value := i;
+    Msg.Text := 'Shard2-' + IntToStr(i);
+    PartWriter3.WriteMessage(Msg);
+    ExpectedValues[i - 14] := i;
+    Msg.Free;
+  end;
+  
+  // Clean up writers (flush and close files)
+  PartWriter1.Free;
+  PartWriter2.Free;
+  PartWriter3.Free;
+  Writer.Free;
+  
+  // Now read back all messages
+  Reader := specialize TZioReader<TTestMessage>.Create(Pattern);
+  Pattern.Free;
+  
+  ReadMsg := TTestMessage.Create;
+  ReadCount := 0;
+  
+  while Reader.ReadMessage(ReadMsg) do
+  begin
+    AssertTrue(ReadMsg.Value >= 0, 'Read value should be valid');
+    AssertTrue(ReadMsg.Text <> '', 'Read text should not be empty');
+    Inc(ReadCount);
+    ReadMsg.Clear;
+  end;
+  
+  AssertEquals(9, ReadCount, 'Should read 9 messages total');
+  
+  ReadMsg.Free;
+  Reader.Free;
+  
+  WriteLn('  Note: Cleanup directory manually if needed: ', TempDir);
+  WriteLn('');
+end;
+
+procedure TestMultiplePartsPerShardReadBack;
+var
+  Writer: specialize TZioWriter<TTestMessage>;
+  Reader: specialize TZioReader<TTestMessage>;
+  PartWriter1, PartWriter2, PartWriter3, PartWriter4: specialize TZioWriter<TTestMessage>.TZioPartWriter;
+  Pattern: TPattern;
+  Msg, ReadMsg: TTestMessage;
+  TempDir: AnsiString;
+  i, ReadCount: Integer;
+begin
+  WriteLn('=== TestMultiplePartsPerShardReadBack ===');
+  
+  TempDir := '/tmp/zio_multiparts_read_test_' + IntToStr(Random(1000000));
+  ForceDirectories(TempDir);
+  
+  // Write messages using multiple part writers to same shard
+  Pattern := TPattern.Create(TempDir, 2);
+  Writer := specialize TZioWriter<TTestMessage>.Create(Pattern);
+  
+  // Create 4 part writers: shard 0, shard 1, shard 0 (again), shard 1 (again)
+  PartWriter1 := Writer.NewPartWriter;  // shard 0, part 0
+  PartWriter2 := Writer.NewPartWriter;  // shard 1, part 0
+  PartWriter3 := Writer.NewPartWriter;  // shard 0, part 1
+  PartWriter4 := Writer.NewPartWriter;  // shard 1, part 1
+  
+  // Write to shard 0, part 0
+  for i := 0 to 2 do
+  begin
+    Msg := TTestMessage.Create;
+    Msg.Value := i;
+    Msg.Text := 'Shard0-Part0-' + IntToStr(i);
+    PartWriter1.WriteMessage(Msg);
+    Msg.Free;
+  end;
+  
+  // Write to shard 1, part 0
+  for i := 100 to 102 do
+  begin
+    Msg := TTestMessage.Create;
+    Msg.Value := i;
+    Msg.Text := 'Shard1-Part0-' + IntToStr(i);
+    PartWriter2.WriteMessage(Msg);
+    Msg.Free;
+  end;
+  
+  // Write to shard 0, part 1 (second part in same shard!)
+  for i := 10 to 12 do
+  begin
+    Msg := TTestMessage.Create;
+    Msg.Value := i;
+    Msg.Text := 'Shard0-Part1-' + IntToStr(i);
+    PartWriter3.WriteMessage(Msg);
+    Msg.Free;
+  end;
+  
+  // Write to shard 1, part 1 (second part in same shard!)
+  for i := 110 to 112 do
+  begin
+    Msg := TTestMessage.Create;
+    Msg.Value := i;
+    Msg.Text := 'Shard1-Part1-' + IntToStr(i);
+    PartWriter4.WriteMessage(Msg);
+    Msg.Free;
+  end;
+  
+  // Clean up writers (flush and close files)
+  PartWriter1.Free;
+  PartWriter2.Free;
+  PartWriter3.Free;
+  PartWriter4.Free;
+  Writer.Free;
+  
+  // Now read back all messages - reader should handle both parts of each shard
+  Reader := specialize TZioReader<TTestMessage>.Create(Pattern);
+  Pattern.Free;
+  
+  ReadMsg := TTestMessage.Create;
+  ReadCount := 0;
+  
+  while Reader.ReadMessage(ReadMsg) do
+  begin
+    AssertTrue(ReadMsg.Value >= 0, 'Read value should be valid');
+    AssertTrue(ReadMsg.Text <> '', 'Read text should not be empty');
+    Inc(ReadCount);
+    ReadMsg.Clear;
+  end;
+  
+  // Should read 12 messages total: 6 from shard 0 (3+3), 6 from shard 1 (3+3)
+  AssertEquals(12, ReadCount, 'Should read 12 messages total (6 per shard from 2 parts each)');
+  
+  ReadMsg.Free;
+  Reader.Free;
+  
+  WriteLn('  Note: Cleanup directory manually if needed: ', TempDir);
+  WriteLn('');
+end;
+
+procedure TestPartOrderingWithinShard;
+var
+  Writer: specialize TZioWriter<TTestMessage>;
+  Reader: specialize TZioReader<TTestMessage>;
+  PartWriter1, PartWriter2, PartWriter3: specialize TZioWriter<TTestMessage>.TZioPartWriter;
+  Pattern: TPattern;
+  Msg, ReadMsg: TTestMessage;
+  TempDir: AnsiString;
+  i: Integer;
+  ExpectedOrder: array[0..8] of Integer;
+  ReadIndex: Integer;
+begin
+  WriteLn('=== TestPartOrderingWithinShard ===');
+  
+  TempDir := '/tmp/zio_order_test_' + IntToStr(Random(1000000));
+  ForceDirectories(TempDir);
+  
+  // Write messages to single shard using 3 different part writers
+  Pattern := TPattern.Create(TempDir, 1);  // Only 1 shard
+  Writer := specialize TZioWriter<TTestMessage>.Create(Pattern);
+  
+  // Create 3 part writers for shard 0
+  PartWriter1 := Writer.NewPartWriter;  // shard 0, part 0
+  PartWriter2 := Writer.NewPartWriter;  // shard 0, part 1 (wraps around to shard 0 since only 1 shard)
+  PartWriter3 := Writer.NewPartWriter;  // shard 0, part 2
+  
+  // Write to part 0 (values 0, 1, 2)
+  for i := 0 to 2 do
+  begin
+    Msg := TTestMessage.Create;
+    Msg.Value := i;
+    Msg.Text := 'Part0-' + IntToStr(i);
+    PartWriter1.WriteMessage(Msg);
+    ExpectedOrder[i] := i;
+    Msg.Free;
+  end;
+  
+  // Write to part 1 (values 10, 11, 12)
+  for i := 10 to 12 do
+  begin
+    Msg := TTestMessage.Create;
+    Msg.Value := i;
+    Msg.Text := 'Part1-' + IntToStr(i);
+    PartWriter2.WriteMessage(Msg);
+    ExpectedOrder[i - 7] := i;
+    Msg.Free;
+  end;
+  
+  // Write to part 2 (values 20, 21, 22)
+  for i := 20 to 22 do
+  begin
+    Msg := TTestMessage.Create;
+    Msg.Value := i;
+    Msg.Text := 'Part2-' + IntToStr(i);
+    PartWriter3.WriteMessage(Msg);
+    ExpectedOrder[i - 14] := i;
+    Msg.Free;
+  end;
+  
+  // Clean up writers
+  PartWriter1.Free;
+  PartWriter2.Free;
+  PartWriter3.Free;
+  Writer.Free;
+  
+  // Now read back and verify order
+  Reader := specialize TZioReader<TTestMessage>.Create(Pattern);
+  Pattern.Free;
+  
+  ReadMsg := TTestMessage.Create;
+  ReadIndex := 0;
+  
+  // Expected order: 0,1,2 (part 0), then 10,11,12 (part 1), then 20,21,22 (part 2)
+  while Reader.ReadMessage(ReadMsg) do
+  begin
+    if ReadIndex < 9 then
+    begin
+      AssertEquals(ExpectedOrder[ReadIndex], ReadMsg.Value, 
+                   Format('Message %d should have value %d (part ordering)', 
+                          [ReadIndex, ExpectedOrder[ReadIndex]]));
+    end;
+    Inc(ReadIndex);
+    ReadMsg.Clear;
+  end;
+  
+  AssertEquals(9, ReadIndex, 'Should read 9 messages in total');
+  
+  ReadMsg.Free;
+  Reader.Free;
+  
+  WriteLn('  Note: Cleanup directory manually if needed: ', TempDir);
+  WriteLn('');
+end;
+
 begin
   TestsPassed := 0;
   TestsFailed := 0;
@@ -416,6 +695,9 @@ begin
   TestMultiPartWriters;
   TestMultiplePartsInSameShard;
   TestPartWriterRoundRobin;
+  TestWriteReadRoundTrip;
+  TestMultiplePartsPerShardReadBack;
+  TestPartOrderingWithinShard;
   
   WriteLn('===========================');
   WriteLn(Format('Tests Passed: %d', [TestsPassed]));

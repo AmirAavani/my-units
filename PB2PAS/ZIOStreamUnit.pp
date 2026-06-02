@@ -86,10 +86,33 @@ type
   { TZioReader - Generic ZIO reader }
 
   generic TZioReader<T: TBaseMessage> = class(TObject)
+  protected
+    type
+      { TZioShardReader - Manages reading from one shard (multiple parts) }
+      TZioShardReader = class(TObject)
+      private
+        FPartPaths: TStringList;        // All part paths for this shard (sorted)
+        FCurrentPartIndex: Integer;     // Which part we're currently reading
+        FCurrentStream: TZioStream;     // Currently open part stream
+        FBufferSize: Integer;
+        
+        procedure OpenNextPart;
+        procedure CloseCurrentPart;
+        
+      public
+        constructor Create(const AShardDir: AnsiString; ABufferSize: Integer);
+        destructor Destroy; override;
+        
+        function ReadMessage(AMessage: TBaseMessage): Boolean;
+        function HasMoreParts: Boolean;
+      end;
+      
+      TZioShardReaderList = specialize TObjectList<TZioShardReader>;
+  
   private
-    FStreams: TZioStreamList;
-    FPaths: TAnsiStringList;
-    FCurrentStreamIndex: Integer;
+    FShardReaders: TZioShardReaderList;
+    FCurrentShardIndex: Integer;
+    FPattern: TPattern;
     FBufferSize: Integer;
 
   protected
@@ -237,7 +260,8 @@ begin
     raise EShardException.CreateFmt('Shard index %d out of range [0..%d] for filtered pattern',
       [ShardIndex, GetFilteredNumShards - 1]);
  
-  Result := Format('%sshards-%4.4d-%4.4d.zio',
+  // Return directory path for multi-part shards
+  Result := Format('%sshard-%4.4d-of-%4.4d',
                    [IncludeTrailingPathDelimiter(FBasePath), ActualShardIndex, FNumShards]);
 end;
 
@@ -431,92 +455,164 @@ begin
   Items[ShardIndex].WriteMessage(AMessage);
 end;
 
+{ TZioReader.TZioShardReader }
+
+constructor TZioReader.TZioShardReader.Create(const AShardDir: AnsiString; ABufferSize: Integer);
+var
+  SearchRec: TSearchRec;
+  PartPath: AnsiString;
+begin
+  inherited Create;
+  
+  FPartPaths := TStringList.Create;
+  FCurrentPartIndex := 0;
+  FCurrentStream := nil;
+  FBufferSize := ABufferSize;
+  
+  // Find all *.zio files in shard directory
+  if FindFirst(AShardDir + PathDelim + '*.zio', faAnyFile, SearchRec) = 0 then
+  begin
+    repeat
+      if (SearchRec.Name <> '.') and (SearchRec.Name <> '..') then
+      begin
+        PartPath := AShardDir + PathDelim + SearchRec.Name;
+        FPartPaths.Add(PartPath);
+      end;
+    until FindNext(SearchRec) <> 0;
+    FindClose(SearchRec);
+  end;
+  
+  // Sort alphabetically (part-0000-xxx.zio, part-0001-xxx.zio, ...)
+  FPartPaths.Sort;
+  
+  // Open first part if available
+  if FPartPaths.Count > 0 then
+    OpenNextPart;
+end;
+
+destructor TZioReader.TZioShardReader.Destroy;
+begin
+  CloseCurrentPart;
+  FPartPaths.Free;
+  inherited Destroy;
+end;
+
+procedure TZioReader.TZioShardReader.OpenNextPart;
+var
+  FileStream: TFileStream;
+  BufferedStream: TReadBufStream;
+  PartPath: AnsiString;
+begin
+  CloseCurrentPart;
+  
+  if FCurrentPartIndex < FPartPaths.Count then
+  begin
+    PartPath := FPartPaths[FCurrentPartIndex];
+    
+    try
+      FileStream := TFileStream.Create(PartPath, fmOpenRead);
+      BufferedStream := TReadBufStream.Create(FileStream, FBufferSize);
+      FCurrentStream := TZioStream.Create(FileStream, BufferedStream, True);
+    except
+      on E: Exception do
+        raise EStreamException.CreateFmt('Failed to open part file "%s": %s', [PartPath, E.Message]);
+    end;
+  end;
+end;
+
+procedure TZioReader.TZioShardReader.CloseCurrentPart;
+begin
+  if FCurrentStream <> nil then
+  begin
+    FCurrentStream.Free;
+    FCurrentStream := nil;
+  end;
+end;
+
+function TZioReader.TZioShardReader.ReadMessage(AMessage: TBaseMessage): Boolean;
+begin
+  Result := False;
+  
+  // Try reading from current part
+  if FCurrentStream <> nil then
+  begin
+    Result := FCurrentStream.ReadMessage(AMessage);
+    
+    if Result then
+      Exit; // Successfully read message
+    
+    // Current part exhausted, try next part
+    Inc(FCurrentPartIndex);
+    if HasMoreParts then
+    begin
+      OpenNextPart;
+      Result := ReadMessage(AMessage); // Recursive call for next part
+    end;
+  end;
+end;
+
+function TZioReader.TZioShardReader.HasMoreParts: Boolean;
+begin
+  Result := FCurrentPartIndex < FPartPaths.Count;
+end;
+
 { TZioReader }
 
 constructor TZioReader.Create(const APaths: array of AnsiString; ABufferSize: Integer = 131072);
 var
   i: Integer;
-  FileStream: TFileStream;
-  BufferedStream: TReadBufStream;
-  ZioStream: TZioStream;
+  ShardReader: TZioShardReader;
   Path: AnsiString;
 begin
   inherited Create;
   
-  FStreams := TZioStreamList.Create;
-  FPaths := TAnsiStringList.Create;
-  FCurrentStreamIndex := 0;
+  FShardReaders := TZioShardReaderList.Create(True); // Owns objects
+  FCurrentShardIndex := 0;
   FBufferSize := ABufferSize;
+  FPattern := nil;
   
-  // Store paths and open all files
+  // Create shard readers for each path (assuming directories)
   for i := 0 to High(APaths) do
   begin
     Path := APaths[i];
-    FPaths.Add(Path);
-    if not FileExists(Path) then
-      raise EStreamException.CreateFmt('File not found: %s', [Path]);
     
-    try
-      FileStream := TFileStream.Create(Path, fmOpenRead);
-      BufferedStream := TReadBufStream.Create(FileStream, FBufferSize);
-    except
-      on E: Exception do
-        raise EStreamException.CreateFmt('Failed to open file "%s": %s', [Path, E.Message]);
-    end;
+    if not DirectoryExists(Path) then
+      raise EStreamException.CreateFmt('Shard directory not found: %s', [Path]);
     
-    ZioStream := TZioStream.Create(FileStream, BufferedStream, True);
-    FStreams.Add(ZioStream);
+    ShardReader := TZioShardReader.Create(Path, FBufferSize);
+    FShardReaders.Add(ShardReader);
   end;
 end;
 
 constructor TZioReader.Create(APattern: TPattern; ABufferSize: Integer = 131072);
 var
   i: Integer;
-  FileStream: TFileStream;
-  BufferedStream: TReadBufStream;
-  ZioStream: TZioStream;
-  Path: AnsiString;
+  ShardReader: TZioShardReader;
+  ShardDir: AnsiString;
 begin
   inherited Create;
   
-  FStreams := TZioStreamList.Create;
-  FPaths := TAnsiStringList.Create;
-  FCurrentStreamIndex := 0;
+  FShardReaders := TZioShardReaderList.Create(True); // Owns objects
+  FCurrentShardIndex := 0;
+  FPattern := APattern;
   FBufferSize := ABufferSize;
   
-  // Use pattern to open all shard files
+  // Create shard readers for each shard
   for i := 0 to APattern.NumShards - 1 do
   begin
-    Path := APattern.GetShardPath(i);
-    FPaths.Add(Path);
+    ShardDir := APattern.GetShardPath(i);
     
-    if not FileExists(Path) then
-      raise EStreamException.CreateFmt('File not found: %s', [Path]);
+    if not DirectoryExists(ShardDir) then
+      raise EStreamException.CreateFmt('Shard directory not found: %s', [ShardDir]);
     
-    try
-      FileStream := TFileStream.Create(Path, fmOpenRead);
-      BufferedStream := TReadBufStream.Create(FileStream, FBufferSize);
-    except
-      on E: Exception do
-        raise EStreamException.CreateFmt('Failed to open file "%s": %s', [Path, E.Message]);
-    end;
-    
-    ZioStream := TZioStream.Create(FileStream, BufferedStream, True);
-    FStreams.Add(ZioStream);
+    ShardReader := TZioShardReader.Create(ShardDir, FBufferSize);
+    FShardReaders.Add(ShardReader);
   end;
 end;
 
 destructor TZioReader.Destroy;
-var
-  ZioStream: TZioStream;
 begin
-  // Free all TZioStream objects (they will free their underlying streams)
-  for ZioStream in FStreams do
-    ZioStream.Free;
-
-  FStreams.Free;
-  FPaths.Free;
-  
+  FShardReaders.Free; // Automatically frees all shard readers
   inherited Destroy;
 end;
 
@@ -524,19 +620,19 @@ function TZioReader.ReadMessage(var AMessage: T): Boolean;
 begin
   Result := False;
   
-  // Read from streams sequentially until we find a message or exhaust all streams
-  while FCurrentStreamIndex < FStreams.Count do
+  // Read from shards sequentially
+  while FCurrentShardIndex < FShardReaders.Count do
   begin
-    Result := FStreams[FCurrentStreamIndex].ReadMessage(AMessage);
+    Result := FShardReaders[FCurrentShardIndex].ReadMessage(AMessage);
     
     if Result then
       Exit; // Successfully read a message
     
-    // Current stream is exhausted, move to next
-    Inc(FCurrentStreamIndex);
+    // Current shard exhausted, move to next
+    Inc(FCurrentShardIndex);
   end;
   
-  // All streams exhausted
+  // All shards exhausted
   Result := False;
 end;
 
@@ -545,16 +641,16 @@ begin
   Result := False;
 
   // Validate shard index
-  if (ShardIndex < 0) or (ShardIndex >= FStreams.Count) then
+  if (ShardIndex < 0) or (ShardIndex >= FShardReaders.Count) then
     raise EShardException.CreateFmt('Invalid shard index: %d (must be 0..%d)', 
-                              [ShardIndex, FStreams.Count - 1]);
+                              [ShardIndex, FShardReaders.Count - 1]);
   
-  Result := FStreams[ShardIndex].ReadMessage(AMessage);
+  Result := FShardReaders[ShardIndex].ReadMessage(AMessage);
 end;
 
 function TZioReader.GetTotalStreams: Integer;
 begin
-  Result := FStreams.Count;
+  Result := FShardReaders.Count;
 end;
 
 { TZioWriter.TZioPartWriter }
@@ -662,8 +758,9 @@ begin
   SeqNum := FShardSequences[ShardIndex];
   Inc(FShardSequences[ShardIndex]);
   
-  Result := Format('%s%spart-%d-%4.4d.zio',
-                   [ShardDir, PathDelim, Timestamp, SeqNum]);
+  // Format: part-{seq:04d}-{timestamp}.zio for alphabetical sorting
+  Result := Format('%s%spart-%4.4d-%d.zio',
+                   [ShardDir, PathDelim, SeqNum, Timestamp]);
 end;
 
 procedure TZioWriter.EnsureShardDirectoryExists(ShardIndex: Integer);
