@@ -678,6 +678,153 @@ begin
   WriteLn('');
 end;
 
+procedure TestWriteMessageToShard;
+var
+  Writer: specialize TZioWriter<TTestMessage>;
+  Reader: specialize TZioReader<TTestMessage>;
+  Pattern: TPattern;
+  Msg, ReadMsg: TTestMessage;
+  TempDir: AnsiString;
+  i, ReadCount: Integer;
+begin
+  WriteLn('=== TestWriteMessageToShard ===');
+  
+  TempDir := '/tmp/zio_writeto_test_' + IntToStr(Random(1000000));
+  ForceDirectories(TempDir);
+  
+  // Use WriteMessageToShard convenience method
+  Pattern := TPattern.Create(TempDir, 3);
+  Writer := specialize TZioWriter<TTestMessage>.Create(Pattern);
+  
+  // Write messages to specific shards
+  for i := 0 to 2 do
+  begin
+    Msg := TTestMessage.Create;
+    Msg.Value := i * 10;
+    Msg.Text := 'Shard' + IntToStr(i);
+    Writer.WriteMessageToShard(Msg, i);  // Each message goes to its own shard
+    Msg.Free;
+  end;
+  
+  // Write more messages to same shards (should reuse part writers)
+  for i := 0 to 2 do
+  begin
+    Msg := TTestMessage.Create;
+    Msg.Value := i * 10 + 1;
+    Msg.Text := 'Shard' + IntToStr(i) + '-2';
+    Writer.WriteMessageToShard(Msg, i);
+    Msg.Free;
+  end;
+  
+  Writer.Free;
+  
+  // Read back and verify
+  Reader := specialize TZioReader<TTestMessage>.Create(Pattern);
+  Pattern.Free;
+  
+  ReadMsg := TTestMessage.Create;
+  ReadCount := 0;
+  
+  while Reader.ReadMessage(ReadMsg) do
+  begin
+    AssertTrue(ReadMsg.Value >= 0, 'Read value should be valid');
+    Inc(ReadCount);
+    ReadMsg.Clear;
+  end;
+  
+  AssertEquals(6, ReadCount, 'Should read 6 messages total');
+  
+  ReadMsg.Free;
+  Reader.Free;
+  
+  WriteLn('  Note: Cleanup directory manually if needed: ', TempDir);
+  WriteLn('');
+end;
+
+procedure TestGetShardWriter;
+var
+  Writer: specialize TZioWriter<TTestMessage>;
+  ShardWriter: specialize TZioWriter<TTestMessage>.TZioShardWriter;
+  PartWriter1, PartWriter2: specialize TZioWriter<TTestMessage>.TZioPartWriter;
+  Reader: specialize TZioReader<TTestMessage>;
+  Pattern: TPattern;
+  Msg, ReadMsg: TTestMessage;
+  TempDir, ShardDir: AnsiString;
+  i, ReadCount: Integer;
+begin
+  WriteLn('=== TestGetShardWriter ===');
+  
+  TempDir := '/tmp/zio_getwriter_test_' + IntToStr(Random(1000000));
+  ForceDirectories(TempDir);
+  
+  Pattern := TPattern.Create(TempDir, 1);  // Only 1 shard to avoid directory issues
+  Writer := specialize TZioWriter<TTestMessage>.Create(Pattern);
+  
+  // Get shard writer for shard 0
+  ShardWriter := Writer.GetShardWriter(0);
+  AssertEquals(0, ShardWriter.ShardIndex, 'ShardIndex should be 0');
+  
+  // Create multiple parts for same shard
+  PartWriter1 := ShardWriter.NewPartWriter;
+  PartWriter2 := ShardWriter.NewPartWriter;
+  
+  // Write to first part
+  for i := 0 to 2 do
+  begin
+    Msg := TTestMessage.Create;
+    Msg.Value := i;
+    Msg.Text := 'Part1-' + IntToStr(i);
+    PartWriter1.WriteMessage(Msg);
+    Msg.Free;
+  end;
+  
+  // Write to second part
+  for i := 10 to 12 do
+  begin
+    Msg := TTestMessage.Create;
+    Msg.Value := i;
+    Msg.Text := 'Part2-' + IntToStr(i);
+    PartWriter2.WriteMessage(Msg);
+    Msg.Free;
+  end;
+  
+  // Also use convenience WriteMessage on ShardWriter
+  for i := 20 to 21 do
+  begin
+    Msg := TTestMessage.Create;
+    Msg.Value := i;
+    Msg.Text := 'Direct-' + IntToStr(i);
+    ShardWriter.WriteMessage(Msg);  // Uses internal part writer
+    Msg.Free;
+  end;
+  
+  PartWriter1.Free;
+  PartWriter2.Free;
+  Writer.Free;
+  
+  // Read back from single shard directory
+  ShardDir := Pattern.GetShardPath(0);
+  Reader := specialize TZioReader<TTestMessage>.Create([ShardDir]);
+  Pattern.Free;
+  
+  ReadMsg := TTestMessage.Create;
+  ReadCount := 0;
+  
+  while Reader.ReadMessage(ReadMsg) do
+  begin
+    Inc(ReadCount);
+    ReadMsg.Clear;
+  end;
+  
+  AssertEquals(8, ReadCount, 'Should read 8 messages total (3+3+2)');
+  
+  ReadMsg.Free;
+  Reader.Free;
+  
+  WriteLn('  Note: Cleanup directory manually if needed: ', TempDir);
+  WriteLn('');
+end;
+
 begin
   TestsPassed := 0;
   TestsFailed := 0;
@@ -698,6 +845,8 @@ begin
   TestWriteReadRoundTrip;
   TestMultiplePartsPerShardReadBack;
   TestPartOrderingWithinShard;
+  TestWriteMessageToShard;
+  TestGetShardWriter;
   
   WriteLn('===========================');
   WriteLn(Format('Tests Passed: %d', [TestsPassed]));
