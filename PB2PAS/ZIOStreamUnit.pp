@@ -176,7 +176,8 @@ type
       end;
       
       TZioShardWriterList = specialize TObjectList<TZioShardWriter>;
-      
+      TZioPartWriterList = specialize TObjectList<TZioPartWriter>;
+
   private
     FPattern: TPattern;
     FBufferSize: Integer;

@@ -825,6 +825,109 @@ begin
   WriteLn('');
 end;
 
+procedure TestWriteMessageToShardAfterPartWriters;
+var
+  Writer: specialize TZioWriter<TTestMessage>;
+  ShardWriter: specialize TZioWriter<TTestMessage>.TZioShardWriter;
+  PartWriter1, PartWriter2: specialize TZioWriter<TTestMessage>.TZioPartWriter;
+  Reader: specialize TZioReader<TTestMessage>;
+  Pattern: TPattern;
+  Msg, ReadMsg: TTestMessage;
+  TempDir, ShardDir: AnsiString;
+  i, ReadCount: Integer;
+begin
+  WriteLn('=== TestWriteMessageToShardAfterPartWriters ===');
+  WriteLn('  This test simulates the Crawler scenario:');
+  WriteLn('  1. Create ShardWriter (creates FCurrentPartWriter)');
+  WriteLn('  2. Workers create and use their own PartWriters');
+  WriteLn('  3. Workers free their PartWriters');
+  WriteLn('  4. Main thread tries to use WriteMessageToShard (uses old FCurrentPartWriter)');
+  WriteLn('');
+  
+  TempDir := '/tmp/zio_afterparts_test_' + IntToStr(Random(1000000));
+  ForceDirectories(TempDir);
+
+  Pattern := TPattern.Create(TempDir, 2);  // 2 shards
+  Writer := specialize TZioWriter<TTestMessage>.Create(Pattern);
+  WriteLn('  Writer created (FCurrentPartWriter created for each shard)');
+
+  // Get shard writer for shard 0
+  ShardWriter := Writer.GetShardWriter(0);
+
+  // Simulate workers: Create multiple part writers
+  WriteLn('  Creating worker PartWriters...');
+  PartWriter1 := ShardWriter.NewPartWriter;
+  PartWriter2 := ShardWriter.NewPartWriter;
+
+  // Write to worker parts
+  WriteLn('  Workers writing data...');
+  for i := 0 to 2 do
+  begin
+    Msg := TTestMessage.Create;
+    Msg.Value := i;
+    Msg.Text := 'Worker1-' + IntToStr(i);
+    PartWriter1.WriteMessage(Msg);
+    Msg.Free;
+  end;
+
+  for i := 10 to 12 do
+  begin
+    Msg := TTestMessage.Create;
+    Msg.Value := i;
+    Msg.Text := 'Worker2-' + IntToStr(i);
+    PartWriter2.WriteMessage(Msg);
+    Msg.Free;
+  end;
+
+  // Free worker part writers (simulating workers completing)
+  WriteLn('  Freeing worker PartWriters...');
+  PartWriter1.Free;
+  PartWriter2.Free;
+
+  // Now try to use WriteMessageToShard (like DumpAuthors does)
+  WriteLn('  Main thread: Now calling Writer.WriteMessageToShard...');
+  Flush(Output);
+
+  for i := 20 to 22 do
+  begin
+    Msg := TTestMessage.Create;
+    Msg.Value := i;
+    Msg.Text := 'MainThread-' + IntToStr(i);
+    Writer.WriteMessageToShard(Msg, 0);  // Uses ShardWriter.FCurrentPartWriter
+    WriteLn(Format('    Wrote message %d to shard 0', [i]));
+    Flush(Output);
+    Msg.Free;
+  end;
+
+  WriteLn('  Writer.WriteMessageToShard completed successfully!');
+
+  Writer.Free;
+
+  // Read back and verify all messages
+  ShardDir := Pattern.GetShardPath(0);
+  Reader := specialize TZioReader<TTestMessage>.Create([ShardDir]);
+  Pattern.Free;
+
+  ReadMsg := TTestMessage.Create;
+  ReadCount := 0;
+
+  while Reader.ReadMessage(ReadMsg) do
+  begin
+    Inc(ReadCount);
+    ReadMsg.Clear;
+  end;
+
+  // Should read 9 messages: 3 from worker1 + 3 from worker2 + 3 from main thread
+  AssertEquals(9, ReadCount, 'Should read 9 messages total (3+3+3)');
+
+  ReadMsg.Free;
+  Reader.Free;
+
+  WriteLn('  Note: Cleanup directory manually if needed: ', TempDir);
+  WriteLn('');
+end;
+  
+
 begin
   TestsPassed := 0;
   TestsFailed := 0;
@@ -847,7 +950,8 @@ begin
   TestPartOrderingWithinShard;
   TestWriteMessageToShard;
   TestGetShardWriter;
-  
+  TestWriteMessageToShardAfterPartWriters;
+
   WriteLn('===========================');
   WriteLn(Format('Tests Passed: %d', [TestsPassed]));
   WriteLn(Format('Tests Failed: %d', [TestsFailed]));
@@ -858,3 +962,4 @@ begin
   else
     WriteLn('All tests passed!');
 end.
+
