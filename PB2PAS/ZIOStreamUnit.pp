@@ -35,6 +35,7 @@ type
   public
     constructor Create(const Pattern: AnsiString);
     constructor Create(const ABasePath: AnsiString; ANumShards: Integer);
+    constructor Create(const Pattern: TPattern);
     destructor Destroy; override;
     
     function GetShardPath(ShardIndex: Integer): AnsiString;
@@ -245,9 +246,20 @@ begin
   FNumShards := ANumShards;
   FRemainder := 0;
   FModulo := 1;
+
   
   if FNumShards <= 0 then
     raise EPatternException.CreateFmt('Number of shards must be positive: %d', [FNumShards]);
+end;
+
+constructor TPattern.Create(const Pattern: TPattern);
+begin
+  inherited Create;
+
+  FBasePath := Pattern.FBasePath;
+  FModulo := Pattern.FModulo;
+  FNumShards := Pattern.NumShards;
+  FRemainder:= Pattern.FRemainder;
 end;
 
 destructor TPattern.Destroy;
@@ -630,7 +642,7 @@ begin
   
   FShardReaders := TZioShardReaderList.Create(True); // Owns objects
   FCurrentShardIndex := 0;
-  FPattern := APattern;
+  FPattern := TPattern.Create(APattern);
   FBufferSize := ABufferSize;
   
   // Create shard readers for each shard
@@ -648,6 +660,7 @@ end;
 
 destructor TZioReader.Destroy;
 begin
+  FPattern.Free;
   FShardReaders.Free; // Automatically frees all shard readers
   inherited Destroy;
 end;
@@ -801,15 +814,17 @@ constructor TZioWriter.Create(APattern: TPattern; ABufferSize: Integer = 65536);
 begin
   inherited Create;
   
-  FPattern := APattern;
+  FPattern := TPattern.Create(APattern);
   FBufferSize := ABufferSize;
   FCurrentShardIndex := 0;
   FShardWriters := TZioShardWriterList.Create(True);  // Owns shard writers
+
 end;
 
 destructor TZioWriter.Destroy;
 begin
   FShardWriters.Free;
+  FPattern.Free;
   inherited Destroy;
 end;
 
