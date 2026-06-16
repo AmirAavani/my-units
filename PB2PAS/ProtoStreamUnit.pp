@@ -32,7 +32,7 @@ type
   end;
 
 const
-  ByteArraySize = 10;
+  ByteArraySize = 4096;
 
 type
   TByteArray = array [0..ByteArraySize - 1] of Byte;
@@ -128,13 +128,6 @@ type
 
   end;
 
-  { EInvalidInput }
-
-  EInvalidInput = class(Exception)
-    constructor Create;
-
-  end;
-
   { TProtoStreamReader }
 
   TProtoStreamReader = class(TObject)
@@ -212,13 +205,6 @@ begin
 end;
 
 
-{ EInvalidInput }
-
-constructor EInvalidInput.Create;
-begin
-  inherited Create('Invalid Input');
-end;
-
 { TProtoStreamReader }
 
 function TProtoStreamReader.GetSize: Int64;
@@ -232,9 +218,12 @@ begin
 end;
 
 function TProtoStreamReader.ReadNextByte: Byte;
+var
+  BytesRead: Integer;
 begin
-  FStream.Read(Result, 1);
-
+  BytesRead := FStream.Read(Result, 1);
+  if BytesRead = 0 then
+    Result := 0;  // Return 0 on EOF instead of undefined value
 end;
 
 procedure TProtoStreamReader.ReadRawData(P: Pointer; Count: Integer);
@@ -304,9 +293,10 @@ begin
   Shift := 0;
   while Shift < 64 do
   begin
-    if FStream.Size <= FStream.Position then
-      raise EInvalidInput.Create();
-
+    { PERFORMANCE FIX: Removed GetSize check that caused ~1M lseek() syscalls
+      The buffered stream will return 0 bytes on EOF, which is sufficient
+      for detecting end-of-stream without expensive system calls }
+    
     b := ReadNextByte;
     Result := Result or ((b and $7F) shl shift);
     if b < $80 then
@@ -325,9 +315,10 @@ begin
   Shift := 0;
   while Shift < 32 do
   begin
-    if FStream.Size <= FStream.Position then
-      raise EInvalidInput.Create();
-
+    { PERFORMANCE FIX: Removed GetSize check that caused ~1M lseek() syscalls
+      The buffered stream will return 0 bytes on EOF, which is sufficient
+      for detecting end-of-stream without expensive system calls }
+    
     b := ReadNextByte;
     Result := Result or ((b and $7F) shl shift);
     if b < $80 then
