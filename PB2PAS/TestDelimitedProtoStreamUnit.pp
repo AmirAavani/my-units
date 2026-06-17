@@ -1,9 +1,9 @@
-program TestZIOStreamUnit;
+program TestDelimitedProtoStreamUnit;
 
 {$mode objfpc}{$H+}
 
 uses
-  SysUtils, Classes, ZIOStreamUnit, ProtoHelperUnit, ProtoStreamUnit;
+  SysUtils, Classes, DelimitedProtoStreamUnit, ProtoHelperUnit, ProtoStreamUnit;
 
 type
   { Simple test message }
@@ -199,8 +199,8 @@ end;
 
 procedure TestMultiPartWriters;
 var
-  Writer: specialize TZioWriter<TTestMessage>;
-  PartWriter1, PartWriter2, PartWriter3: specialize TZioWriter<TTestMessage>.TZioPartWriter;
+  Writer: specialize TDelimitedProtoWriter<TTestMessage>;
+  PartWriter1, PartWriter2, PartWriter3: specialize TDelimitedProtoWriter<TTestMessage>.TDelimitedProtoPartWriter;
   Pattern: TPattern;
   Msg: TTestMessage;
   TempDir: AnsiString;
@@ -214,7 +214,7 @@ begin
   
   // Create writer with 4 shards
   Pattern := TPattern.Create(TempDir, 4);
-  Writer := specialize TZioWriter<TTestMessage>.Create(Pattern);
+  Writer := specialize TDelimitedProtoWriter<TTestMessage>.Create(Pattern);
   
   // Create three part writers (round-robin across shards)
   PartWriter1 := Writer.NewPartWriter;  // shard 0
@@ -279,9 +279,9 @@ end;
 
 procedure TestMultiplePartsInSameShard;
 var
-  Writer: specialize TZioWriter<TTestMessage>;
-  PartWriter1, PartWriter2: specialize TZioWriter<TTestMessage>.TZioPartWriter;
-  TempPW: specialize TZioWriter<TTestMessage>.TZioPartWriter;
+  Writer: specialize TDelimitedProtoWriter<TTestMessage>;
+  PartWriter1, PartWriter2: specialize TDelimitedProtoWriter<TTestMessage>.TDelimitedProtoPartWriter;
+  TempPW: specialize TDelimitedProtoWriter<TTestMessage>.TDelimitedProtoPartWriter;
   Pattern: TPattern;
   Msg: TTestMessage;
   TempDir: AnsiString;
@@ -295,7 +295,7 @@ begin
   
   // Create writer with 2 shards
   Pattern := TPattern.Create(TempDir, 2);
-  Writer := specialize TZioWriter<TTestMessage>.Create(Pattern);
+  Writer := specialize TDelimitedProtoWriter<TTestMessage>.Create(Pattern);
   
   // Create first part writer (shard 0)
   PartWriter1 := Writer.NewPartWriter;
@@ -351,8 +351,8 @@ end;
 
 procedure TestPartWriterRoundRobin;
 var
-  Writer: specialize TZioWriter<TTestMessage>;
-  PartWriter1, PartWriter2, PartWriter3, PartWriter4, PartWriter5: specialize TZioWriter<TTestMessage>.TZioPartWriter;
+  Writer: specialize TDelimitedProtoWriter<TTestMessage>;
+  PartWriter1, PartWriter2, PartWriter3, PartWriter4, PartWriter5: specialize TDelimitedProtoWriter<TTestMessage>.TDelimitedProtoPartWriter;
   Pattern: TPattern;
   TempDir: AnsiString;
   Path1, Path2, Path3, Path4, Path5: AnsiString;
@@ -364,7 +364,7 @@ begin
   
   // Create writer with 3 shards
   Pattern := TPattern.Create(TempDir, 3);
-  Writer := specialize TZioWriter<TTestMessage>.Create(Pattern);
+  Writer := specialize TDelimitedProtoWriter<TTestMessage>.Create(Pattern);
   
   // Create 5 part writers, should cycle: shard 0, 1, 2, 0, 1
   PartWriter1 := Writer.NewPartWriter;
@@ -401,9 +401,9 @@ end;
 
 procedure TestWriteReadRoundTrip;
 var
-  Writer: specialize TZioWriter<TTestMessage>;
-  Reader: specialize TZioReader<TTestMessage>;
-  PartWriter1, PartWriter2, PartWriter3: specialize TZioWriter<TTestMessage>.TZioPartWriter;
+  Writer: specialize TDelimitedProtoWriter<TTestMessage>;
+  Reader: specialize TDelimitedProtoReader<TTestMessage>;
+  PartWriter1, PartWriter2, PartWriter3: specialize TDelimitedProtoWriter<TTestMessage>.TDelimitedProtoPartWriter;
   Pattern: TPattern;
   Msg, ReadMsg: TTestMessage;
   TempDir: AnsiString;
@@ -417,7 +417,7 @@ begin
   
   // Write messages using multiple part writers
   Pattern := TPattern.Create(TempDir, 3);
-  Writer := specialize TZioWriter<TTestMessage>.Create(Pattern);
+  Writer := specialize TDelimitedProtoWriter<TTestMessage>.Create(Pattern);
   
   // Create part writers for different shards
   PartWriter1 := Writer.NewPartWriter;  // shard 0
@@ -464,7 +464,7 @@ begin
   Writer.Free;
   
   // Now read back all messages
-  Reader := specialize TZioReader<TTestMessage>.Create(Pattern);
+  Reader := specialize TDelimitedProtoReader<TTestMessage>.Create(Pattern);
   Pattern.Free;
   
   ReadMsg := TTestMessage.Create;
@@ -489,9 +489,9 @@ end;
 
 procedure TestMultiplePartsPerShardReadBack;
 var
-  Writer: specialize TZioWriter<TTestMessage>;
-  Reader: specialize TZioReader<TTestMessage>;
-  PartWriter1, PartWriter2, PartWriter3, PartWriter4: specialize TZioWriter<TTestMessage>.TZioPartWriter;
+  Writer: specialize TDelimitedProtoWriter<TTestMessage>;
+  Reader: specialize TDelimitedProtoReader<TTestMessage>;
+  PartWriter1, PartWriter2, PartWriter3, PartWriter4: specialize TDelimitedProtoWriter<TTestMessage>.TDelimitedProtoPartWriter;
   Pattern: TPattern;
   Msg, ReadMsg: TTestMessage;
   TempDir: AnsiString;
@@ -504,7 +504,7 @@ begin
   
   // Write messages using multiple part writers to same shard
   Pattern := TPattern.Create(TempDir, 2);
-  Writer := specialize TZioWriter<TTestMessage>.Create(Pattern);
+  Writer := specialize TDelimitedProtoWriter<TTestMessage>.Create(Pattern);
   
   // Create 4 part writers: shard 0, shard 1, shard 0 (again), shard 1 (again)
   PartWriter1 := Writer.NewPartWriter;  // shard 0, part 0
@@ -560,7 +560,7 @@ begin
   Writer.Free;
   
   // Now read back all messages - reader should handle both parts of each shard
-  Reader := specialize TZioReader<TTestMessage>.Create(Pattern);
+  Reader := specialize TDelimitedProtoReader<TTestMessage>.Create(Pattern);
   Pattern.Free;
   
   ReadMsg := TTestMessage.Create;
@@ -586,9 +586,9 @@ end;
 
 procedure TestPartOrderingWithinShard;
 var
-  Writer: specialize TZioWriter<TTestMessage>;
-  Reader: specialize TZioReader<TTestMessage>;
-  PartWriter1, PartWriter2, PartWriter3: specialize TZioWriter<TTestMessage>.TZioPartWriter;
+  Writer: specialize TDelimitedProtoWriter<TTestMessage>;
+  Reader: specialize TDelimitedProtoReader<TTestMessage>;
+  PartWriter1, PartWriter2, PartWriter3: specialize TDelimitedProtoWriter<TTestMessage>.TDelimitedProtoPartWriter;
   Pattern: TPattern;
   Msg, ReadMsg: TTestMessage;
   TempDir: AnsiString;
@@ -603,7 +603,7 @@ begin
   
   // Write messages to single shard using 3 different part writers
   Pattern := TPattern.Create(TempDir, 1);  // Only 1 shard
-  Writer := specialize TZioWriter<TTestMessage>.Create(Pattern);
+  Writer := specialize TDelimitedProtoWriter<TTestMessage>.Create(Pattern);
   
   // Create 3 part writers for shard 0
   PartWriter1 := Writer.NewPartWriter;  // shard 0, part 0
@@ -650,7 +650,7 @@ begin
   Writer.Free;
   
   // Now read back and verify order
-  Reader := specialize TZioReader<TTestMessage>.Create(Pattern);
+  Reader := specialize TDelimitedProtoReader<TTestMessage>.Create(Pattern);
   Pattern.Free;
   
   ReadMsg := TTestMessage.Create;
@@ -680,8 +680,8 @@ end;
 
 procedure TestWriteMessageToShard;
 var
-  Writer: specialize TZioWriter<TTestMessage>;
-  Reader: specialize TZioReader<TTestMessage>;
+  Writer: specialize TDelimitedProtoWriter<TTestMessage>;
+  Reader: specialize TDelimitedProtoReader<TTestMessage>;
   Pattern: TPattern;
   Msg, ReadMsg: TTestMessage;
   TempDir: AnsiString;
@@ -694,7 +694,7 @@ begin
   
   // Use WriteMessageToShard convenience method
   Pattern := TPattern.Create(TempDir, 3);
-  Writer := specialize TZioWriter<TTestMessage>.Create(Pattern);
+  Writer := specialize TDelimitedProtoWriter<TTestMessage>.Create(Pattern);
   
   // Write messages to specific shards
   for i := 0 to 2 do
@@ -719,7 +719,7 @@ begin
   Writer.Free;
   
   // Read back and verify
-  Reader := specialize TZioReader<TTestMessage>.Create(Pattern);
+  Reader := specialize TDelimitedProtoReader<TTestMessage>.Create(Pattern);
   Pattern.Free;
   
   ReadMsg := TTestMessage.Create;
@@ -743,10 +743,10 @@ end;
 
 procedure TestGetShardWriter;
 var
-  Writer: specialize TZioWriter<TTestMessage>;
-  ShardWriter: specialize TZioWriter<TTestMessage>.TZioShardWriter;
-  PartWriter1, PartWriter2: specialize TZioWriter<TTestMessage>.TZioPartWriter;
-  Reader: specialize TZioReader<TTestMessage>;
+  Writer: specialize TDelimitedProtoWriter<TTestMessage>;
+  ShardWriter: specialize TDelimitedProtoWriter<TTestMessage>.TDelimitedProtoShardWriter;
+  PartWriter1, PartWriter2: specialize TDelimitedProtoWriter<TTestMessage>.TDelimitedProtoPartWriter;
+  Reader: specialize TDelimitedProtoReader<TTestMessage>;
   Pattern: TPattern;
   Msg, ReadMsg: TTestMessage;
   TempDir, ShardDir: AnsiString;
@@ -758,7 +758,7 @@ begin
   ForceDirectories(TempDir);
   
   Pattern := TPattern.Create(TempDir, 1);  // Only 1 shard to avoid directory issues
-  Writer := specialize TZioWriter<TTestMessage>.Create(Pattern);
+  Writer := specialize TDelimitedProtoWriter<TTestMessage>.Create(Pattern);
   
   // Get shard writer for shard 0
   ShardWriter := Writer.GetShardWriter(0);
@@ -804,7 +804,7 @@ begin
   
   // Read back from single shard directory
   ShardDir := Pattern.GetShardPath(0);
-  Reader := specialize TZioReader<TTestMessage>.Create([ShardDir]);
+  Reader := specialize TDelimitedProtoReader<TTestMessage>.Create([ShardDir]);
   Pattern.Free;
   
   ReadMsg := TTestMessage.Create;
@@ -827,10 +827,10 @@ end;
 
 procedure TestWriteMessageToShardAfterPartWriters;
 var
-  Writer: specialize TZioWriter<TTestMessage>;
-  ShardWriter: specialize TZioWriter<TTestMessage>.TZioShardWriter;
-  PartWriter1, PartWriter2: specialize TZioWriter<TTestMessage>.TZioPartWriter;
-  Reader: specialize TZioReader<TTestMessage>;
+  Writer: specialize TDelimitedProtoWriter<TTestMessage>;
+  ShardWriter: specialize TDelimitedProtoWriter<TTestMessage>.TDelimitedProtoShardWriter;
+  PartWriter1, PartWriter2: specialize TDelimitedProtoWriter<TTestMessage>.TDelimitedProtoPartWriter;
+  Reader: specialize TDelimitedProtoReader<TTestMessage>;
   Pattern: TPattern;
   Msg, ReadMsg: TTestMessage;
   TempDir, ShardDir: AnsiString;
@@ -848,7 +848,7 @@ begin
   ForceDirectories(TempDir);
 
   Pattern := TPattern.Create(TempDir, 2);  // 2 shards
-  Writer := specialize TZioWriter<TTestMessage>.Create(Pattern);
+  Writer := specialize TDelimitedProtoWriter<TTestMessage>.Create(Pattern);
   WriteLn('  Writer created (FCurrentPartWriter created for each shard)');
 
   // Get shard writer for shard 0
@@ -905,7 +905,7 @@ begin
 
   // Read back and verify all messages
   ShardDir := Pattern.GetShardPath(0);
-  Reader := specialize TZioReader<TTestMessage>.Create([ShardDir]);
+  Reader := specialize TDelimitedProtoReader<TTestMessage>.Create([ShardDir]);
   Pattern.Free;
 
   ReadMsg := TTestMessage.Create;
@@ -934,7 +934,7 @@ begin
   
   Randomize;
   
-  WriteLn('Running ZIOStreamUnit Tests');
+  WriteLn('Running DelimitedProtoStreamUnit Tests');
   WriteLn('===========================');
   WriteLn('');
   

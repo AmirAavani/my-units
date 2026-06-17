@@ -1,11 +1,11 @@
-unit SortZioUnit;
+unit SortDelimitedProtoUnit;
 
 {$mode objfpc}{$H+}
 
 interface
 
 uses
-  Classes, SysUtils, bufstream, ProtoStreamUnit, ZIOStreamUnit, Variants, Math;
+  Classes, SysUtils, bufstream, ProtoStreamUnit, DelimitedProtoStreamUnit, Variants, Math;
 
 type
   { Basic protobuf wire types for field 1 }

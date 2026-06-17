@@ -1,11 +1,11 @@
-unit ZIOStreamUnit;
+unit DelimitedProtoStreamUnit;
 
 {$mode objfpc}{$H+}
 
 interface
 
 uses
-  Classes, SysUtils, bufstream, ProtoStreamUnit, ProtoHelperUnit,
+  Classes, SysUtils, BaseUnix, bufstream, ProtoStreamUnit, ProtoHelperUnit,
   Generics.Collections, DateUtils;
 
 type
@@ -14,13 +14,13 @@ type
 
   { Exception Classes }
 
-  EZIOStreamException = class(Exception);
+  EDelimitedProtoStreamException = class(Exception);
 
-  EPatternException = class(EZIOStreamException);
+  EPatternException = class(EDelimitedProtoStreamException);
 
-  EShardException = class(EZIOStreamException);
+  EShardException = class(EDelimitedProtoStreamException);
 
-  EStreamException = class(EZIOStreamException);
+  EStreamException = class(EDelimitedProtoStreamException);
 
   { TPattern - Encapsulates shard path pattern }
 
@@ -48,16 +48,39 @@ type
     property NumShards: integer read GetFilteredNumShards;
   end;
 
-  { TZioStream }
-  TZioStream = class(TObject)
+  { TDelimitedProtoStream }
+  { 
+    Low-level stream for reading/writing delimited Protocol Buffer messages.
+    
+    Format: Each message is written as:
+      [VarInt32: message_size][Protobuf bytes: message_size bytes]
+      
+    Writer Mode:
+      - Messages are serialized to a temporary stream to calculate exact size
+      - VarInt32 size prefix is written to the in-memory buffer
+      - Protobuf bytes are appended immediately after the size
+      - Buffer is flushed to disk when it reaches FMaxBufferSize threshold
+      - File handle is created lazily on first flush (not on constructor)
+      - If file handle becomes invalid (e.g., macOS sleep), it's automatically recovered
+      
+    Reader Mode:
+      - Uses TReadBufStream for OS-level buffering (reduces syscalls)
+      - Reads VarInt32 size, then reads exact message_size bytes
+      - Returns False gracefully on EOF (no exceptions)
+      - File handle recovery on macOS file descriptor invalidation
+      
+    Thread Safety: NOT thread-safe. Use one instance per thread.
+  }
+
+  TDelimitedProtoStream = class(TObject)
   private
-    FFilePath: ansistring;
-    FIsWriter: boolean;
+    FFilePath: AnsiString;
+    FIsWriter: Boolean;
 
     // Writer fields
     FFileStream: TFileStream;
-    FBuffer: TMemoryStream;
-    FMaxBufferSize: integer;
+    FBuffer: TMemoryStream; // Custom RAM buffer for high-performance, safe writing
+    FMaxBufferSize: Integer;
 
     // Reader fields
     FReadStream: TReadBufStream;
@@ -65,34 +88,34 @@ type
     procedure EnsureWriterIsValid;
     procedure EnsureReaderIsValid;
     procedure FlushBufferToDisk;
+
   public
-    constructor CreateWriter(const AFilePath: ansistring; ABufferSize: integer = 65536);
-    constructor CreateReader(const AFilePath: ansistring; ABufferSize: integer = 131072);
+    constructor CreateWriter(const AFilePath: AnsiString; ABufferSize: Integer = 65536);
+    constructor CreateReader(const AFilePath: AnsiString; ABufferSize: Integer = 131072);
     destructor Destroy; override;
 
     procedure WriteMessage(AMessage: TBaseMessage);
-    function ReadMessage(AMessage: TBaseMessage): boolean;
+    function ReadMessage(AMessage: TBaseMessage): Boolean;
 
     // Forces any remaining data in the buffer to disk
     procedure Flush;
   end;
 
-
-  { TZioStream }
-  TZioStreamList = specialize TList<TZioStream>;
+  { TDelimitedProtoStream }
+  TDelimitedProtoStreamList = specialize TList<TDelimitedProtoStream>;
   TAnsiStringList = specialize TList<ansistring>;
 
-  { TZioReader - Generic ZIO reader }
+  { TDelimitedProtoReader - Generic reader }
 
-  generic TZioReader<T: TBaseMessage> = class(TObject)
+  generic TDelimitedProtoReader<T: TBaseMessage> = class(TObject)
   protected
   type
-    { TZioShardReader - Manages reading from one shard (multiple parts) }
-    TZioShardReader = class(TObject)
+    { TDelimitedProtoShardReader - Manages reading from one shard (multiple parts) }
+    TDelimitedProtoShardReader = class(TObject)
     private
       FPartPaths: TStringList;        // All part paths for this shard (sorted)
       FCurrentPartIndex: integer;     // Which part we're currently reading
-      FCurrentStream: TZioStream;     // Currently open part stream
+      FCurrentStream: TDelimitedProtoStream;     // Currently open part stream
       FBufferSize: integer;
 
       procedure OpenNextPart;
@@ -106,10 +129,10 @@ type
       function HasMoreParts: boolean;
     end;
 
-    TZioShardReaderList = specialize TObjectList<TZioShardReader>;
+    TDelimitedProtoShardReaderList = specialize TObjectList<TDelimitedProtoShardReader>;
 
   private
-    FShardReaders: TZioShardReaderList;
+    FShardReaders: TDelimitedProtoShardReaderList;
     FCurrentShardIndex: integer;
     FPattern: TPattern;
     FBufferSize: integer;
@@ -128,18 +151,18 @@ type
     function ReadMessageFromShard(ShardIndex: integer; var AMessage: T): boolean;
   end;
 
-  { TZioWriter - Generic ZIO writer }
+  { TDelimitedProtoWriter - Generic writer }
 
-  generic TZioWriter<T: TBaseMessage> = class(TObject)
+  generic TDelimitedProtoWriter<T: TBaseMessage> = class(TObject)
   public
   type
     { Forward declaration }
-    TZioShardWriter = class;
+    TDelimitedProtoShardWriter = class;
 
-    { TZioPartWriter - Writes to a single part file }
-    TZioPartWriter = class(TObject)
+    { TDelimitedProtoPartWriter - Writes to a single part file }
+    TDelimitedProtoPartWriter = class(TObject)
     private
-      FZioStream: TZioStream;
+      FDelimitedProtoStream: TDelimitedProtoStream;
       FPartPath: ansistring;
     public
       constructor Create(const APartPath: ansistring; ABufferSize: integer = 65536);
@@ -150,25 +173,25 @@ type
       property PartPath: ansistring read FPartPath;
     end;
 
-    { TZioShardWriter - Manages writing to one specific shard }
-    TZioShardWriter = class(TObject)
+    { TDelimitedProtoShardWriter - Manages writing to one specific shard }
+    TDelimitedProtoShardWriter = class(TObject)
     private
-      FParentWriter: TZioWriter;  // Back reference (not owned)
+      FParentWriter: TDelimitedProtoWriter;  // Back reference (not owned)
       FShardIndex: integer;
       FSequenceCounter: integer;
-      FCurrentPartWriter: TZioPartWriter;  // Reused for WriteMessage
+      FCurrentPartWriter: TDelimitedProtoPartWriter;  // Reused for WriteMessage
       FBufferSize: integer;
 
       function GeneratePartPath: ansistring;
       procedure EnsureShardDirectoryExists;
 
     public
-      constructor Create(AParentWriter: TZioWriter; AShardIndex: integer;
+      constructor Create(AParentWriter: TDelimitedProtoWriter; AShardIndex: integer;
         ABufferSize: integer);
       destructor Destroy; override;
 
       { Creates a new part writer - caller owns and must free }
-      function NewPartWriter: TZioPartWriter;
+      function NewPartWriter: TDelimitedProtoPartWriter;
 
       { Convenience: writes to current part (creates if needed, reuses) }
       procedure WriteMessage(AMessage: T);
@@ -176,14 +199,14 @@ type
       property ShardIndex: integer read FShardIndex;
     end;
 
-    TZioShardWriterList = specialize TObjectList<TZioShardWriter>;
-    TZioPartWriterList = specialize TObjectList<TZioPartWriter>;
+    TDelimitedProtoShardWriterList = specialize TObjectList<TDelimitedProtoShardWriter>;
+    TDelimitedProtoPartWriterList = specialize TObjectList<TDelimitedProtoPartWriter>;
 
   private
     FPattern: TPattern;
     FBufferSize: integer;
     FCurrentShardIndex: integer;  // For round-robin in NewPartWriter
-    FShardWriters: TZioShardWriterList;  // Lazily created shard writers
+    FShardWriters: TDelimitedProtoShardWriterList;  // Lazily created shard writers
 
     function GetShardDirectoryPath(ShardIndex: integer): ansistring;
     function GetTotalStreams: integer;
@@ -194,20 +217,21 @@ type
     destructor Destroy; override;
 
     { Get shard writer for specific shard (lazily created) }
-    function GetShardWriter(ShardIndex: integer): TZioShardWriter; inline;
+    function GetShardWriter(ShardIndex: integer): TDelimitedProtoShardWriter; inline;
 
     { Convenience: write message to specific shard }
     procedure WriteMessageToShard(AMessage: T; ShardIndex: integer); inline;
 
+    { Create a new part writer with round-robin shard distribution }
+    function NewPartWriter: TDelimitedProtoPartWriter;
+
   end;
 
+function IsFileHandleValid(AStream: THandleStream): Boolean; inline;
 
 implementation
 
-uses
-  BaseUnix;
-
-function IsFileHandleValid(AStream: THandleStream): boolean;
+function IsFileHandleValid(AStream: THandleStream): Boolean;
 var
   Flags: cint;
 begin
@@ -215,7 +239,6 @@ begin
   Flags := fpfcntl(AStream.Handle, F_GETFL);
   Result := (Flags <> -1);
 end;
-
 
 type
   { Cracker class to access protected LoadFromStream }
@@ -258,7 +281,6 @@ begin
   FNumShards := ANumShards;
   FRemainder := 0;
   FModulo := 1;
-
 
   if FNumShards <= 0 then
     raise EPatternException.CreateFmt('Number of shards must be positive: %d',
@@ -334,52 +356,44 @@ begin
   Result.FModulo := ModuloValue;
 end;
 
-{ TZioStream }
+{ TDelimitedProtoStream }
 
-constructor TZioStream.CreateWriter(const AFilePath: ansistring; ABufferSize: integer);
+constructor TDelimitedProtoStream.CreateWriter(const AFilePath: AnsiString; ABufferSize: Integer);
 begin
   inherited Create;
   FIsWriter := True;
   FFilePath := AFilePath;
   FMaxBufferSize := ABufferSize;
 
+  // Pre-allocate buffer with extra space to avoid dynamic resizing during writes
+  // Buffer grows naturally as messages are written, then flushes when threshold reached
   FBuffer := TMemoryStream.Create;
-  FBuffer.SetSize(FMaxBufferSize + 1024); // Pre-allocate to prevent resizing overhead
+  FBuffer.SetSize(FMaxBufferSize + 1024); // +1KB safety margin for VarInt overhead
   FBuffer.Clear;
 
-  // Lazy initialization: We don't open the file until the first flush
+  // IMPORTANT: File handle is NOT created here!
+  // We defer file creation until the first flush. This allows:
+  //   1. Fast constructor (no I/O)
+  //   2. Atomic file creation (file appears only when first data is written)
+  //   3. Ability to recover from handle invalidation
   FFileStream := nil;
 end;
 
-constructor TZioStream.CreateReader(const AFilePath: ansistring; ABufferSize: integer);
-var
-  Header: array[0..11] of ansichar;
-  Magic: string[8];
+constructor TDelimitedProtoStream.CreateReader(const AFilePath: AnsiString; ABufferSize: Integer);
 begin
   inherited Create;
   FIsWriter := False;
   FFilePath := AFilePath;
   FMaxBufferSize := ABufferSize;
 
+  // Open file immediately for reading (unlike writer which is lazy)
+  // TReadBufStream wraps TFileStream and provides buffered reading to minimize syscalls
+  // Typical read pattern: read VarInt (1-5 bytes), then read message (variable size)
   FFileStream := TFileStream.Create(FFilePath, fmOpenRead or fmShareDenyWrite);
   FReadStream := TReadBufStream.Create(FFileStream, FMaxBufferSize);
-
-  // Read and validate the ZIO header ONCE when the file is opened
-  if FReadStream.Size >= 12 then
-  begin
-    FReadStream.ReadBuffer(Header[0], 12);
-    SetLength(Magic, 8);
-    Move(Header[0], Magic[1], 8);
-
-    if Magic <> 'ZIO1PBUF' then
-      raise EStreamException.CreateFmt('Invalid ZIO file format in "%s"', [FFilePath]);
-  end
-  else
-    raise EStreamException.CreateFmt('File "%s" is too small to be a ZIO file',
-      [FFilePath]);
 end;
 
-destructor TZioStream.Destroy;
+destructor TDelimitedProtoStream.Destroy;
 begin
   if FIsWriter then
   begin
@@ -396,141 +410,186 @@ begin
   inherited Destroy;
 end;
 
-procedure TZioStream.EnsureWriterIsValid;
+procedure TDelimitedProtoStream.EnsureWriterIsValid;
 var
-  Mode: word;
-  IsNewFile: boolean;
-  Header: array[0..11] of ansichar;
+  Mode: Word;
 begin
+  // Fast path: if handle is valid, do nothing
   if (FFileStream <> nil) and IsFileHandleValid(FFileStream) then
     Exit;
 
+  // Handle recovery: macOS can invalidate file descriptors on sleep/wake
+  // We detect this with fpfcntl() and recreate the stream
   if FFileStream <> nil then
   begin
     FFileStream.Free;
     FFileStream := nil;
   end;
 
-  IsNewFile := not FileExists(FFilePath);
-
-  if IsNewFile then
-    Mode := fmCreate or fmShareDenyWrite
+  // Choose appropriate mode:
+  //   - If file exists: open in read/write mode and seek to end (append)
+  //   - If new file: create with write mode
+  if FileExists(FFilePath) then
+    Mode := fmOpenReadWrite or fmShareDenyWrite
   else
-    Mode := fmOpenReadWrite or fmShareDenyWrite;
+    Mode := fmCreate or fmShareDenyWrite;
 
   FFileStream := TFileStream.Create(FFilePath, Mode);
 
-  if IsNewFile then
-  begin
-    // Write the ZIO header ONCE when the file is created
-    FillChar(Header, SizeOf(Header), #32);
-    Move(pansichar('ZIO1PBUF')^, Header[0], 8);
-    FFileStream.WriteBuffer(Header[0], 12);
-  end
-  else
-  begin
-    // If appending, seek to the end
+  // For existing files, seek to end to append new data
+  if Mode = (fmOpenReadWrite or fmShareDenyWrite) then
     FFileStream.Position := FFileStream.Size;
-  end;
 end;
 
-procedure TZioStream.EnsureReaderIsValid;
+procedure TDelimitedProtoStream.EnsureReaderIsValid;
 var
-  LogicalPosition: int64;
+  LogicalPosition: Int64;
 begin
-  // If the stream is open and the OS says the handle is healthy, we are good!
+  // Fast path: handle is still valid
   if (FFileStream <> nil) and IsFileHandleValid(FFileStream) then
     Exit;
 
+  // Handle recovery for readers:
+  // macOS can kill file handles during system sleep. When this happens:
+  //   1. Save the current logical read position
+  //   2. Close both buffered and raw streams
+  //   3. Reopen the file
+  //   4. Seek back to the saved position
+  // This allows reading to continue transparently after handle invalidation
   if FFileStream <> nil then
   begin
-    // Save the exact logical byte position we are currently at
-    LogicalPosition := FReadStream.Position;
+    LogicalPosition := FReadStream.Position;  // Save where we are
 
-    // Free the dead streams
     FReadStream.Free;
     FFileStream.Free;
 
-    // Resurrect the streams
+    // Recreate streams
     FFileStream := TFileStream.Create(FFilePath, fmOpenRead or fmShareDenyWrite);
     FReadStream := TReadBufStream.Create(FFileStream, FMaxBufferSize);
 
-    // Seek back to where we were before macOS killed the handle
+    // Resume reading from where we left off
     FReadStream.Position := LogicalPosition;
   end;
 end;
 
-procedure TZioStream.FlushBufferToDisk;
+procedure TDelimitedProtoStream.FlushBufferToDisk;
 begin
+  // Nothing to flush if not in writer mode or buffer is empty
   if not FIsWriter or (FBuffer.Size = 0) then
     Exit;
 
-  // 1. Ensure the OS file descriptor is alive and ready
+  // Ensure file handle is valid (creates file on first flush if needed)
   EnsureWriterIsValid;
 
-  // 2. Write the raw memory block directly to disk
+  // Write the entire buffer to disk in one system call
+  // This minimizes I/O overhead by batching many small messages into one write
   FFileStream.WriteBuffer(FBuffer.Memory^, FBuffer.Size);
 
-  // 3. Clear the buffer (resets Size to 0, keeps Capacity)
+  // Reset buffer for next batch (keeps allocated memory, just resets size to 0)
   FBuffer.Clear;
 end;
 
-procedure TZioStream.Flush;
+procedure TDelimitedProtoStream.Flush;
 begin
   FlushBufferToDisk;
 end;
 
-procedure TZioStream.WriteMessage(AMessage: TBaseMessage);
+procedure TDelimitedProtoStream.WriteMessage(AMessage: TBaseMessage);
 var
   TempStream: TMemoryStream;
   Writer: TProtoStreamWriter;
 begin
   if not FIsWriter or (AMessage = nil) then Exit;
 
+  { SERIALIZATION PROCESS:
+    Step 1: Serialize message to temporary stream to determine exact byte size
+    Step 2: Write VarInt32 size prefix to buffer
+    Step 3: Write raw Protobuf bytes to buffer
+    Step 4: Flush to disk if buffer threshold reached
+    
+    Why use TempStream?
+      - Protobuf requires knowing message size BEFORE writing the data
+      - We can't compute size without actually serializing
+      - So we serialize once to TempStream, measure it, then copy to FBuffer
+      
+    Output format in buffer/file:
+      [VarInt32: N][Protobuf bytes: N bytes][VarInt32: M][Protobuf bytes: M bytes]...
+  }
+
   TempStream := TMemoryStream.Create;
-  AMessage.SaveToStream(TempStream);
+  try
+    // Serialize the message to get its exact size
+    AMessage.SaveToStream(TempStream);
 
-  Writer := TProtoStreamWriter.Create(FBuffer, False);
-  // Write ONLY the VarInt size
-  Writer.WriteRawVarint32(TempStream.Size);
-  Writer.Free;
+    // Write the size prefix using Base-128 VarInt encoding (1-5 bytes depending on size)
+    Writer := TProtoStreamWriter.Create(FBuffer, False);  // False = don't take ownership
+    try
+      Writer.WriteRawVarint32(UInt32(TempStream.Size));
+    finally
+      Writer.Free;
+    end;
 
-  // Write ONLY the Protobuf data
-  FBuffer.WriteBuffer(TempStream.Memory^, TempStream.Size);
+    // Append the raw Protobuf bytes immediately after the size
+    FBuffer.WriteBuffer(TempStream.Memory^, TempStream.Size);
+  finally
+    TempStream.Free;
+  end;
 
-  TempStream.Free;
-
+  // Automatic flush when buffer reaches threshold
+  // This batches multiple messages into fewer disk writes for efficiency
   if FBuffer.Size >= FMaxBufferSize then
     FlushBufferToDisk;
 end;
 
-function TZioStream.ReadMessage(AMessage: TBaseMessage): boolean;
+function TDelimitedProtoStream.ReadMessage(AMessage: TBaseMessage): Boolean;
 var
   Reader: TProtoStreamReader;
-  MsgSize: uint32;
+  MsgSize: UInt32;
 begin
+  { DESERIALIZATION PROCESS:
+    Step 1: Ensure file handle is valid (recover if needed)
+    Step 2: Check for EOF - return False if no more data
+    Step 3: Read VarInt32 size prefix
+    Step 4: Validate message size (detect truncated files)
+    Step 5: Deserialize message from stream
+    
+    Returns:
+      - True: message successfully read and parsed
+      - False: EOF reached OR file corrupted/truncated OR parse error
+      
+    Note: This never raises exceptions for EOF - it returns False gracefully.
+    This allows simple while-loops: while Stream.ReadMessage(msg) do ProcessMessage(msg);
+  }
+
   Result := False;
   if FIsWriter or (AMessage = nil) then Exit;
 
+  // Ensure file handle is alive (may recover from macOS sleep/wake)
   EnsureReaderIsValid;
 
-  // If we are at the end of the file, return False gracefully
+  // Graceful EOF detection: no more data to read
   if FReadStream.Position >= FReadStream.Size then Exit;
 
-  Reader := TProtoStreamReader.Create(FReadStream, False);
-  // Read ONLY the VarInt size
-  MsgSize := Reader.ReadVarUInt32;
+  Reader := TProtoStreamReader.Create(FReadStream, False);  // False = don't take ownership
+  try
+    // Read the VarInt32 size prefix (tells us how many bytes to read next)
+    MsgSize := Reader.ReadVarUInt32;
 
-  if FReadStream.Position + MsgSize > FReadStream.Size then Exit;
+    // Corruption detection: ensure file has enough bytes for this message
+    // If not, the file was likely truncated (incomplete write)
+    if FReadStream.Position + MsgSize > FReadStream.Size then Exit;
 
-  // Read ONLY the Protobuf data
-  Result := TBaseMessageCracker(AMessage).LoadFromStream(Reader, MsgSize);
-  Reader.Free;
+    // Deserialize the Protobuf message from the stream
+    // TBaseMessageCracker allows us to call the protected LoadFromStream method
+    Result := TBaseMessageCracker(AMessage).LoadFromStream(Reader, MsgSize);
+  finally
+    Reader.Free;
+  end;
 end;
 
-{ TZioReader.TZioShardReader }
+{ TDelimitedProtoReader.TDelimitedProtoShardReader }
 
-constructor TZioReader.TZioShardReader.Create(const AShardDir: ansistring;
+constructor TDelimitedProtoReader.TDelimitedProtoShardReader.Create(const AShardDir: ansistring;
   ABufferSize: integer);
 var
   SearchRec: TSearchRec;
@@ -543,8 +602,8 @@ begin
   FCurrentStream := nil;
   FBufferSize := ABufferSize;
 
-  // Find all *.zio files in shard directory
-  if FindFirst(AShardDir + PathDelim + '*.zio', faAnyFile, SearchRec) = 0 then
+  // Find all *.dpb files in shard directory
+  if FindFirst(AShardDir + PathDelim + '*.dpb', faAnyFile, SearchRec) = 0 then
   begin
     repeat
       if (SearchRec.Name <> '.') and (SearchRec.Name <> '..') then
@@ -556,7 +615,7 @@ begin
     FindClose(SearchRec);
   end;
 
-  // Sort alphabetically (part-0000-xxx.zio, part-0001-xxx.zio, ...)
+  // Sort alphabetically (part-0000-xxx.dpb, part-0001-xxx.dpb, ...)
   FPartPaths.Sort;
 
   // Open first part if available
@@ -564,14 +623,14 @@ begin
     OpenNextPart;
 end;
 
-destructor TZioReader.TZioShardReader.Destroy;
+destructor TDelimitedProtoReader.TDelimitedProtoShardReader.Destroy;
 begin
   CloseCurrentPart;
   FPartPaths.Free;
   inherited Destroy;
 end;
 
-procedure TZioReader.TZioShardReader.OpenNextPart;
+procedure TDelimitedProtoReader.TDelimitedProtoShardReader.OpenNextPart;
 var
   PartPath: ansistring;
 begin
@@ -580,12 +639,11 @@ begin
   if FCurrentPartIndex < FPartPaths.Count then
   begin
     PartPath := FPartPaths[FCurrentPartIndex];
-    FCurrentStream := TZioStream.CreateReader(PartPath, FBufferSize);
+    FCurrentStream := TDelimitedProtoStream.CreateReader(PartPath, FBufferSize);
   end;
 end;
 
-
-procedure TZioReader.TZioShardReader.CloseCurrentPart;
+procedure TDelimitedProtoReader.TDelimitedProtoShardReader.CloseCurrentPart;
 begin
   if FCurrentStream <> nil then
   begin
@@ -594,7 +652,7 @@ begin
   end;
 end;
 
-function TZioReader.TZioShardReader.ReadMessage(AMessage: TBaseMessage): boolean;
+function TDelimitedProtoReader.TDelimitedProtoShardReader.ReadMessage(AMessage: TBaseMessage): boolean;
 begin
   Result := False;
 
@@ -616,23 +674,23 @@ begin
   end;
 end;
 
-function TZioReader.TZioShardReader.HasMoreParts: boolean;
+function TDelimitedProtoReader.TDelimitedProtoShardReader.HasMoreParts: boolean;
 begin
   Result := FCurrentPartIndex < FPartPaths.Count;
 end;
 
-{ TZioReader }
+{ TDelimitedProtoReader }
 
-constructor TZioReader.Create(const APaths: array of ansistring;
+constructor TDelimitedProtoReader.Create(const APaths: array of ansistring;
   ABufferSize: integer = 131072);
 var
   i: integer;
-  ShardReader: TZioShardReader;
+  ShardReader: TDelimitedProtoShardReader;
   Path: ansistring;
 begin
   inherited Create;
 
-  FShardReaders := TZioShardReaderList.Create(True); // Owns objects
+  FShardReaders := TDelimitedProtoShardReaderList.Create(True); // Owns objects
   FCurrentShardIndex := 0;
   FBufferSize := ABufferSize;
   FPattern := nil;
@@ -645,20 +703,20 @@ begin
     if not DirectoryExists(Path) then
       raise EStreamException.CreateFmt('Shard directory not found: %s', [Path]);
 
-    ShardReader := TZioShardReader.Create(Path, FBufferSize);
+    ShardReader := TDelimitedProtoShardReader.Create(Path, FBufferSize);
     FShardReaders.Add(ShardReader);
   end;
 end;
 
-constructor TZioReader.Create(APattern: TPattern; ABufferSize: integer = 131072);
+constructor TDelimitedProtoReader.Create(APattern: TPattern; ABufferSize: integer = 131072);
 var
   i: integer;
-  ShardReader: TZioShardReader;
+  ShardReader: TDelimitedProtoShardReader;
   ShardDir: ansistring;
 begin
   inherited Create;
 
-  FShardReaders := TZioShardReaderList.Create(True); // Owns objects
+  FShardReaders := TDelimitedProtoShardReaderList.Create(True); // Owns objects
   FCurrentShardIndex := 0;
   FPattern := TPattern.Create(APattern);
   FBufferSize := ABufferSize;
@@ -671,19 +729,19 @@ begin
     if not DirectoryExists(ShardDir) then
       raise EStreamException.CreateFmt('Shard directory not found: %s', [ShardDir]);
 
-    ShardReader := TZioShardReader.Create(ShardDir, FBufferSize);
+    ShardReader := TDelimitedProtoShardReader.Create(ShardDir, FBufferSize);
     FShardReaders.Add(ShardReader);
   end;
 end;
 
-destructor TZioReader.Destroy;
+destructor TDelimitedProtoReader.Destroy;
 begin
   FPattern.Free;
   FShardReaders.Free; // Automatically frees all shard readers
   inherited Destroy;
 end;
 
-function TZioReader.ReadMessage(var AMessage: T): boolean;
+function TDelimitedProtoReader.ReadMessage(var AMessage: T): boolean;
 begin
   Result := False;
 
@@ -703,7 +761,7 @@ begin
   Result := False;
 end;
 
-function TZioReader.ReadMessageFromShard(ShardIndex: integer; var AMessage: T): boolean;
+function TDelimitedProtoReader.ReadMessageFromShard(ShardIndex: integer; var AMessage: T): boolean;
 begin
   Result := False;
 
@@ -715,14 +773,14 @@ begin
   Result := FShardReaders[ShardIndex].ReadMessage(AMessage);
 end;
 
-function TZioReader.GetTotalStreams: integer;
+function TDelimitedProtoReader.GetTotalStreams: integer;
 begin
   Result := FShardReaders.Count;
 end;
 
-{ TZioWriter.TZioShardWriter }
+{ TDelimitedProtoWriter.TDelimitedProtoShardWriter }
 
-constructor TZioWriter.TZioShardWriter.Create(AParentWriter: TZioWriter;
+constructor TDelimitedProtoWriter.TDelimitedProtoShardWriter.Create(AParentWriter: TDelimitedProtoWriter;
   AShardIndex: integer; ABufferSize: integer);
 begin
   inherited Create;
@@ -735,14 +793,14 @@ begin
   FBufferSize := ABufferSize;
 end;
 
-destructor TZioWriter.TZioShardWriter.Destroy;
+destructor TDelimitedProtoWriter.TDelimitedProtoShardWriter.Destroy;
 begin
   FCurrentPartWriter.Free;
 
   inherited Destroy;
 end;
 
-function TZioWriter.TZioShardWriter.GeneratePartPath: ansistring;
+function TDelimitedProtoWriter.TDelimitedProtoShardWriter.GeneratePartPath: ansistring;
 var
   ShardDir: ansistring;
   Timestamp: int64;
@@ -752,14 +810,14 @@ begin
   // Get current Unix timestamp in milliseconds
   Timestamp := DateTimeToUnix(Now, False) * 1000 + MilliSecondOf(Now);
 
-  // Format: part-{seq:04d}-{timestamp}.zio for alphabetical sorting
-  Result := Format('%s%spart-%4.4d-%d.zio', [ShardDir, PathDelim,
+  // Format: part-{seq:04d}-{timestamp}.dpb for alphabetical sorting
+  Result := Format('%s%spart-%4.4d-%d.dpb', [ShardDir, PathDelim,
     FSequenceCounter, Timestamp]);
 
   Inc(FSequenceCounter);
 end;
 
-procedure TZioWriter.TZioShardWriter.EnsureShardDirectoryExists;
+procedure TDelimitedProtoWriter.TDelimitedProtoShardWriter.EnsureShardDirectoryExists;
 var
   ShardDir: ansistring;
 begin
@@ -768,16 +826,16 @@ begin
     ForceDirectories(ShardDir);
 end;
 
-function TZioWriter.TZioShardWriter.NewPartWriter: TZioPartWriter;
+function TDelimitedProtoWriter.TDelimitedProtoShardWriter.NewPartWriter: TDelimitedProtoPartWriter;
 var
   PartPath: ansistring;
 begin
   EnsureShardDirectoryExists;
   PartPath := GeneratePartPath;
-  Result := TZioPartWriter.Create(PartPath, FBufferSize);
+  Result := TDelimitedProtoPartWriter.Create(PartPath, FBufferSize);
 end;
 
-procedure TZioWriter.TZioShardWriter.WriteMessage(AMessage: T);
+procedure TDelimitedProtoWriter.TDelimitedProtoShardWriter.WriteMessage(AMessage: T);
 begin
   if AMessage = nil then
     Exit;
@@ -785,36 +843,34 @@ begin
   FCurrentPartWriter.WriteMessage(AMessage);
 end;
 
-{ TZioWriter.TZioPartWriter }
+{ TDelimitedProtoWriter.TDelimitedProtoPartWriter }
 
-constructor TZioWriter.TZioPartWriter.Create(const APartPath: ansistring;
+constructor TDelimitedProtoWriter.TDelimitedProtoPartWriter.Create(const APartPath: ansistring;
   ABufferSize: integer = 65536);
-var
-  FileStream: TFileStream;
 begin
   inherited Create;
 
   FPartPath := APartPath;
 
-  FZioStream := TZioStream.CreateWriter(APartPath, ABufferSize);
+  FDelimitedProtoStream := TDelimitedProtoStream.CreateWriter(APartPath, ABufferSize);
 end;
 
-destructor TZioWriter.TZioPartWriter.Destroy;
+destructor TDelimitedProtoWriter.TDelimitedProtoPartWriter.Destroy;
 begin
-  FZioStream.Free;
+  FDelimitedProtoStream.Free;
   inherited Destroy;
 end;
 
-procedure TZioWriter.TZioPartWriter.WriteMessage(AMessage: T);
+procedure TDelimitedProtoWriter.TDelimitedProtoPartWriter.WriteMessage(AMessage: T);
 begin
   if AMessage = nil then
     Exit;
-  FZioStream.WriteMessage(AMessage);
+  FDelimitedProtoStream.WriteMessage(AMessage);
 end;
 
-{ TZioWriter }
+{ TDelimitedProtoWriter }
 
-constructor TZioWriter.Create(APattern: TPattern; ABufferSize: integer = 65536);
+constructor TDelimitedProtoWriter.Create(APattern: TPattern; ABufferSize: integer = 65536);
 var
   ShardIndex: integer;
 begin
@@ -823,21 +879,20 @@ begin
   FPattern := TPattern.Create(APattern);
   FBufferSize := ABufferSize;
   FCurrentShardIndex := 0;
-  FShardWriters := TZioShardWriterList.Create(True);  // Owns shard writers
+  FShardWriters := TDelimitedProtoShardWriterList.Create(True);  // Owns shard writers
   FShardWriters.Count := FPattern.NumShards;
   for ShardIndex := 0 to FPattern.NumShards - 1 do
-    FShardWriters[ShardIndex] := TZioShardWriter.Create(Self, ShardIndex, FBufferSize);
-
+    FShardWriters[ShardIndex] := TDelimitedProtoShardWriter.Create(Self, ShardIndex, FBufferSize);
 end;
 
-destructor TZioWriter.Destroy;
+destructor TDelimitedProtoWriter.Destroy;
 begin
   FShardWriters.Free;
   FPattern.Free;
   inherited Destroy;
 end;
 
-function TZioWriter.GetShardDirectoryPath(ShardIndex: integer): ansistring;
+function TDelimitedProtoWriter.GetShardDirectoryPath(ShardIndex: integer): ansistring;
 var
   ActualShardIndex, i, Count: integer;
 begin
@@ -866,14 +921,14 @@ begin
     FPattern.FNumShards]);
 end;
 
-function TZioWriter.GetShardWriter(ShardIndex: integer): TZioShardWriter;
+function TDelimitedProtoWriter.GetShardWriter(ShardIndex: integer): TDelimitedProtoShardWriter;
 begin
   Result := FShardWriters[ShardIndex];
 end;
 
-procedure TZioWriter.WriteMessageToShard(AMessage: T; ShardIndex: integer);
+procedure TDelimitedProtoWriter.WriteMessageToShard(AMessage: T; ShardIndex: integer);
 var
-  ShardWriter: TZioShardWriter;
+  ShardWriter: TDelimitedProtoShardWriter;
 begin
   if AMessage = nil then
     Exit;
@@ -882,9 +937,21 @@ begin
   ShardWriter.WriteMessage(AMessage);
 end;
 
-function TZioWriter.GetTotalStreams: integer;
+function TDelimitedProtoWriter.GetTotalStreams: integer;
 begin
   Result := FPattern.NumShards;
+end;
+
+function TDelimitedProtoWriter.NewPartWriter: TDelimitedProtoPartWriter;
+var
+  ShardWriter: TDelimitedProtoShardWriter;
+begin
+  { Round-robin distribution across shards }
+  ShardWriter := GetShardWriter(FCurrentShardIndex);
+  Result := ShardWriter.NewPartWriter;
+  
+  { Move to next shard for next call }
+  FCurrentShardIndex := (FCurrentShardIndex + 1) mod FPattern.NumShards;
 end;
 
 end.

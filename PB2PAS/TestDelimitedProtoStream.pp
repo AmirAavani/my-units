@@ -1,9 +1,9 @@
-program TestZioStream;
+program TestDelimitedProtoStream;
 
 {$mode objfpc}{$H+}
 
 uses
-  Classes, SysUtils, ZIOStreamUnit, ProtoHelperUnit, ProtoStreamUnit;
+  Classes, SysUtils, DelimitedProtoStreamUnit, ProtoHelperUnit, ProtoStreamUnit;
 
 type
   { Simple test message }
@@ -57,14 +57,14 @@ end;
 procedure TestBasicWriteRead;
 var
   MemStream: TMemoryStream;
-  ZStream: TZioStream;
+  ZStream: TDelimitedProtoStream;
   Msg1, Msg2: TTestMessage;
 begin
   WriteLn('TEST: Basic Write/Read');
   
   MemStream := TMemoryStream.Create;
   try
-    ZStream := TZioStream.Create(MemStream, False);
+    ZStream := TDelimitedProtoStream.Create(MemStream, False);
     try
       Msg1 := TTestMessage.Create;
       try
@@ -102,7 +102,7 @@ end;
 procedure TestMultipleMessages;
 var
   MemStream: TMemoryStream;
-  ZStream: TZioStream;
+  ZStream: TDelimitedProtoStream;
   Msg1, Msg2: TTestMessage;
   i: Integer;
 begin
@@ -110,7 +110,7 @@ begin
   
   MemStream := TMemoryStream.Create;
   try
-    ZStream := TZioStream.Create(MemStream, False);
+    ZStream := TDelimitedProtoStream.Create(MemStream, False);
     try
       for i := 1 to 3 do
       begin
@@ -158,14 +158,14 @@ end;
 procedure TestEmptyStream;
 var
   MemStream: TMemoryStream;
-  ZStream: TZioStream;
+  ZStream: TDelimitedProtoStream;
   Msg: TTestMessage;
 begin
   WriteLn('TEST: Empty Stream');
   
   MemStream := TMemoryStream.Create;
   try
-    ZStream := TZioStream.Create(MemStream, False);
+    ZStream := TDelimitedProtoStream.Create(MemStream, False);
     try
       Msg := TTestMessage.Create;
       try
@@ -187,7 +187,7 @@ end;
 procedure TestInvalidMagic;
 var
   MemStream: TMemoryStream;
-  ZStream: TZioStream;
+  ZStream: TDelimitedProtoStream;
   Msg: TTestMessage;
   BadHeader: array[0..11] of AnsiChar;
 begin
@@ -200,7 +200,7 @@ begin
     MemStream.WriteBuffer(BadHeader[0], 12);
     MemStream.Position := 0;
     
-    ZStream := TZioStream.Create(MemStream, False);
+    ZStream := TDelimitedProtoStream.Create(MemStream, False);
     try
       Msg := TTestMessage.Create;
       try
@@ -222,7 +222,7 @@ end;
 procedure TestTruncatedMessage;
 var
   MemStream: TMemoryStream;
-  ZStream: TZioStream;
+  ZStream: TDelimitedProtoStream;
   Msg1, Msg2: TTestMessage;
   OrigSize: Int64;
 begin
@@ -230,7 +230,7 @@ begin
   
   MemStream := TMemoryStream.Create;
   try
-    ZStream := TZioStream.Create(MemStream, False);
+    ZStream := TDelimitedProtoStream.Create(MemStream, False);
     try
       Msg1 := TTestMessage.Create;
       try
@@ -266,13 +266,13 @@ end;
 procedure TestNilMessage;
 var
   MemStream: TMemoryStream;
-  ZStream: TZioStream;
+  ZStream: TDelimitedProtoStream;
 begin
   WriteLn('TEST: Nil Message');
   
   MemStream := TMemoryStream.Create;
   try
-    ZStream := TZioStream.Create(MemStream, False);
+    ZStream := TDelimitedProtoStream.Create(MemStream, False);
     try
       ZStream.WriteMessage(nil);
       
@@ -292,7 +292,7 @@ end;
 procedure TestLargeMessage;
 var
   MemStream: TMemoryStream;
-  ZStream: TZioStream;
+  ZStream: TDelimitedProtoStream;
   Msg1, Msg2: TTestMessage;
   LargeString: AnsiString;
 begin
@@ -303,7 +303,7 @@ begin
   
   MemStream := TMemoryStream.Create;
   try
-    ZStream := TZioStream.Create(MemStream, False);
+    ZStream := TDelimitedProtoStream.Create(MemStream, False);
     try
       Msg1 := TTestMessage.Create;
       try
@@ -343,14 +343,14 @@ end;
 procedure TestEmptyMessage;
 var
   MemStream: TMemoryStream;
-  ZStream: TZioStream;
+  ZStream: TDelimitedProtoStream;
   Msg1, Msg2: TTestMessage;
 begin
   WriteLn('TEST: Empty Message');
   
   MemStream := TMemoryStream.Create;
   try
-    ZStream := TZioStream.Create(MemStream, False);
+    ZStream := TDelimitedProtoStream.Create(MemStream, False);
     try
       Msg1 := TTestMessage.Create;
       try
@@ -388,15 +388,15 @@ end;
 procedure TestOwnership;
 var
   MemStream: TMemoryStream;
-  ZStream: TZioStream;
+  ZStream: TDelimitedProtoStream;
 begin
   WriteLn('TEST: Stream Ownership');
   
   MemStream := TMemoryStream.Create;
-  ZStream := TZioStream.Create(MemStream, True);
+  ZStream := TDelimitedProtoStream.Create(MemStream, True);
   ZStream.Free;
   
-  WriteLn('  ✓ PASSED (stream freed by TZioStream)');
+  WriteLn('  ✓ PASSED (stream freed by TDelimitedProtoStream)');
 end;
 
 { Main }
@@ -432,18 +432,18 @@ begin
   WriteLn('===========================================');
 end.
 
-procedure TestZioStreamsBasic;
+procedure TestDelimitedProtoStreamsBasic;
 var
-  ZStreams: TZioStreams;
+  ZStreams: TDelimitedProtoStreams;
   Msg: TTestMessage;
   TempDir: AnsiString;
   i: Integer;
 begin
-  WriteLn('TEST: TZioStreams Basic Functionality');
+  WriteLn('TEST: TDelimitedProtoStreams Basic Functionality');
   
   TempDir := GetTempDir + 'ziotest_' + IntToStr(Random(10000));
   try
-    ZStreams := TZioStreams.Create(TempDir, 4);
+    ZStreams := TDelimitedProtoStreams.Create(TempDir, 4);
     try
       // Write messages to different shards
       for i := 0 to 3 do
@@ -482,21 +482,21 @@ begin
   end;
 end;
 
-procedure TestZioStreamsReadBack;
+procedure TestDelimitedProtoStreamsReadBack;
 var
-  ZStreams: TZioStreams;
+  ZStreams: TDelimitedProtoStreams;
   Msg1, Msg2: TTestMessage;
   TempDir: AnsiString;
   FileStream: TFileStream;
-  ZStream: TZioStream;
+  ZStream: TDelimitedProtoStream;
   i: Integer;
 begin
-  WriteLn('TEST: TZioStreams Read Back Data');
+  WriteLn('TEST: TDelimitedProtoStreams Read Back Data');
   
   TempDir := GetTempDir + 'ziotest_' + IntToStr(Random(10000));
   try
     // Write data
-    ZStreams := TZioStreams.Create(TempDir, 3);
+    ZStreams := TDelimitedProtoStreams.Create(TempDir, 3);
     try
       for i := 0 to 2 do
       begin
@@ -521,7 +521,7 @@ begin
                [IncludeTrailingPathDelimiter(TempDir), PathDelim, i, 3]),
         fmOpenRead);
       try
-        ZStream := TZioStream.Create(FileStream, False);
+        ZStream := TDelimitedProtoStream.Create(FileStream, False);
         try
           Msg2 := TTestMessage.Create;
           try
@@ -554,20 +554,20 @@ begin
   end;
 end;
 
-procedure TestZioStreamsInvalidShard;
+procedure TestDelimitedProtoStreamsInvalidShard;
 var
-  ZStreams: TZioStreams;
+  ZStreams: TDelimitedProtoStreams;
   Msg: TTestMessage;
   TempDir: AnsiString;
   ExceptionCaught: Boolean;
 begin
-  WriteLn('TEST: TZioStreams Invalid Shard Index');
+  WriteLn('TEST: TDelimitedProtoStreams Invalid Shard Index');
   
   TempDir := GetTempDir + 'ziotest_' + IntToStr(Random(10000));
   ExceptionCaught := False;
   
   try
-    ZStreams := TZioStreams.Create(TempDir, 2);
+    ZStreams := TDelimitedProtoStreams.Create(TempDir, 2);
     try
       Msg := TTestMessage.Create;
       try
@@ -598,22 +598,22 @@ begin
   end;
 end;
 
-procedure TestZioStreamsMultipleMessagesPerShard;
+procedure TestDelimitedProtoStreamsMultipleMessagesPerShard;
 var
-  ZStreams: TZioStreams;
+  ZStreams: TDelimitedProtoStreams;
   Msg1, Msg2: TTestMessage;
   TempDir: AnsiString;
   FileStream: TFileStream;
-  ZStream: TZioStream;
+  ZStream: TDelimitedProtoStream;
   i, j: Integer;
   ShardPath: AnsiString;
 begin
-  WriteLn('TEST: TZioStreams Multiple Messages Per Shard');
+  WriteLn('TEST: TDelimitedProtoStreams Multiple Messages Per Shard');
   
   TempDir := GetTempDir + 'ziotest_' + IntToStr(Random(10000));
   try
     // Write multiple messages to each shard
-    ZStreams := TZioStreams.Create(TempDir, 2);
+    ZStreams := TDelimitedProtoStreams.Create(TempDir, 2);
     try
       for i := 0 to 1 do  // For each shard
       begin
@@ -640,7 +640,7 @@ begin
                          [IncludeTrailingPathDelimiter(TempDir), PathDelim, i, 2]);
       FileStream := TFileStream.Create(ShardPath, fmOpenRead);
       try
-        ZStream := TZioStream.Create(FileStream, False);
+        ZStream := TDelimitedProtoStream.Create(FileStream, False);
         try
           for j := 1 to 5 do
           begin

@@ -3,7 +3,7 @@ program TestZIOPartWriter;
 {$mode objfpc}{$H+}
 
 uses
-  SysUtils, Classes, ZIOStreamUnit, ProtoHelperUnit;
+  SysUtils, Classes, DelimitedProtoStreamUnit, ProtoHelperUnit;
 
 type
   { Simple test message }
@@ -56,8 +56,8 @@ end;
 
 procedure TestMultiPartWriters;
 var
-  Writer: specialize TZioWriter<TTestMessage>;
-  PartWriter1, PartWriter2, PartWriter3: specialize TZioWriter<TTestMessage>.TZioPartWriter;
+  Writer: specialize TDelimitedProtoWriter<TTestMessage>;
+  PartWriter1, PartWriter2, PartWriter3: specialize TDelimitedProtoWriter<TTestMessage>.TZioPartWriter;
   Pattern: TPattern;
   Msg: TTestMessage;
   TempDir: AnsiString;
@@ -71,7 +71,7 @@ begin
   
   // Create writer with 4 shards
   Pattern := TPattern.Create(TempDir, 4);
-  Writer := specialize TZioWriter<TTestMessage>.Create(Pattern);
+  Writer := specialize TDelimitedProtoWriter<TTestMessage>.Create(Pattern);
   
   WriteLn('Creating 3 part writers (round-robin across shards)...');
   
@@ -136,8 +136,8 @@ end;
 
 procedure TestMultiplePartsInSameShard;
 var
-  Writer: specialize TZioWriter<TTestMessage>;
-  PartWriter1, PartWriter2: specialize TZioWriter<TTestMessage>.TZioPartWriter;
+  Writer: specialize TDelimitedProtoWriter<TTestMessage>;
+  PartWriter1, PartWriter2: specialize TDelimitedProtoWriter<TTestMessage>.TZioPartWriter;
   Pattern: TPattern;
   Msg: TTestMessage;
   TempDir: AnsiString;
@@ -151,7 +151,7 @@ begin
   
   // Create writer with 2 shards
   Pattern := TPattern.Create(TempDir, 2);
-  Writer := specialize TZioWriter<TTestMessage>.Create(Pattern);
+  Writer := specialize TDelimitedProtoWriter<TTestMessage>.Create(Pattern);
   
   WriteLn('Creating 2 part writers for shard 0...');
   

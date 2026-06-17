@@ -1,9 +1,9 @@
-program BenchmarkZIOBuffering;
+program BenchmarkDelimitedProtoBuffering;
 
 {$mode objfpc}{$H+}
 
 uses
-  Classes, SysUtils, ZIOStreamUnit, ProtoHelperUnit, ProtoStreamUnit, DateUtils;
+  Classes, SysUtils, DelimitedProtoStreamUnit, ProtoHelperUnit, ProtoStreamUnit, DateUtils;
 
 type
   { Simple test message }
@@ -62,7 +62,7 @@ end;
 procedure BenchmarkWrite(const TestName: AnsiString; NumMessages: Integer);
 var
   Pattern: TPattern;
-  Writer: specialize TZioWriter<TBenchMessage>;
+  Writer: specialize TDelimitedProtoWriter<TBenchMessage>;
   Msg: TBenchMessage;
   i: Integer;
   StartTime, EndTime: TDateTime;
@@ -75,7 +75,7 @@ begin
   
   Pattern := TPattern.Create(TempDir, 4);
   try
-    Writer := specialize TZioWriter<TBenchMessage>.Create(Pattern);
+    Writer := specialize TDelimitedProtoWriter<TBenchMessage>.Create(Pattern);
     try
       StartTime := Now;
       
@@ -113,8 +113,8 @@ end;
 procedure BenchmarkRead(const TestName: AnsiString; NumMessages: Integer);
 var
   Pattern: TPattern;
-  Writer: specialize TZioWriter<TBenchMessage>;
-  Reader: specialize TZioReader<TBenchMessage>;
+  Writer: specialize TDelimitedProtoWriter<TBenchMessage>;
+  Reader: specialize TDelimitedProtoReader<TBenchMessage>;
   Msg: TBenchMessage;
   i: Integer;
   StartTime, EndTime: TDateTime;
@@ -128,7 +128,7 @@ begin
   Pattern := TPattern.Create(TempDir, 4);
   try
     // First write the data
-    Writer := specialize TZioWriter<TBenchMessage>.Create(Pattern);
+    Writer := specialize TDelimitedProtoWriter<TBenchMessage>.Create(Pattern);
     try
       for i := 1 to NumMessages do
       begin
@@ -150,7 +150,7 @@ begin
     Paths := Pattern.GetAllPaths;
     
     // Now benchmark reading
-    Reader := specialize TZioReader<TBenchMessage>.Create(Paths);
+    Reader := specialize TDelimitedProtoReader<TBenchMessage>.Create(Paths);
     try
       Msg := TBenchMessage.Create;
       try
