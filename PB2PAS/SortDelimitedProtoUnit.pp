@@ -18,13 +18,13 @@ type
   );
 
   { Exception for sort operations }
-  ESortZioException = class(Exception);
+  ESortDelimitedProtoException = class(Exception);
 
-{ Sort a single ZIO file by field number 1 }
-procedure SortZioFile(const InputPath, OutputPath: AnsiString; FieldNumberOneType: TProtoBasicType);
+{ Sort a single delimited protobuf file by field number 1 }
+procedure SortDelimitedProtoFile(const InputPath, OutputPath: AnsiString; FieldNumberOneType: TProtoBasicType);
 
-{ Sort sharded ZIO files by field number 1 }
-procedure SortZioFiles(InputPattern, OutputPattern: TPattern; FieldNumberOneType: TProtoBasicType);
+{ Sort sharded delimited protobuf files by field number 1 }
+procedure SortDelimitedProtoFiles(InputPattern, OutputPattern: TPattern; FieldNumberOneType: TProtoBasicType);
 
 { TODO: Implement external merge sort for datasets larger than RAM
   
@@ -40,7 +40,7 @@ procedure SortZioFiles(InputPattern, OutputPattern: TPattern; FieldNumberOneType
      - Write merged output to final destination
   
   Algorithm:
-    function ExternalMergeSortZioFile(InputPath, OutputPath: string; 
+    function ExternalMergeSortDelimitedProtoFile(InputPath, OutputPath: string; 
                                        FieldType: TProtoBasicType;
                                        MemoryLimit: Int64 = 1GB)
     
@@ -52,7 +52,7 @@ procedure SortZioFiles(InputPattern, OutputPattern: TPattern; FieldNumberOneType
     - Configurable memory limit
     - Only small overhead (2 passes over data)
     
-  Similar pattern for SortZioFiles with sharded inputs.
+  Similar pattern for SortDelimitedProtoFiles with sharded inputs.
 }
 
 implementation
@@ -221,7 +221,7 @@ begin
 end;
 
 { Main sorting procedure }
-procedure SortZioFile(const InputPath, OutputPath: AnsiString; FieldNumberOneType: TProtoBasicType);
+procedure SortDelimitedProtoFile(const InputPath, OutputPath: AnsiString; FieldNumberOneType: TProtoBasicType);
 var
   InputFileStream: TFileStream;
   InputBufferedStream: TReadBufStream;
@@ -240,7 +240,7 @@ var
   i: Integer;
 begin
   if not FileExists(InputPath) then
-    raise ESortZioException.CreateFmt('Input file not found: %s', [InputPath]);
+    raise ESortDelimitedProtoException.CreateFmt('Input file not found: %s', [InputPath]);
   
   // Open input file
   InputFileStream := TFileStream.Create(InputPath, fmOpenRead);
@@ -253,7 +253,7 @@ begin
   
   while InputBufferedStream.Position < InputBufferedStream.Size do
   begin
-    // Read ZIO header (12 bytes)
+    // Read delimited protobuf header (12 bytes)
     if InputBufferedStream.Position + 12 > InputBufferedStream.Size then
       Break;
     
@@ -263,7 +263,7 @@ begin
     SetLength(Magic, 8);
     Move(Header[0], Magic[1], 8);
     if Magic <> 'ZIO1PBUF' then
-      raise ESortZioException.CreateFmt('Invalid ZIO magic at position %d', [InputBufferedStream.Position - 12]);
+      raise ESortDelimitedProtoException.CreateFmt('Invalid delimited protobuf magic at position %d', [InputBufferedStream.Position - 12]);
     
     // Read message size
     Reader := TProtoStreamReader.Create(InputBufferedStream, False);
@@ -278,7 +278,7 @@ begin
     
     // Extract field 1 (partial parse - optimization!)
     if not ExtractField1(Reader, MsgSize, FieldNumberOneType, SortKey) then
-      raise ESortZioException.CreateFmt('Field 1 not found in message at position %d', [MessageStartPos]);
+      raise ESortDelimitedProtoException.CreateFmt('Field 1 not found in message at position %d', [MessageStartPos]);
     
     Reader.Free;
     
@@ -319,7 +319,7 @@ begin
   
   for i := 0 to Count - 1 do
   begin
-    // Write ZIO header
+    // Write delimited protobuf header
     FillChar(Header, SizeOf(Header), #32);
     Move(PAnsiChar('ZIO1PBUF')^, Header[0], 8);
     OutputBufferedStream.WriteBuffer(Header[0], 12);
@@ -339,34 +339,34 @@ begin
   WriteLn(Format('Successfully wrote %d sorted records', [Count]));
 end;
 
-{ Sort sharded ZIO files - per-shard sort }
-procedure SortZioFiles(InputPattern, OutputPattern: TPattern; FieldNumberOneType: TProtoBasicType);
+{ Sort sharded delimited protobuf files - per-shard sort }
+procedure SortDelimitedProtoFiles(InputPattern, OutputPattern: TPattern; FieldNumberOneType: TProtoBasicType);
 var
   InputPaths, OutputPaths: TAnsiStringArray;
   i: Integer;
 begin
-  // Simply call SortZioFile for each shard independently.
+  // Simply call SortDelimitedProtoFile for each shard independently.
   // Each shard is sorted on its own - this is NOT a global sort across all shards.
   // For global sort (all shards combined), you would need to:
   //   1. Concatenate all input shards into a temp file
-  //   2. Call SortZioFile on the temp file
+  //   2. Call SortDelimitedProtoFile on the temp file
   //   3. Split the sorted temp file back into output shards
   
   InputPaths := InputPattern.GetAllPaths;
   OutputPaths := OutputPattern.GetAllPaths;
   
   if InputPattern.NumShards <> OutputPattern.NumShards then
-    raise ESortZioException.CreateFmt(
+    raise ESortDelimitedProtoException.CreateFmt(
       'Input and output patterns must have same number of shards: %d vs %d',
       [InputPattern.NumShards, OutputPattern.NumShards]);
   
-  WriteLn(Format('Sorting %d sharded ZIO files (per-shard sort)', [InputPattern.NumShards]));
+  WriteLn(Format('Sorting %d sharded delimited protobuf files (per-shard sort)', [InputPattern.NumShards]));
   
   for i := 0 to High(InputPaths) do
   begin
     WriteLn(Format('Sorting shard %d/%d: %s -> %s', 
       [i + 1, Length(InputPaths), InputPaths[i], OutputPaths[i]]));
-    SortZioFile(InputPaths[i], OutputPaths[i], FieldNumberOneType);
+    SortDelimitedProtoFile(InputPaths[i], OutputPaths[i], FieldNumberOneType);
   end;
   
   WriteLn(Format('Successfully sorted %d shards', [Length(InputPaths)]));
