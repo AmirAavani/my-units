@@ -128,8 +128,8 @@ begin
     // Block until task available in queue
     FParent.RequestsQueue.Delete(Args);
     
-    WriteLn(Format('[Thread-%d] Got task: FuncPtr=%p, Args=%p, Terminated=%d, FCancelled=%d', 
-      [MyThreadID, Pointer(@Args.FuncPtr), Pointer(Args.Arguments), Ord(Terminated), Ord(FParent.FCancelled)]));
+    WriteLn(Format('[Thread-%d] Got task: FuncPtr=%p, Terminated=%d, FCancelled=%d',
+      [MyThreadID, Pointer(@Args.FuncPtr), Ord(Terminated), Ord(FParent.FCancelled)]));
     Flush(Output);
 
     // Check if queue is shutting down (after Delete returns)
@@ -154,12 +154,12 @@ begin
     end;
 
     // Execute worker function
-    WriteLn(Format('[Thread-%d] Executing task with Args=%p...', [MyThreadID, Pointer(Args.Arguments)]));
+    WriteLn(Format('[Thread-%d] Executing ...', [MyThreadID]));
     Flush(Output);
 
     _Result := Args.FuncPtr(Args.Arguments);
     
-    WriteLn(Format('[Thread-%d] Task completed successfully (Args=%p)', [MyThreadID, Pointer(Args.Arguments)]));
+    WriteLn(Format('[Thread-%d] Task completed successfully.', [MyThreadID]));
     Flush(Output);
     if Args.PResult <> nil then
     begin
@@ -279,7 +279,7 @@ begin
   // Don't accept new tasks during shutdown
   if FCancelled then
   begin
-    WriteLn(Format('[Run] Rejecting task (FCancelled=true, Args=%p)', [Pointer(Args)]));
+    WriteLn(Format('[Run] Rejecting task (FCancelled=true)', []));
     Flush(Output);
     Exit;
   end;
@@ -292,7 +292,7 @@ begin
   Arg.Arguments := Args;
   Arg.PResult:= OutputResult;
 
-  WriteLn(Format('[Run] Queuing task: FuncPtr=%p, Args=%p', [Pointer(@F), Pointer(Args)]));
+  WriteLn(Format('[Run] Queuing task: FuncPtr=%p', [Pointer(@F)]));
   Flush(Output);
   
   // Add to queue - worker will pick it up
