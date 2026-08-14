@@ -156,9 +156,24 @@ begin
     // Execute worker function
     WriteLn(Format('[Thread-%d] Executing ...', [MyThreadID]));
     Flush(Output);
+    try
+      _Result := Args.FuncPtr(Args.Arguments);
+    except
+      on E: Exception do
+      begin
+        { If ANY thread crashes, print the error and NUKE the entire process }
+        WriteLn(StdErr, '');
+        WriteLn(StdErr, '=========================================');
+        WriteLn(StdErr, ' FATAL THREAD CRASH');
+        WriteLn(StdErr, ' Exception : ', E.ClassName);
+        WriteLn(StdErr, ' Message   : ', E.Message);
+        WriteLn(StdErr, '=========================================');
+        Flush(StdErr);
 
-    _Result := Args.FuncPtr(Args.Arguments);
-    
+        Halt(1);
+      end;
+    end;
+
     WriteLn(Format('[Thread-%d] Task completed successfully.', [MyThreadID]));
     Flush(Output);
     if Args.PResult <> nil then
