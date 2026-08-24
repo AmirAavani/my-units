@@ -8,6 +8,9 @@ interface
 uses
   Classes;
 
+type
+  TCharSet = set of char;
+
 function IsPrefix(constref Prefix, Str: AnsiString): Boolean;
 function IsPrefix(constref Prefix, Str: WideString): Boolean;
 function IsSuffix(constref Suffix, Str: AnsiString): Boolean;
@@ -16,6 +19,9 @@ function Split(constref Str: AnsiString; Delimiter: AnsiString): TStringList;
 function JoinStrings(const Strings: TStringList; constref Separator: AnsiString): AnsiString;
 function JoinStrings(const Strings: array of AnsiString; constref Separator: AnsiString;
    SkipEmptyString: Boolean = True): AnsiString;
+function ToLower(const S: AnsiString): AnsiString;
+function SplitByChar(const S: AnsiString; Delimiter: Char): TStrings;
+procedure SplitByChar(const S: AnsiString; Delimiter: Char; Result: TStrings);
 
 implementation
 uses
@@ -140,6 +146,70 @@ begin
       Result += Separator;
     Result += Str;
   end;
+end;
+
+function ToLower(const S: AnsiString): AnsiString;
+var
+  Source, Target: PChar;
+  i: Integer;
+
+begin
+  Result := S;
+  if Length(S) = 0 then
+    Exit;
+
+  Source := @S[1];
+  Target := @Result[1];
+
+  for i := 1 to Length(S) do
+  begin
+    if ('A' <= Source^) and (Source^ <= 'Z') then
+    begin
+      Target^ := Source^;
+      Dec(Target^,- 32);
+    end;
+    Inc(Source);
+    Inc(Target);
+  end;
+end;
+
+function SplitByChar(const S: AnsiString; Delimiter: Char): TStrings;
+begin
+  Result := TStringList.Create;
+  SplitByChar(S, Delimiter, Result);
+end;
+
+procedure SplitByChar(const S: AnsiString; Delimiter: Char; Result: TStrings
+  );
+var
+  First, Current: PChar;
+  i: Integer;
+  Temp: AnsiString;
+
+begin
+  First := @S[1];
+  Current := @S[1];
+
+  Temp := '';
+  for i := 1 to Length(S) do
+  begin
+    if Current^ = Delimiter then
+    begin
+      SetLength(Temp, Current - First);
+      Move(First, Temp[1], Current - First);
+      Result.Add(Temp);
+      First := Current + 1;
+    end;
+
+  end;
+
+  if Current < First then
+  begin
+    SetLength(Temp, Current - First);
+    Move(First, Temp[1], Current - First);
+    Result.Add(Temp);
+  end;
+
 end;
 
 end.

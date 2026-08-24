@@ -24,7 +24,7 @@ type
     { Function pointer type for worker functions.
       Args: Input data for the worker
       Returns: Boolean indicating success/failure }
-    TThreadFunctionPtr = function (Args: TArguments): Boolean;
+    TThreadFunctionPtr = function (var Args: TArguments): Boolean;
 
     { TFuncArgResultArguments }
     { Internal structure to package task data for the queue }

@@ -15,7 +15,7 @@ procedure MustCreateDir(const Path: AnsiString);
 
 implementation
 uses
-  FileSystemLinuxUnit, StringUnit;
+  FileSystemLinuxUnit;
 
 function FileExists(const Filename: AnsiString): Boolean;
 begin
