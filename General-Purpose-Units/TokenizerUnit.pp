@@ -5,7 +5,7 @@ unit TokenizerUnit;
 interface
 
 uses
-  Classes, SysUtils, DictionaryTreeUnit;
+  Classes, SysUtils;
 type
   EBoTPassed= class (Exception);
   ERangeCheckError= class (Exception);

@@ -12,6 +12,7 @@ procedure MustReadFile(const Filename: AnsiString; var Result: AnsiString);
 // A Linux file starts with /.
 function IsLinuxFile(const Filename: AnsiString): Boolean;
 function FileExists(const FileName: AnsiString): Boolean;
+function DirExists(const DirName: AnsiString): Boolean;
 function MustCreateDir(const Path: AnsiString): Boolean;
 
 implementation
@@ -44,6 +45,12 @@ end;
 function FileExists(const FileName: AnsiString): Boolean;
 begin
   Result := SysUtils.FileExists(FileName);
+end;
+
+function DirExists(const DirName: AnsiString): Boolean;
+begin
+  Result := SysUtils.DirectoryExists(DirName, True);
+
 end;
 
 function MustCreateDir(const Path: AnsiString): Boolean;

@@ -199,7 +199,7 @@ begin
   Value -= k;
 
   if Value < 0 then
-    ALoggerUnit.GetLogger.FmtFatalLn('Value(%d) < 0', [Value]);
+    FmtFatalLn('Value(%d) < 0', [Value]);
 
   if Value = 0 then
     for i := 1 to BlockQueue.Count do

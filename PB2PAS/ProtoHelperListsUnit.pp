@@ -29,17 +29,19 @@ type
   generic TSimpleTypeList<TSimpleType> = class(specialize TList<TSimpleType>)
   private type
     TSimpleList = specialize TSimpleTypeList<TSimpleType>;
+    PSimpleType = ^TSimpleType;
   protected
     function GetCount: SizeInt; override;
+    procedure SetCount(c: SizeInt);
 
   public
-    property Count: SizeInt read GetCount;  // Redeclare to use overridden getter
+    property Count: SizeInt read GetCount write SetCount;  // Redeclare to use overridden getter
     
     constructor Create;
     destructor Destroy; override;
 
     function DeepCopy: TSimpleList;
-    function ItemsPtr: Pointer; inline;
+    function ItemsPtr: PSimpleType; inline;
 
   end;
 
@@ -65,7 +67,7 @@ begin
 
 end;
 
-function TSimpleTypeList.ItemsPtr: Pointer;
+function TSimpleTypeList.ItemsPtr: PSimpleType;
 begin
   if Self = nil then
     Exit(nil);
@@ -83,6 +85,14 @@ begin
   end;
 
   Result := inherited GetCount;
+end;
+
+procedure TSimpleTypeList.SetCount(c: SizeInt);
+begin
+  if self = nil then
+    Exit;
+
+  inherited SetCount(c);
 end;
 
 

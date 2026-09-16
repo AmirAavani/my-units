@@ -9,6 +9,7 @@ uses
 
 
 function FileExists(const Filename: AnsiString): Boolean;
+function DirExists(const Dirname: AnsiString): Boolean;
 function MustReadFile(const Filename: AnsiString): AnsiString;
 procedure MustReadFile(const Filename: AnsiString; var Result: AnsiString);
 procedure MustCreateDir(const Path: AnsiString);
@@ -21,6 +22,16 @@ function FileExists(const Filename: AnsiString): Boolean;
 begin
   if FileSystemLinuxUnit.IsLinuxFile(Filename) then
     Exit(FileSystemLinuxUnit.FileExists(Filename));
+
+  WriteLn('Invalid File type');
+  Halt(1);
+
+end;
+
+function DirExists(const Dirname: AnsiString): Boolean;
+begin
+  if FileSystemLinuxUnit.IsLinuxFile(Dirname) then
+    Exit(FileSystemLinuxUnit.DirExists(Dirname));
 
   WriteLn('Invalid File type');
   Halt(1);
