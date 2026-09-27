@@ -5,21 +5,20 @@ unit ZIOStreamUnit;
 interface
 
 uses
-  Classes, SysUtils, bufstream, ProtoStreamUnit, ProtoHelperUnit,
+  Classes, SysUtils, bufstream, syncobjs, ProtoStreamUnit, ProtoHelperUnit,
   Generics.Collections, DateUtils;
+
+const
+  DEFAULT_MAX_PART_SIZE = 1073741824; // 1 GiB soft limit
 
 type
   TIntList = specialize TList<integer>;
   TAnsiStringArray = array of ansistring;
 
   { Exception Classes }
-
   EZIOStreamException = class(Exception);
-
   EPatternException = class(EZIOStreamException);
-
   EShardException = class(EZIOStreamException);
-
   EStreamException = class(EZIOStreamException);
 
   { TPattern - Encapsulates shard path pattern }
@@ -40,32 +39,41 @@ type
     destructor Destroy; override;
 
     function GetShardPath(ShardIndex: integer): ansistring;
-
-    { Create a filtered pattern that only includes shards where (shard_index mod ModuloValue) = Remainder }
     function WithModulo(Remainder, ModuloValue: integer): TPattern;
 
     property BasePath: ansistring read FBasePath;
     property NumShards: integer read GetFilteredNumShards;
   end;
 
+  { TRobustFileStream - Retries partial writes under kernel backpressure }
+
+  TRobustFileStream = class(TFileStream)
+  public
+    function Write(const Buffer; Count: longint): longint; override;
+  end;
+
   { TZioStream }
 
   TZioStream = class(TObject)
   private
-    FStream: TStream;          // The buffered stream (for I/O)
-    FFileStream: TFileStream;  // The underlying file stream (may be nil)
+    FBufferedStream: TBufStream;
+    FFileStream: TFileStream;
     FOwnsStreams: boolean;
+    FBytesWritten: int64;
+    FTempStream: TMemoryStream;
 
   public
-    constructor Create(AStream: TStream; AOwnsStreams: boolean = False); overload;
-    constructor Create(AFileStream: TFileStream; ABufferedStream: TStream;
+    constructor Create(ABufferedStream: TBufStream; AOwnsStreams: boolean = False);
+      overload;
+    constructor Create(AFileStream: TFileStream; ABufferedStream: TBufStream;
       AOwnsStreams: boolean = False); overload;
     destructor Destroy; override;
 
     procedure WriteMessage(AMessage: TBaseMessage);
     function ReadMessage(AMessage: TBaseMessage): boolean;
 
-    property Stream: TStream read FStream;
+    property Stream: TBufStream read FBufferedStream;
+    property BytesWritten: int64 read FBytesWritten;
   end;
 
   TZioStreamList = specialize TList<TZioStream>;
@@ -91,12 +99,11 @@ type
   generic TZioReader<T: TBaseMessage> = class(TObject)
   protected
   type
-    { TZioShardReader - Manages reading from one shard (multiple parts) }
     TZioShardReader = class(TObject)
     private
-      FPartPaths: TStringList;        // All part paths for this shard (sorted)
-      FCurrentPartIndex: integer;     // Which part we're currently reading
-      FCurrentStream: TZioStream;     // Currently open part stream
+      FPartPaths: TStringList;
+      FCurrentPartIndex: integer;
+      FCurrentStream: TZioStream;
       FBufferSize: integer;
 
       procedure OpenNextPart;
@@ -137,45 +144,51 @@ type
   generic TZioWriter<T: TBaseMessage> = class(TObject)
   public
   type
-    { Forward declaration }
     TZioShardWriter = class;
 
-    { TZioPartWriter - Writes to a single part file }
+    { TZioPartWriter - Handles automatic stream rotation at MaxPartSize }
     TZioPartWriter = class(TObject)
     private
+      FShardWriter: TZioShardWriter;
       FZioStream: TZioStream;
       FPartPath: ansistring;
+      FBufferSize: integer;
+      FMaxPartSize: int64;
+
+      procedure OpenNextPart;
+      procedure CloseCurrentPart;
+      function GetBytesWritten: int64;
     public
-      constructor Create(const APartPath: ansistring; ABufferSize: integer = 65536);
+      constructor Create(AShardWriter: TZioShardWriter;
+        ABufferSize: integer = 65536; AMaxPartSize: int64 = DEFAULT_MAX_PART_SIZE);
+        overload;
+      constructor Create(const APartPath: ansistring;
+        ABufferSize: integer = 65536); overload;
       destructor Destroy; override;
 
       procedure WriteMessage(AMessage: T);
 
       property PartPath: ansistring read FPartPath;
+      property BytesWritten: int64 read GetBytesWritten;
     end;
 
-
-    { TZioShardWriter - Manages writing to one specific shard }
     TZioShardWriter = class(TObject)
     private
-      FParentWriter: TZioWriter;  // Back reference (not owned)
+      FParentWriter: TZioWriter;
       FShardIndex: integer;
       FSequenceCounter: integer;
-      FCurrentPartWriter: TZioPartWriter;  // Reused for WriteMessage
+      FCurrentPartWriter: TZioPartWriter;
       FBufferSize: integer;
+      FLock: TCriticalSection; // Mutex for thread-safe path generation
 
       function GeneratePartPath: ansistring;
-      procedure EnsureShardDirectoryExists;
 
     public
       constructor Create(AParentWriter: TZioWriter; AShardIndex: integer;
         ABufferSize: integer);
       destructor Destroy; override;
 
-      { Creates a new part writer - caller owns and must free }
       function NewPartWriter: TZioPartWriter;
-
-      { Convenience: writes to current part (creates if needed, reuses) }
       procedure WriteMessage(AMessage: T);
 
       property ShardIndex: integer read FShardIndex;
@@ -183,52 +196,67 @@ type
 
     TZioPartWriterList = class(specialize TObjectList<TZioPartWriter>);
 
-    { TZioShardWriterList }
-
     TZioShardWriterList = class(specialize TObjectList<TZioShardWriter>)
     public
-      { Creates a new part writer - caller owns and must free }
       function NewPartWriters: TZioPartWriterList;
-
     end;
-
 
   private
     FPattern: TPattern;
     FBufferSize: integer;
-    FCurrentShardIndex: integer;  // For round-robin in NewPartWriter
-    FShardWriters: TZioShardWriterList;  // Lazily created shard writers
+    FCurrentShardIndex: integer;
+    FShardWriters: TZioShardWriterList;
+    FTimestamp: int64;
+    FMaxPartSize: int64;
+    FLock: TCriticalSection; // Mutex for thread-safe shard writer creation
 
     function GetOrCreateShardWriter(ShardIndex: integer): TZioShardWriter;
-    function GetShardDirectoryPath(ShardIndex: integer): ansistring;
     function GetTotalStreams: integer;
 
   public
     property NumShards: integer read GetTotalStreams;
-    constructor Create(APattern: TPattern; ABufferSize: integer = 65536);
+    property Timestamp: int64 read FTimestamp;
+    property MaxPartSize: int64 read FMaxPartSize;
+
+    constructor Create(APattern: TPattern; ABufferSize: integer = 65536;
+      AMaxPartSize: int64 = DEFAULT_MAX_PART_SIZE);
     destructor Destroy; override;
 
-    { Get shard writer for specific shard (lazily created) }
     function GetShardWriter(ShardIndex: integer): TZioShardWriter;
-
-    { Convenience: write message to specific shard }
     procedure WriteMessageToShard(AMessage: T; ShardIndex: integer);
-
-    { Creates part writer with round-robin shard selection }
     function NewPartWriter: TZioPartWriter;
-
-    { Creates list of part writers with one TZioPartWriter per shard }
     function NewPartWriters: TZioPartWriterList;
   end;
 
-
 implementation
+uses
+  ALoggerUnit;
 
 type
-  { Cracker class to access protected LoadFromStream }
   TBaseMessageCracker = class(TBaseMessage);
 
-  { TPattern }
+  { TRobustFileStream }
+
+function TRobustFileStream.Write(const Buffer; Count: longint): longint;
+var
+  TotalWritten, Written: longint;
+  Ptr: pbyte;
+begin
+  TotalWritten := 0;
+  Ptr := pbyte(@Buffer);
+
+  while TotalWritten < Count do
+  begin
+    Written := inherited Write((Ptr + TotalWritten)^, Count - TotalWritten);
+    if Written <= 0 then
+      Break;
+    Inc(TotalWritten, Written);
+  end;
+
+  Result := TotalWritten;
+end;
+
+{ TPattern }
 
 constructor TPattern.Create(const Pattern: ansistring);
 var
@@ -237,7 +265,6 @@ var
 begin
   inherited Create;
 
-  // Parse "path@N" format
   AtPos := Pos('@', Pattern);
   if AtPos = 0 then
     raise EPatternException.CreateFmt(
@@ -260,7 +287,6 @@ end;
 constructor TPattern.Create(const ABasePath: ansistring; ANumShards: integer);
 begin
   inherited Create;
-
   FBasePath := ABasePath;
   FNumShards := ANumShards;
   FRemainder := 0;
@@ -271,65 +297,42 @@ begin
       [FNumShards]);
 end;
 
+constructor TPattern.Create(const Pattern: TPattern);
+begin
+  inherited Create;
+  FBasePath := Pattern.FBasePath;
+  FNumShards := Pattern.FNumShards;
+  FRemainder := Pattern.FRemainder;
+  FModulo := Pattern.FModulo;
+end;
+
 destructor TPattern.Destroy;
 begin
   inherited Destroy;
 end;
 
 function TPattern.GetFilteredNumShards: integer;
-var
-  i, Count: integer;
 begin
   if FModulo = 1 then
     Exit(FNumShards);
 
-  // Count how many shards match the filter
-  Count := 0;
-  for i := 0 to FNumShards - 1 do
-  begin
-    if i mod FModulo = FRemainder then
-      Inc(Count);
-  end;
-  Result := Count;
-end;
+  if FRemainder >= FNumShards then
+    Exit(0);
 
-constructor TPattern.Create(const Pattern: TPattern);
-begin
-  inherited Create;
-
-  FBasePath := Pattern.FBasePath;
-  FNumShards := Pattern.FNumShards;
-  FRemainder := Pattern.FRemainder;
-  FModulo := Pattern.FModulo;
-
+  Result := ((FNumShards - 1 - FRemainder) div FModulo) + 1;
 end;
 
 function TPattern.GetShardPath(ShardIndex: integer): ansistring;
 var
-  ActualShardIndex, i, Count: integer;
+  ActualShardIndex: integer;
 begin
-  // TODO(Amir): This is a naive implementation! Improve this.
-  Count := 0;
-  ActualShardIndex := -1;
-  for i := 0 to FNumShards - 1 do
-  begin
-    if i mod FModulo <> FRemainder then
-      Continue;
-
-    if Count = ShardIndex then
-    begin
-      ActualShardIndex := i;
-      Break;
-    end;
-    Inc(Count);
-  end;
-
-  if ActualShardIndex = -1 then
+  if (ShardIndex < 0) or (ShardIndex >= GetFilteredNumShards) then
     raise EShardException.CreateFmt(
       'Shard index %d out of range [0..%d] for filtered pattern',
       [ShardIndex, GetFilteredNumShards - 1]);
 
-  // Return directory path for multi-part shards
+  ActualShardIndex := FRemainder + (ShardIndex * FModulo);
+
   Result := Format('%sshard-%4.4d-of-%4.4d',
     [IncludeTrailingPathDelimiter(FBasePath), ActualShardIndex, FNumShards]);
 end;
@@ -343,43 +346,50 @@ end;
 
 { TZioStream }
 
-constructor TZioStream.Create(AStream: TStream; AOwnsStreams: boolean);
+constructor TZioStream.Create(ABufferedStream: TBufStream; AOwnsStreams: boolean);
 begin
   inherited Create;
-  FStream := AStream;
+
+  FBufferedStream := ABufferedStream;
   FFileStream := nil;
   FOwnsStreams := AOwnsStreams;
+  FBytesWritten := 0;
+  FTempStream := TMemoryStream.Create;
+
 end;
 
-constructor TZioStream.Create(AFileStream: TFileStream; ABufferedStream: TStream;
+constructor TZioStream.Create(AFileStream: TFileStream; ABufferedStream: TBufStream;
   AOwnsStreams: boolean);
 begin
   inherited Create;
-  FStream := ABufferedStream;
+
+  FBufferedStream := ABufferedStream;
   FFileStream := AFileStream;
   FOwnsStreams := AOwnsStreams;
+  FBytesWritten := 0;
+  FTempStream := TMemoryStream.Create;
+
 end;
 
 destructor TZioStream.Destroy;
 begin
   if FOwnsStreams then
   begin
-    // Free buffered stream first (this flushes buffers to underlying stream)
-    if FStream <> nil then
-      FStream.Free;
-    // Then free underlying file stream (this closes the file)
+    if FBufferedStream <> nil then
+      FBufferedStream.Free;
     if FFileStream <> nil then
       FFileStream.Free;
   end;
+  FTempStream.Free;
 
   inherited Destroy;
 end;
 
 procedure TZioStream.WriteMessage(AMessage: TBaseMessage);
 var
-  TempStream: TMemoryStream;
-  Writer: TProtoStreamWriter;
   Header: array[0..11] of ansichar;
+  VarintBuf: array[0..4] of byte;
+  VarintLen, Value: cardinal;
 begin
   if AMessage = nil then
     Exit;
@@ -387,18 +397,27 @@ begin
   FillChar(Header, SizeOf(Header), #32);
   Move(pansichar('ZIO1PBUF')^, Header[0], 8);
 
-  TempStream := TMemoryStream.Create;
-  AMessage.SaveToStream(TempStream);
+  FTempStream.Clear;;
+  AMessage.SaveToStream(FTempStream);
 
-  FStream.WriteBuffer(Header[0], 12);
+  FBufferedStream.WriteBuffer(Header[0], 12);
 
-  Writer := TProtoStreamWriter.Create(FStream, False);
-  Writer.WriteRawVarint32(TempStream.Size);
-  Writer.Free;
+  Value := FTempStream.Size;
+  VarintLen := 0;
+  while Value >= $80 do
+  begin
+    VarintBuf[VarintLen] := byte((Value and $7F) or $80);
+    Value := Value shr 7;
+    Inc(VarintLen);
+  end;
+  VarintBuf[VarintLen] := byte(Value);
+  Inc(VarintLen);
 
-  FStream.WriteBuffer(TempStream.Memory^, TempStream.Size);
+  FBufferedStream.WriteBuffer(VarintBuf[0], VarintLen);
+  if FTempStream.Size > 0 then
+    FBufferedStream.WriteBuffer(FTempStream.Memory^, FTempStream.Size);
 
-  TempStream.Free;
+  Inc(FBytesWritten, 12 + VarintLen + FTempStream.Size);
 end;
 
 function TZioStream.ReadMessage(AMessage: TBaseMessage): boolean;
@@ -406,34 +425,25 @@ var
   Reader: TProtoStreamReader;
   Header: array[0..11] of ansichar;
   MsgSize: uint32;
-  Magic: string[8];
 begin
   Result := False;
 
-  // Check header bounds
-  if (AMessage = nil) or (FStream.Position + 12 > FStream.Size) then
+  if (AMessage = nil) or (FBufferedStream.Position + 12 > FBufferedStream.Size) then
     Exit;
 
-  FStream.ReadBuffer(Header[0], 12);
+  FBufferedStream.ReadBuffer(Header[0], 12);
 
-  // Validate full 8-byte magic
-  SetLength(Magic, 8);
-  Move(Header[0], Magic[1], 8);
-  if Magic <> 'ZIO1PBUF' then
+  if not CompareMem(@Header[0], pansichar('ZIO1PBUF'), 8) then
     Exit;
-  Reader := TProtoStreamReader.Create(FStream, False);
-  try
-    MsgSize := Reader.ReadVarUInt32;
 
-    // Check message bounds
-    if FStream.Position + MsgSize > FStream.Size then
-      Exit;
+  Reader := TProtoStreamReader.Create(FBufferedStream, False);
+  MsgSize := Reader.ReadVarUInt32;
 
-    Result := TBaseMessageCracker(AMessage).LoadFromStream(Reader, MsgSize);
-  finally
-    Reader.Free;
-  end;
+  if FBufferedStream.Position + MsgSize > FBufferedStream.Size then
+    Exit;
 
+  Result := TBaseMessageCracker(AMessage).LoadFromStream(Reader, MsgSize);
+  Reader.Free;
 end;
 
 { TZioStreams }
@@ -451,25 +461,18 @@ begin
 
   FPath := APath;
   FNumStreams := ANumStreams;
-
-  // Ensure directory exists
   ForceDirectories(FPath);
 
-  // Use TPattern to generate shard paths
   Pattern := TPattern.Create(FPath, FNumStreams);
-  try
-    for i := 0 to ANumStreams - 1 do
-    begin
-      ShardPath := Pattern.GetShardPath(i);
-
-      FileStream := TFileStream.Create(ShardPath, fmCreate);
-      BufferedStream := TWriteBufStream.Create(FileStream, 65536);  // 64KB write buffer
-      ZioStream := TZioStream.Create(FileStream, BufferedStream, True);
-      Add(ZioStream);
-    end;
-  finally
-    Pattern.Free;
+  for i := 0 to ANumStreams - 1 do
+  begin
+    ShardPath := Pattern.GetShardPath(i);
+    FileStream := TRobustFileStream.Create(ShardPath, fmCreate);
+    BufferedStream := TWriteBufStream.Create(FileStream, 65536);
+    ZioStream := TZioStream.Create(FileStream, BufferedStream, True);
+    Add(ZioStream);
   end;
+  Pattern.Free;
 end;
 
 constructor TZioStreams.Create(APattern: TPattern);
@@ -484,17 +487,13 @@ begin
 
   FPath := APattern.BasePath;
   FNumStreams := APattern.NumShards;
-
-  // Ensure directory exists
   ForceDirectories(FPath);
 
-  // Use pattern to generate shard paths
   for i := 0 to APattern.NumShards - 1 do
   begin
     ShardPath := APattern.GetShardPath(i);
-
-    FileStream := TFileStream.Create(ShardPath, fmCreate);
-    BufferedStream := TWriteBufStream.Create(FileStream, 65536);  // 64KB write buffer
+    FileStream := TRobustFileStream.Create(ShardPath, fmCreate);
+    BufferedStream := TWriteBufStream.Create(FileStream, 65536);
     ZioStream := TZioStream.Create(FileStream, BufferedStream, True);
     Add(ZioStream);
   end;
@@ -504,7 +503,6 @@ destructor TZioStreams.Destroy;
 var
   ZioStream: TZioStream;
 begin
-  // Free all TZioStream objects (they will free their underlying streams)
   for ZioStream in Self do
     ZioStream.Free;
 
@@ -535,7 +533,6 @@ begin
   FCurrentStream := nil;
   FBufferSize := ABufferSize;
 
-  // Find all *.zio files in shard directory
   if FindFirst(AShardDir + PathDelim + '*.zio', faAnyFile, SearchRec) = 0 then
   begin
     repeat
@@ -548,10 +545,8 @@ begin
     FindClose(SearchRec);
   end;
 
-  // Sort alphabetically (part-0000-xxx.zio, part-0001-xxx.zio, ...)
   FPartPaths.Sort;
 
-  // Open first part if available
   if FPartPaths.Count > 0 then
     OpenNextPart;
 end;
@@ -574,16 +569,9 @@ begin
   if FCurrentPartIndex < FPartPaths.Count then
   begin
     PartPath := FPartPaths[FCurrentPartIndex];
-
-    try
-      FileStream := TFileStream.Create(PartPath, fmOpenRead);
-      BufferedStream := TReadBufStream.Create(FileStream, FBufferSize);
-      FCurrentStream := TZioStream.Create(FileStream, BufferedStream, True);
-    except
-      on E: Exception do
-        raise EStreamException.CreateFmt('Failed to open part file "%s": %s',
-          [PartPath, E.Message]);
-    end;
+    FileStream := TFileStream.Create(PartPath, fmOpenRead);
+    BufferedStream := TReadBufStream.Create(FileStream, FBufferSize);
+    FCurrentStream := TZioStream.Create(FileStream, BufferedStream, True);
   end;
 end;
 
@@ -600,21 +588,16 @@ function TZioReader.TZioShardReader.ReadMessage(AMessage: TBaseMessage): boolean
 begin
   Result := False;
 
-  // Try reading from current part
-  if FCurrentStream <> nil then
+  while FCurrentStream <> nil do
   begin
-    Result := FCurrentStream.ReadMessage(AMessage);
+    if FCurrentStream.ReadMessage(AMessage) then
+      Exit(True);
 
-    if Result then
-      Exit; // Successfully read message
-
-    // Current part exhausted, try next part
     Inc(FCurrentPartIndex);
     if HasMoreParts then
-    begin
-      OpenNextPart;
-      Result := ReadMessage(AMessage); // Recursive call for next part
-    end;
+      OpenNextPart
+    else
+      Break;
   end;
 end;
 
@@ -634,12 +617,11 @@ var
 begin
   inherited Create;
 
-  FShardReaders := TZioShardReaderList.Create(True); // Owns objects
+  FShardReaders := TZioShardReaderList.Create(True);
   FCurrentShardIndex := 0;
   FBufferSize := ABufferSize;
   FPattern := nil;
 
-  // Create shard readers for each path (assuming directories)
   for i := 0 to High(APaths) do
   begin
     Path := APaths[i];
@@ -660,12 +642,11 @@ var
 begin
   inherited Create;
 
-  FShardReaders := TZioShardReaderList.Create(True); // Owns objects
+  FShardReaders := TZioShardReaderList.Create(True);
   FCurrentShardIndex := 0;
   FPattern := APattern;
   FBufferSize := ABufferSize;
 
-  // Create shard readers for each shard
   for i := 0 to APattern.NumShards - 1 do
   begin
     ShardDir := APattern.GetShardPath(i);
@@ -680,7 +661,7 @@ end;
 
 destructor TZioReader.Destroy;
 begin
-  FShardReaders.Free; // Automatically frees all shard readers
+  FShardReaders.Free;
   inherited Destroy;
 end;
 
@@ -688,27 +669,17 @@ function TZioReader.ReadMessage(var AMessage: T): boolean;
 begin
   Result := False;
 
-  // Read from shards sequentially
   while FCurrentShardIndex < FShardReaders.Count do
   begin
-    Result := FShardReaders[FCurrentShardIndex].ReadMessage(AMessage);
+    if FShardReaders[FCurrentShardIndex].ReadMessage(AMessage) then
+      Exit(True);
 
-    if Result then
-      Exit; // Successfully read a message
-
-    // Current shard exhausted, move to next
     Inc(FCurrentShardIndex);
   end;
-
-  // All shards exhausted
-  Result := False;
 end;
 
 function TZioReader.ReadMessageFromShard(ShardIndex: integer; var AMessage: T): boolean;
 begin
-  Result := False;
-
-  // Validate shard index
   if (ShardIndex < 0) or (ShardIndex >= FShardReaders.Count) then
     raise EShardException.CreateFmt('Invalid shard index: %d (must be 0..%d)',
       [ShardIndex, FShardReaders.Count - 1]);
@@ -721,6 +692,86 @@ begin
   Result := FShardReaders.Count;
 end;
 
+{ TZioWriter.TZioPartWriter }
+
+constructor TZioWriter.TZioPartWriter.Create(AShardWriter: TZioShardWriter;
+  ABufferSize: integer; AMaxPartSize: int64);
+begin
+  inherited Create;
+  FShardWriter := AShardWriter;
+  FBufferSize := ABufferSize;
+  FMaxPartSize := AMaxPartSize;
+  FZioStream := nil;
+  FPartPath := '';
+end;
+
+constructor TZioWriter.TZioPartWriter.Create(const APartPath: ansistring;
+  ABufferSize: integer);
+var
+  FileStream: TFileStream;
+  BufferedStream: TWriteBufStream;
+begin
+  inherited Create;
+  FShardWriter := nil;
+  FBufferSize := ABufferSize;
+  FMaxPartSize := 0;
+  FPartPath := APartPath;
+
+  FileStream := TRobustFileStream.Create(APartPath, fmCreate);
+  BufferedStream := TWriteBufStream.Create(FileStream, ABufferSize);
+  FZioStream := TZioStream.Create(FileStream, BufferedStream, True);
+end;
+
+destructor TZioWriter.TZioPartWriter.Destroy;
+begin
+  CloseCurrentPart;
+  inherited Destroy;
+end;
+
+procedure TZioWriter.TZioPartWriter.OpenNextPart;
+var
+  FileStream: TFileStream;
+  BufferedStream: TWriteBufStream;
+begin
+  CloseCurrentPart;
+
+  if FShardWriter <> nil then
+  begin
+    FPartPath := FShardWriter.GeneratePartPath;
+    FileStream := TRobustFileStream.Create(FPartPath, fmCreate);
+    BufferedStream := TWriteBufStream.Create(FileStream, FBufferSize);
+    FZioStream := TZioStream.Create(FileStream, BufferedStream, True);
+  end;
+end;
+
+procedure TZioWriter.TZioPartWriter.CloseCurrentPart;
+begin
+  if FZioStream <> nil then
+    FreeAndNil(FZioStream);
+end;
+
+procedure TZioWriter.TZioPartWriter.WriteMessage(AMessage: T);
+begin
+  if AMessage = nil then
+    Exit;
+
+  if FZioStream = nil then
+    OpenNextPart;
+
+  FZioStream.WriteMessage(AMessage);
+
+  if (FMaxPartSize > 0) and (FZioStream.BytesWritten >= FMaxPartSize) then
+    CloseCurrentPart;
+end;
+
+function TZioWriter.TZioPartWriter.GetBytesWritten: int64;
+begin
+  if FZioStream <> nil then
+    Result := FZioStream.BytesWritten
+  else
+    Result := 0;
+end;
+
 { TZioWriter.TZioShardWriter }
 
 constructor TZioWriter.TZioShardWriter.Create(AParentWriter: TZioWriter;
@@ -731,52 +782,42 @@ begin
   FParentWriter := AParentWriter;
   FShardIndex := AShardIndex;
   FSequenceCounter := 0;
-  FCurrentPartWriter := nil;
   FBufferSize := ABufferSize;
+  // TODO: Should we move this to ParentWriter
+  FLock := TCriticalSection.Create;
+
+  // Immediately open the part file during constructor phase
+  FCurrentPartWriter := NewPartWriter;
+  FCurrentPartWriter.OpenNextPart;
 end;
 
 destructor TZioWriter.TZioShardWriter.Destroy;
 begin
-  // Free the current part writer if it exists
   if FCurrentPartWriter <> nil then
     FCurrentPartWriter.Free;
 
+  FLock.Free;
   inherited Destroy;
 end;
 
 function TZioWriter.TZioShardWriter.GeneratePartPath: ansistring;
 var
   ShardDir: ansistring;
-  Timestamp: int64;
+  Seq: integer;
 begin
-  ShardDir := FParentWriter.GetShardDirectoryPath(FShardIndex);
+  // InterlockedIncrement safely adds 1 across all threads and returns the NEW value.
+  // We subtract 1 to get the 0-indexed sequence for this specific call.
+  Seq := InterlockedIncrement(FSequenceCounter) - 1;
 
-  // Get current Unix timestamp in milliseconds
-  Timestamp := DateTimeToUnix(Now, False) * 1000 + MilliSecondOf(Now);
+  ShardDir := FParentWriter.FPattern.GetShardPath(FShardIndex);
 
-  // Format: part-{seq:04d}-{timestamp}.zio for alphabetical sorting
-  Result := Format('%s%spart-%4.4d-%d.zio', [ShardDir, PathDelim,
-    FSequenceCounter, Timestamp]);
-
-  Inc(FSequenceCounter);
-end;
-
-procedure TZioWriter.TZioShardWriter.EnsureShardDirectoryExists;
-var
-  ShardDir: ansistring;
-begin
-  ShardDir := FParentWriter.GetShardDirectoryPath(FShardIndex);
-  if not DirectoryExists(ShardDir) then
-    ForceDirectories(ShardDir);
+  Result := Format('%s%spart-%6.6d-%d.zio', [ShardDir, PathDelim,
+    Seq, FParentWriter.Timestamp]);
 end;
 
 function TZioWriter.TZioShardWriter.NewPartWriter: TZioPartWriter;
-var
-  PartPath: ansistring;
 begin
-  EnsureShardDirectoryExists;
-  PartPath := GeneratePartPath;
-  Result := TZioPartWriter.Create(PartPath, FBufferSize);
+  Result := TZioPartWriter.Create(Self, FBufferSize, FParentWriter.MaxPartSize);
 end;
 
 procedure TZioWriter.TZioShardWriter.WriteMessage(AMessage: T);
@@ -784,12 +825,8 @@ begin
   if AMessage = nil then
     Exit;
 
-  // Create part writer if needed (reuse for subsequent calls)
   if FCurrentPartWriter = nil then
-  begin
-    EnsureShardDirectoryExists;
     FCurrentPartWriter := NewPartWriter;
-  end;
 
   FCurrentPartWriter.WriteMessage(AMessage);
 end;
@@ -807,109 +844,57 @@ begin
     Result.Add(Writer.NewPartWriter);
 end;
 
-{ TZioWriter.TZioPartWriter }
-
-constructor TZioWriter.TZioPartWriter.Create(const APartPath: ansistring;
-  ABufferSize: integer = 65536);
-var
-  FileStream: TFileStream;
-  BufferedStream: TWriteBufStream;
-begin
-  inherited Create;
-
-  FPartPath := APartPath;
-
-  try
-    FileStream := TFileStream.Create(APartPath, fmCreate);
-    BufferedStream := TWriteBufStream.Create(FileStream, ABufferSize);
-    FZioStream := TZioStream.Create(FileStream, BufferedStream, True);
-  except
-    on E: Exception do
-      raise EStreamException.CreateFmt('Failed to create part file "%s": %s',
-        [APartPath, E.Message]);
-  end;
-end;
-
-destructor TZioWriter.TZioPartWriter.Destroy;
-begin
-  FZioStream.Free;
-  inherited Destroy;
-end;
-
-procedure TZioWriter.TZioPartWriter.WriteMessage(AMessage: T);
-begin
-  if AMessage = nil then
-    Exit;
-  FZioStream.WriteMessage(AMessage);
-end;
-
 { TZioWriter }
 
-constructor TZioWriter.Create(APattern: TPattern; ABufferSize: integer = 65536);
+constructor TZioWriter.Create(APattern: TPattern; ABufferSize: integer = 65536;
+  AMaxPartSize: int64 = DEFAULT_MAX_PART_SIZE);
+var
+  DT: TDateTime;
+  i: integer;
 begin
   inherited Create;
+
+  DT := Now;
+  FTimestamp := DateTimeToUnix(DT, False) * 1000 + MilliSecondOf(DT);
+  FMaxPartSize := AMaxPartSize;
+  FLock := TCriticalSection.Create;
 
   FPattern := TPattern.Create(APattern);
   FBufferSize := ABufferSize;
   FCurrentShardIndex := 0;
-  FShardWriters := TZioShardWriterList.Create(True);  // Owns shard writers
-  FShardWriters.Count := FPattern.NumShards;
+  FShardWriters := TZioShardWriterList.Create(True);
+  FShardWriters.Capacity := FPattern.NumShards;
 
+  for i := 0 to FPattern.NumShards - 1 do
+    ForceDirectories(FPattern.GetShardPath(i));
+
+  for i := 0 to FPattern.NumShards - 1 do
+    GetOrCreateShardWriter(i);
 end;
 
 destructor TZioWriter.Destroy;
 begin
   FShardWriters.Free;
   FPattern.Free;
-
+  FLock.Free;
   inherited Destroy;
-end;
-
-function TZioWriter.GetShardDirectoryPath(ShardIndex: integer): ansistring;
-var
-  ActualShardIndex, i, Count: integer;
-begin
-  // Handle filtered patterns (with modulo)
-  Count := 0;
-  ActualShardIndex := -1;
-  for i := 0 to FPattern.FNumShards - 1 do
-  begin
-    if i mod FPattern.FModulo <> FPattern.FRemainder then
-      Continue;
-
-    if Count = ShardIndex then
-    begin
-      ActualShardIndex := i;
-      Break;
-    end;
-    Inc(Count);
-  end;
-
-  if ActualShardIndex = -1 then
-    raise EShardException.CreateFmt('Shard index %d out of range [0..%d]',
-      [ShardIndex, FPattern.NumShards - 1]);
-
-  Result := Format('%sshard-%4.4d-of-%4.4d',
-    [IncludeTrailingPathDelimiter(FPattern.BasePath), ActualShardIndex,
-    FPattern.FNumShards]);
 end;
 
 function TZioWriter.GetOrCreateShardWriter(ShardIndex: integer): TZioShardWriter;
 begin
-  // Validate shard index
   if (ShardIndex < 0) or (ShardIndex >= FPattern.NumShards) then
     raise EShardException.CreateFmt('Invalid shard index: %d (must be 0..%d)',
       [ShardIndex, FPattern.NumShards - 1]);
 
-  // Expand list if needed
+  FLock.Acquire;
   while FShardWriters.Count <= ShardIndex do
     FShardWriters.Add(nil);
 
-  // Create shard writer if it doesn't exist
   if FShardWriters[ShardIndex] = nil then
     FShardWriters[ShardIndex] := TZioShardWriter.Create(Self, ShardIndex, FBufferSize);
 
   Result := FShardWriters[ShardIndex];
+  FLock.Release;
 end;
 
 function TZioWriter.GetShardWriter(ShardIndex: integer): TZioShardWriter;
@@ -933,11 +918,11 @@ var
   ShardIndex: integer;
   ShardWriter: TZioShardWriter;
 begin
-  // Get current shard in round-robin fashion
+  FLock.Acquire;
   ShardIndex := FCurrentShardIndex;
   FCurrentShardIndex := (FCurrentShardIndex + 1) mod FPattern.NumShards;
+  FLock.Release;
 
-  // Get or create shard writer and create new part
   ShardWriter := GetOrCreateShardWriter(ShardIndex);
   Result := ShardWriter.NewPartWriter;
 end;
@@ -951,7 +936,6 @@ begin
 
   for ShardIndex := 0 to FPattern.NumShards - 1 do
     Result.Add(GetOrCreateShardWriter(ShardIndex).NewPartWriter);
-
 end;
 
 function TZioWriter.GetTotalStreams: integer;
