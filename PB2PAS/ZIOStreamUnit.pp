@@ -194,7 +194,13 @@ type
       property ShardIndex: integer read FShardIndex;
     end;
 
-    TZioPartWriterList = class(specialize TObjectList<TZioPartWriter>);
+    { TZioPartWriterList }
+
+    TZioPartWriterList = class(specialize TObjectList<TZioPartWriter>)
+    public
+      function WriteMessage(Key: UInt32; Message: T): Boolean;
+
+    end;
 
     TZioShardWriterList = class(specialize TObjectList<TZioShardWriter>)
     public
@@ -829,6 +835,15 @@ begin
     FCurrentPartWriter := NewPartWriter;
 
   FCurrentPartWriter.WriteMessage(AMessage);
+end;
+
+{ TZioWriter.TZioPartWriterList }
+
+function TZioWriter.TZioPartWriterList.WriteMessage(Key: UInt32; Message: T
+  ): Boolean;
+begin
+  Self[Key mod Count].WriteMessage(Message);
+
 end;
 
 { TZioWriter.TZioShardWriterList }
