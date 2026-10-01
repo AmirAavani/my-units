@@ -199,7 +199,10 @@ begin
   Value -= k;
 
   if Value < 0 then
-    FmtFatalLn('Value(%d) < 0', [Value]);
+  begin
+    WriteLn(Format('Value(%d) < 0', [Value]));
+    Halt(1);
+  end;
 
   if Value = 0 then
     for i := 1 to BlockQueue.Count do
