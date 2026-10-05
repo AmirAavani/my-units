@@ -6,7 +6,7 @@ interface
 
 uses
   Classes, SysUtils, BufStream, Generics.Collections,
-  DelimitedWriterUnit, ProtoHelperUnit;
+  PatternUnit, ProtoHelperUnit;
 
 type
   { TDelimitedReader }
