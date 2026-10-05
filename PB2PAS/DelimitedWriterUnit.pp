@@ -256,9 +256,10 @@ end;
 function TDelimitedWriter.TPartWriter.GeneratePartPath: string;
 begin
   Inc(FSequence);
-  // Example: data/shard-0000-of-0016/part-20261003135322-000-00001.pb
-  Result := Format('%spart-%s-%03d-%05d.pb', [FShardPath, FTimestampStr,
-    FWriterID, FSequence]);
+  // Example: data/shard-0000-of-0016/part-20261003135322-00000-00001.pb
+  Result := Format('%spart-%s-%.5d-%.5d.pb', [
+      FShardPath, FTimestampStr, FWriterID, FSequence
+    ]);
 end;
 
 procedure TDelimitedWriter.TPartWriter.OpenNextPart;
