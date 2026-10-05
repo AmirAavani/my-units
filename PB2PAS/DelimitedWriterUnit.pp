@@ -190,8 +190,8 @@ end;
 
 function TPattern.GetShardPath(ShardIndex: integer): ansistring;
 begin
-  // Example: data/shard-0000-of-0016
-  Result := Format('%s/shard-%04d-of-%04d', [FBasePath, ShardIndex, FNumShards]);
+  // Example: data/shard-00000-of-00016
+  Result := Format('%s/shard-%.5d-of-%.5d', [FBasePath, ShardIndex, FNumShards]);
 end;
 
 function TPattern.WithModulo(Remainder, ModuloValue: integer): TPattern;
