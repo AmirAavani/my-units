@@ -47,6 +47,8 @@ type
 
     function GetShardReader(Index: integer): TShardReader;
   public
+    property Shards: TShardReaders read FShards;
+
     constructor Create(aPattern: TPattern; ABufferSize: integer = 65536);
     destructor Destroy; override;
 
