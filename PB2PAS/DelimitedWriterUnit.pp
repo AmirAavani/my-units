@@ -102,6 +102,7 @@ type
     property ShardWriter[Index: integer]: TShardWriter read GetShardWriter;
 
     function GetShardWriters: TShardWriters;
+    // The caller owns and must free the instance.
     function NewPartWriters: TPartWriters;
 
     procedure WriteMessage(ShardIndex: integer; AMessage: TMessage);
@@ -419,7 +420,7 @@ function TDelimitedWriter.NewPartWriters: TPartWriters;
 var
   WorkerID, i: integer;
 begin
-  Result := TPartWriters.Create(True); // List owns the TPartWriter instances
+  Result := TPartWriters.Create(False);
   WorkerID := InterlockedIncrement(FNextWorkerID);
 
   for i := 0 to FPattern.NumShards - 1 do
