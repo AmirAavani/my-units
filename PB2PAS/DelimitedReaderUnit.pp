@@ -233,6 +233,7 @@ begin
   AMessage := nil;
   Result := False;
 
+  FMTDebugLn('Pos: %d Size: %d', [FBufferedStream.Position, FBufferedStream.Size]);
   // 1. Find the next message wrapper size
   while True do
   begin
