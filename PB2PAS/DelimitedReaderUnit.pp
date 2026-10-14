@@ -35,7 +35,7 @@ type
       destructor Destroy; override;
 
       function ReadMessage(out AMessage: TMessage): boolean;
-      function ReadMessage(out AKey: ansistring; out AMessage: TMessage): boolean;
+      function ReadMessage(out AKey: rawbytestring; out AMessage: TMessage): boolean;
     end;
 
     TShardReaders = specialize TObjectList<TShardReader>;
@@ -56,7 +56,7 @@ type
 
     // Reads the next message from a specific shard. Returns False if EOF is reached.
     function ReadMessageFromShard(ShardIndex: integer; out AMessage: TMessage): boolean;
-    function ReadMessageFromShard(ShardIndex: integer; out AKey: ansistring;
+    function ReadMessageFromShard(ShardIndex: integer; out AKey: rawbytestring;
       out AMessage: TMessage): boolean;
   end;
 
@@ -182,34 +182,25 @@ begin
 
   // Create message instance and read the defined number of bytes
   TempStream := TMemoryStream.Create;
-  try
-    if MsgSize > 0 then
-    begin
-      TempStream.SetSize(MsgSize);
-      if FBufferedStream.Read(TempStream.Memory^, MsgSize) < MsgSize then
-        raise EStreamException.Create('Unexpected EOF while reading message payload');
-    end;
-
-    TempStream.Position := 0;
-
-    // Requires constructor Create; virtual; on TBaseMessage
-    AMessage := TMessage.Create;
-    try
-      AMessage.LoadFromStream(TempStream);
-      Result := True;
-    except
-      AMessage.Free;
-      AMessage := nil;
-      raise;
-    end;
-  finally
-    TempStream.Free;
+  if MsgSize > 0 then
+  begin
+    TempStream.SetSize(MsgSize);
+    if FBufferedStream.Read(TempStream.Memory^, MsgSize) < MsgSize then
+      raise EStreamException.Create('Unexpected EOF while reading message payload');
   end;
+
+  TempStream.Position := 0;
+
+  // Requires constructor Create; virtual; on TBaseMessage
+  AMessage := TMessage.Create;
+  AMessage.LoadFromStream(TempStream);
+  Result := True;
+  TempStream.Free;
 end;
 
 { TDelimitedReader.TShardReader }
 
-function TDelimitedReader.TShardReader.ReadMessage(out AKey: ansistring;
+function TDelimitedReader.TShardReader.ReadMessage(out AKey: rawbytestring;
   out AMessage: TMessage): boolean;
 
   function ReadVarintFromStream(Stream: TStream; out Value: uint64): boolean;
@@ -259,74 +250,68 @@ begin
 
   // 2. Read the entire wrapper block into memory for safe parsing
   WrapperStream := TMemoryStream.Create;
-  try
-    if WrapperSize > 0 then
-    begin
-      WrapperStream.SetSize(WrapperSize);
-      if FBufferedStream.Read(WrapperStream.Memory^, WrapperSize) < WrapperSize then
-        raise EStreamException.Create('Unexpected EOF while reading wrapper payload');
-    end;
-    WrapperStream.Position := 0;
-
-    // 3. Parse the Protobuf Wrapper tags
-    while WrapperStream.Position < WrapperStream.Size do
-    begin
-      if not ReadVarintFromStream(WrapperStream, TagInfo) then
-        Break;
-
-      WireType := TagInfo and 7;
-
-      case TagInfo of
-        $0A: // Field 1 (Key): Tag 1, WireType 2 (Length-Delimited)
-        begin
-          ReadVarintFromStream(WrapperStream, FieldLen);
-          SetLength(AKey, FieldLen);
-          if FieldLen > 0 then
-            WrapperStream.ReadBuffer(AKey[1], FieldLen);
-        end;
-
-        $12: // Field 2 (Message): Tag 2, WireType 2 (Length-Delimited)
-        begin
-          ReadVarintFromStream(WrapperStream, FieldLen);
-          MsgStream := TMemoryStream.Create;
-          try
-            MsgStream.SetSize(FieldLen);
-            if FieldLen > 0 then
-              WrapperStream.ReadBuffer(MsgStream.Memory^, FieldLen);
-            MsgStream.Position := 0;
-
-            AMessage := TMessage.Create;
-            AMessage.LoadFromStream(MsgStream);
-          finally
-            MsgStream.Free;
-          end;
-        end;
-        else
-          // Skip unknown fields forwards to ensure forwards-compatibility
-          case WireType of
-            0: ReadVarintFromStream(WrapperStream, FieldLen); // Varint
-            1: WrapperStream.Seek(8, soCurrent);              // 64-bit
-            2: // Length-delimited block
-            begin
-              ReadVarintFromStream(WrapperStream, FieldLen);
-              WrapperStream.Seek(FieldLen, soCurrent);
-            end;
-            5: WrapperStream.Seek(4, soCurrent);              // 32-bit
-            else
-              raise EStreamException.Create('Invalid wire type inside wrapper');
-          end;
-      end;
-    end;
-
-    // Protobuf 3 semantics: If the message field was totally empty/missing,
-    // it implies a default empty message should exist.
-    if not Assigned(AMessage) then
-      AMessage := TMessage.Create;
-
-    Result := True;
-  finally
-    WrapperStream.Free;
+  if WrapperSize > 0 then
+  begin
+    WrapperStream.SetSize(WrapperSize);
+    if FBufferedStream.Read(WrapperStream.Memory^, WrapperSize) < WrapperSize then
+      raise EStreamException.Create('Unexpected EOF while reading wrapper payload');
   end;
+  WrapperStream.Position := 0;
+
+  // 3. Parse the Protobuf Wrapper tags
+  while WrapperStream.Position < WrapperStream.Size do
+  begin
+    if not ReadVarintFromStream(WrapperStream, TagInfo) then
+      Break;
+
+    WireType := TagInfo and 7;
+
+    case TagInfo of
+      $0A: // Field 1 (Key): Tag 1, WireType 2 (Length-Delimited)
+      begin
+        ReadVarintFromStream(WrapperStream, FieldLen);
+        SetLength(AKey, FieldLen);
+        if FieldLen > 0 then
+          WrapperStream.ReadBuffer(AKey[1], FieldLen);
+      end;
+
+      $12: // Field 2 (Message): Tag 2, WireType 2 (Length-Delimited)
+      begin
+        ReadVarintFromStream(WrapperStream, FieldLen);
+        MsgStream := TMemoryStream.Create;
+        MsgStream.SetSize(FieldLen);
+        if FieldLen > 0 then
+          WrapperStream.ReadBuffer(MsgStream.Memory^, FieldLen);
+        MsgStream.Position := 0;
+
+        AMessage := TMessage.Create;
+        AMessage.LoadFromStream(MsgStream);
+        MsgStream.Free;
+      end;
+      else
+        // Skip unknown fields forwards to ensure forwards-compatibility
+        case WireType of
+          0: ReadVarintFromStream(WrapperStream, FieldLen); // Varint
+          1: WrapperStream.Seek(8, soCurrent);              // 64-bit
+          2: // Length-delimited block
+          begin
+            ReadVarintFromStream(WrapperStream, FieldLen);
+            WrapperStream.Seek(FieldLen, soCurrent);
+          end;
+          5: WrapperStream.Seek(4, soCurrent);              // 32-bit
+          else
+            raise EStreamException.Create('Invalid wire type inside wrapper');
+        end;
+    end;
+  end;
+
+  // Protobuf 3 semantics: If the message field was totally empty/missing,
+  // it implies a default empty message should exist.
+  if not Assigned(AMessage) then
+    AMessage := TMessage.Create;
+
+  Result := True;
+  WrapperStream.Free;
 end;
 
 { TDelimitedReader }
@@ -369,7 +354,7 @@ begin
 end;
 
 function TDelimitedReader.ReadMessageFromShard(ShardIndex: integer;
-  out AKey: ansistring; out AMessage: TMessage): boolean;
+  out AKey: rawbytestring; out AMessage: TMessage): boolean;
 begin
   Result := GetShardReader(ShardIndex).ReadMessage(AKey, AMessage);
 

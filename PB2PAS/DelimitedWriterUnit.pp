@@ -13,7 +13,6 @@ const
 
 type
   TIntList = specialize TList<integer>;
-  TAnsiStringArray = array of ansistring;
 
   { TRobustFileStream - Retries partial writes under kernel backpressure }
   TRobustFileStream = class(TFileStream)
@@ -50,7 +49,7 @@ type
       destructor Destroy; override;
 
       function WriteMessage(AMessage: TMessage): boolean;
-      function WriteMessage(const AKey: ansistring; AMessage: TMessage): boolean;
+      function WriteMessage(const AKey: RawByteString; AMessage: TMessage): boolean;
 
       property BytesWritten: int64 read FBytesWritten;
     end;
@@ -59,7 +58,7 @@ type
 
     TPartWriters = class(specialize TObjectList<TPartWriter>)
     public
-      function WriteMessage(const AKey: ansistring; AMessage: TMessage): boolean;
+      function WriteMessage(const AKey: RawByteString; AMessage: TMessage): boolean;
     end;
 
     { TShardWriter }
@@ -77,7 +76,7 @@ type
       destructor Destroy; override;
 
       procedure WriteMessage(AMessage: TMessage);
-      function WriteMessage(const AKey: ansistring; AMessage: TMessage): boolean;
+      function WriteMessage(const AKey: RawByteString; AMessage: TMessage): boolean;
     end;
 
     TShardWriters = specialize TObjectList<TShardWriter>;
@@ -106,10 +105,10 @@ type
     function NewPartWriters: TPartWriters;
 
     procedure WriteMessage(ShardIndex: integer; AMessage: TMessage);
-    function WriteMessage(const AKey: ansistring; AMessage: TMessage): boolean;
+    function WriteMessage(const AKey: RawByteString; AMessage: TMessage): boolean;
   end;
 
-function HashKey(const Key: ansistring): cardinal;
+function HashKey(const Key: RawByteString): cardinal;
 
 implementation
 
@@ -221,7 +220,7 @@ begin
   Inc(FBytesWritten, VarintLen + FTempStream.Size);
 end;
 
-function TDelimitedWriter.TPartWriter.WriteMessage(const AKey: ansistring;
+function TDelimitedWriter.TPartWriter.WriteMessage(const AKey: RawByteString;
   AMessage: TMessage): boolean;
 
   function GetVarintLen(Value: uint64): integer;
@@ -306,7 +305,7 @@ end;
 
 { TDelimitedWriter.TPartWriters }
 
-function TDelimitedWriter.TPartWriters.WriteMessage(const AKey: ansistring;
+function TDelimitedWriter.TPartWriters.WriteMessage(const AKey: RawByteString;
   AMessage: TMessage): boolean;
 var
   TargetShard: integer;
@@ -346,7 +345,7 @@ begin
   FPartZeroWriter.WriteMessage(AMessage);
 end;
 
-function TDelimitedWriter.TShardWriter.WriteMessage(const AKey: ansistring;
+function TDelimitedWriter.TShardWriter.WriteMessage(const AKey: RawByteString;
   AMessage: TMessage): boolean;
 begin
   Result := FPartZeroWriter.WriteMessage(AKey, AMessage);
@@ -397,7 +396,7 @@ begin
   Result := FShards[Index];
 end;
 
-function HashKey(const Key: ansistring): cardinal;
+function HashKey(const Key: RawByteString): cardinal;
 var
   PCh: pchar;
 begin
@@ -433,7 +432,7 @@ begin
   GetShardWriter(ShardIndex).WriteMessage(AMessage);
 end;
 
-function TDelimitedWriter.WriteMessage(const AKey: ansistring;
+function TDelimitedWriter.WriteMessage(const AKey: RawByteString;
   AMessage: TMessage): boolean;
 var
   TargetShard: integer;
