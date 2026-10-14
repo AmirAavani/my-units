@@ -233,7 +233,8 @@ begin
   AMessage := nil;
   Result := False;
 
-  FMTDebugLn('Pos: %d Size: %d', [FBufferedStream.Position, FBufferedStream.Size]);
+  WriteLn(Format('Pos: %d Size: %d', [FBufferedStream.Position, FBufferedStream.Size]));
+  Flush(Output);
   // 1. Find the next message wrapper size
   while True do
   begin
@@ -311,6 +312,11 @@ begin
   if not Assigned(AMessage) then
     AMessage := TMessage.Create;
 
+  if Assigned(FBufferedStream) then
+  begin
+    if FBufferedStream.Position = FBufferedStream.Size then
+      CloseCurrentFile;
+  end;
   Result := True;
   WrapperStream.Free;
 end;
