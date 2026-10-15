@@ -49,7 +49,7 @@ type
       destructor Destroy; override;
 
       function WriteMessage(AMessage: TMessage): boolean;
-      function WriteMessage(const AKey: RawByteString; AMessage: TMessage): boolean;
+      function WriteMessage(const AKey: rawbytestring; AMessage: TMessage): boolean;
 
       property BytesWritten: int64 read FBytesWritten;
     end;
@@ -58,7 +58,7 @@ type
 
     TPartWriters = class(specialize TObjectList<TPartWriter>)
     public
-      function WriteMessage(const AKey: RawByteString; AMessage: TMessage): boolean;
+      function WriteMessage(const AKey: rawbytestring; AMessage: TMessage): boolean;
     end;
 
     { TShardWriter }
@@ -76,7 +76,7 @@ type
       destructor Destroy; override;
 
       procedure WriteMessage(AMessage: TMessage);
-      function WriteMessage(const AKey: RawByteString; AMessage: TMessage): boolean;
+      function WriteMessage(const AKey: rawbytestring; AMessage: TMessage): boolean;
     end;
 
     TShardWriters = specialize TObjectList<TShardWriter>;
@@ -105,10 +105,10 @@ type
     function NewPartWriters: TPartWriters;
 
     procedure WriteMessage(ShardIndex: integer; AMessage: TMessage);
-    function WriteMessage(const AKey: RawByteString; AMessage: TMessage): boolean;
+    function WriteMessage(const AKey: rawbytestring; AMessage: TMessage): boolean;
   end;
 
-function HashKey(const Key: RawByteString): cardinal;
+function HashKey(const Key: rawbytestring): cardinal;
 
 implementation
 
@@ -167,8 +167,8 @@ function TDelimitedWriter.TPartWriter.GeneratePartPath: string;
 begin
   Inc(FSequence);
   // Example: data/shard-0000-of-0016/part-20261003135322-00000-00001.pb
-  Result := Format('%spart-%s-%.5d-%.5d.pb', [FShardPath,
-    FTimestampStr, FWriterID, FSequence]);
+  Result := Format('%spart-%s-%.5d-%.5d.pb', [FShardPath, FTimestampStr,
+    FWriterID, FSequence]);
 end;
 
 procedure TDelimitedWriter.TPartWriter.OpenNextPart;
@@ -177,6 +177,8 @@ begin
   FBytesWritten := 0;
   FFileStream := TRobustFileStream.Create(GeneratePartPath, fmCreate);
   FBufferedStream := TWriteBufStream.Create(FFileStream, FBufferSize);
+
+  FBufferedStream.SourceOwner := False;
 end;
 
 procedure TDelimitedWriter.TPartWriter.CloseCurrentPart;
@@ -220,7 +222,7 @@ begin
   Inc(FBytesWritten, VarintLen + FTempStream.Size);
 end;
 
-function TDelimitedWriter.TPartWriter.WriteMessage(const AKey: RawByteString;
+function TDelimitedWriter.TPartWriter.WriteMessage(const AKey: rawbytestring;
   AMessage: TMessage): boolean;
 
   function GetVarintLen(Value: uint64): integer;
@@ -305,7 +307,7 @@ end;
 
 { TDelimitedWriter.TPartWriters }
 
-function TDelimitedWriter.TPartWriters.WriteMessage(const AKey: RawByteString;
+function TDelimitedWriter.TPartWriters.WriteMessage(const AKey: rawbytestring;
   AMessage: TMessage): boolean;
 var
   TargetShard: integer;
@@ -345,7 +347,7 @@ begin
   FPartZeroWriter.WriteMessage(AMessage);
 end;
 
-function TDelimitedWriter.TShardWriter.WriteMessage(const AKey: RawByteString;
+function TDelimitedWriter.TShardWriter.WriteMessage(const AKey: rawbytestring;
   AMessage: TMessage): boolean;
 begin
   Result := FPartZeroWriter.WriteMessage(AKey, AMessage);
@@ -396,17 +398,21 @@ begin
   Result := FShards[Index];
 end;
 
-function HashKey(const Key: RawByteString): cardinal;
+function HashKey(const Key: rawbytestring): cardinal;
 var
-  PCh: pchar;
+  i: integer;
+  Len: integer;
+  P: pbyte;
 begin
   Result := 5381; // djb2 hash
-  PCh := @Key[1];
-  while PCh^ <> #0 do
-  begin
-    Result := ((Result shl 5) + Result) xor Ord(PCh^);
-    Inc(PCh);
+  Len := Length(Key);
+  if Len = 0 then Exit;
 
+  P := @Key[1];
+  for i := 1 to Len do
+  begin
+    Result := ((Result shl 5) + Result) xor P^;
+    Inc(P);
   end;
 end;
 
@@ -419,7 +425,7 @@ function TDelimitedWriter.NewPartWriters: TPartWriters;
 var
   WorkerID, i: integer;
 begin
-  Result := TPartWriters.Create(False);
+  Result := TPartWriters.Create(True);
   WorkerID := InterlockedIncrement(FNextWorkerID);
 
   for i := 0 to FPattern.NumShards - 1 do
@@ -432,7 +438,7 @@ begin
   GetShardWriter(ShardIndex).WriteMessage(AMessage);
 end;
 
-function TDelimitedWriter.WriteMessage(const AKey: RawByteString;
+function TDelimitedWriter.WriteMessage(const AKey: rawbytestring;
   AMessage: TMessage): boolean;
 var
   TargetShard: integer;

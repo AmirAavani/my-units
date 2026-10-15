@@ -233,8 +233,12 @@ begin
   AMessage := nil;
   Result := False;
 
-  WriteLn(Format('Pos: %d Size: %d', [FBufferedStream.Position, FBufferedStream.Size]));
-  Flush(Output);
+  if Assigned(FBufferedStream) then
+  begin
+    if FBufferedStream.Position = FBufferedStream.Size then
+      CloseCurrentFile;
+  end;
+
   // 1. Find the next message wrapper size
   while True do
   begin
@@ -256,7 +260,7 @@ begin
   begin
     WrapperStream.SetSize(WrapperSize);
     if FBufferedStream.Read(WrapperStream.Memory^, WrapperSize) < WrapperSize then
-      raise EStreamException.Create('Unexpected EOF while reading wrapper payload');
+      raise EStreamException.Create(Format('Unexpected EOF while reading wrapper payload: %d', [WrapperSize]));
   end;
   WrapperStream.Position := 0;
 
