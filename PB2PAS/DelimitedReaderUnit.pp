@@ -34,8 +34,8 @@ type
         ABufferSize: integer);
       destructor Destroy; override;
 
-      function ReadMessage(out AMessage: TMessage): boolean;
-      function ReadMessage(out AKey: rawbytestring; out AMessage: TMessage): boolean;
+      function ReadMessage(var AMessage: TMessage): boolean;
+      function ReadMessage(out AKey: rawbytestring; var AMessage: TMessage): boolean;
     end;
 
     TShardReaders = specialize TObjectList<TShardReader>;
@@ -55,9 +55,9 @@ type
     property ShardReader[Index: integer]: TShardReader read GetShardReader;
 
     // Reads the next message from a specific shard. Returns False if EOF is reached.
-    function ReadMessageFromShard(ShardIndex: integer; out AMessage: TMessage): boolean;
+    function ReadMessageFromShard(ShardIndex: integer; var AMessage: TMessage): boolean;
     function ReadMessageFromShard(ShardIndex: integer; out AKey: rawbytestring;
-      out AMessage: TMessage): boolean;
+      var AMessage: TMessage): boolean;
   end;
 
 implementation
@@ -156,12 +156,12 @@ begin
   Result := True;
 end;
 
-function TDelimitedReader.TShardReader.ReadMessage(out AMessage: TMessage): boolean;
+function TDelimitedReader.TShardReader.ReadMessage(var AMessage: TMessage
+  ): boolean;
 var
   MsgSize: uint64;
   TempStream: TMemoryStream;
 begin
-  AMessage := nil;
   Result := False;
 
   while True do
@@ -191,8 +191,6 @@ begin
 
   TempStream.Position := 0;
 
-  // Requires constructor Create; virtual; on TBaseMessage
-  AMessage := TMessage.Create;
   AMessage.LoadFromStream(TempStream);
   Result := True;
   TempStream.Free;
@@ -201,7 +199,7 @@ end;
 { TDelimitedReader.TShardReader }
 
 function TDelimitedReader.TShardReader.ReadMessage(out AKey: rawbytestring;
-  out AMessage: TMessage): boolean;
+  var AMessage: TMessage): boolean;
 
   function ReadVarintFromStream(Stream: TStream; out Value: uint64): boolean;
   var
@@ -230,7 +228,6 @@ var
   WrapperStream, MsgStream: TMemoryStream;
 begin
   AKey := '';
-  AMessage := nil;
   Result := False;
 
   if Assigned(FBufferedStream) then
@@ -290,7 +287,6 @@ begin
           WrapperStream.ReadBuffer(MsgStream.Memory^, FieldLen);
         MsgStream.Position := 0;
 
-        AMessage := TMessage.Create;
         AMessage.LoadFromStream(MsgStream);
         MsgStream.Free;
       end;
@@ -312,9 +308,8 @@ begin
   end;
 
   // Protobuf 3 semantics: If the message field was totally empty/missing,
-  // it implies a default empty message should exist.
-  if not Assigned(AMessage) then
-    AMessage := TMessage.Create;
+  // we return the input message.
+
 
   if Assigned(FBufferedStream) then
   begin
@@ -358,13 +353,13 @@ begin
 end;
 
 function TDelimitedReader.ReadMessageFromShard(ShardIndex: integer;
-  out AMessage: TMessage): boolean;
+  var AMessage: TMessage): boolean;
 begin
   Result := FShards[ShardIndex].ReadMessage(AMessage);
 end;
 
-function TDelimitedReader.ReadMessageFromShard(ShardIndex: integer;
-  out AKey: rawbytestring; out AMessage: TMessage): boolean;
+function TDelimitedReader.ReadMessageFromShard(ShardIndex: integer; out
+  AKey: rawbytestring; var AMessage: TMessage): boolean;
 begin
   Result := FShards[ShardIndex].ReadMessage(AKey, AMessage);
 
