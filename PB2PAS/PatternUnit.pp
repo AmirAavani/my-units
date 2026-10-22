@@ -21,7 +21,6 @@ type
     constructor Create(const Pattern: TPattern);
     constructor Create(const Pattern: ansistring);
     constructor Create(const ABasePath: ansistring; ANumShards: integer);
-    destructor Destroy; override;
 
     function GetShardPath(ShardIndex: integer): ansistring;
     function WithModulo(Remainder, ModuloValue: integer): TPattern;
@@ -76,11 +75,6 @@ begin
   FNumShards := Pattern.NumShards;
   FRemainder := Pattern.FRemainder;
   FModulo := Pattern.FModulo;
-end;
-
-destructor TPattern.Destroy;
-begin
-  inherited Destroy;
 end;
 
 function TPattern.GetFilteredNumShards: integer;

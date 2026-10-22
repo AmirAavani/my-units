@@ -332,6 +332,7 @@ var
   i: integer;
 begin
   inherited Create;
+
   FPattern := TPattern.Create(aPattern.BasePath, aPattern.NumShards);
   FBufferSize := ABufferSize;
   FShards := TShardReaders.Create(True); // Owns instances
@@ -345,29 +346,27 @@ end;
 
 destructor TDelimitedReader.Destroy;
 begin
+  FPattern.Free;
   FShards.Free;
-  // Note: We don't free FPattern here assuming it was passed in and owned by the caller.
-  // If TDelimitedReader owns it, add FPattern.Free;
+
   inherited Destroy;
 end;
 
 function TDelimitedReader.GetShardReader(Index: integer): TShardReader;
 begin
-  if (Index < 0) or (Index >= FShards.Count) then
-    raise EShardException.CreateFmt('Shard index %d out of bounds', [Index]);
   Result := FShards[Index];
 end;
 
 function TDelimitedReader.ReadMessageFromShard(ShardIndex: integer;
   out AMessage: TMessage): boolean;
 begin
-  Result := GetShardReader(ShardIndex).ReadMessage(AMessage);
+  Result := FShards[ShardIndex].ReadMessage(AMessage);
 end;
 
 function TDelimitedReader.ReadMessageFromShard(ShardIndex: integer;
   out AKey: rawbytestring; out AMessage: TMessage): boolean;
 begin
-  Result := GetShardReader(ShardIndex).ReadMessage(AKey, AMessage);
+  Result := FShards[ShardIndex].ReadMessage(AKey, AMessage);
 
 end;
 

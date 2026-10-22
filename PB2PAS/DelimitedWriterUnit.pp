@@ -9,7 +9,7 @@ uses
   ProtoHelperUnit, Generics.Collections;
 
 const
-  OneGB = 1000000000;
+  OneGB = 1 shl 30;
 
 type
   TIntList = specialize TList<integer>;
@@ -339,6 +339,7 @@ end;
 destructor TDelimitedWriter.TShardWriter.Destroy;
 begin
   FPartZeroWriter.Free;
+
   inherited Destroy;
 end;
 
@@ -363,13 +364,14 @@ var
   i: integer;
 begin
   inherited Create;
-  FPattern := aPattern;
+  FPattern := TPattern.Create(aPattern);
   FMaxPartSize := AMaxPartSize;
   FBufferSize := ABufferSize;
   FShards := TShardWriters.Create(True); // Owns the TShardWriter instances
   FTimestampStr := FormatDateTime('yyyymmddhhnnss', Now);
   FNextWorkerID := 0; // Starts at 0 so the first worker becomes ID 1
 
+  FShards.Count := FPattern.NumShards;
   for i := 0 to FPattern.NumShards - 1 do
     FShards.Add(TShardWriter.Create(i, FPattern.GetShardPath(i),
       FTimestampStr, FMaxPartSize, FBufferSize));
