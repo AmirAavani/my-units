@@ -5,7 +5,7 @@ unit DelimitedReaderUnit;
 interface
 
 uses
-  Classes, SysUtils, BufStream, Generics.Collections,
+  Classes, SysUtils, BufStream, FastListUnit,
   PatternUnit, ProtoHelperUnit;
 
 type
@@ -38,7 +38,7 @@ type
       function ReadMessage(out AKey: rawbytestring; var AMessage: TMessage): boolean;
     end;
 
-    TShardReaders = specialize TObjectList<TShardReader>;
+    TShardReaders = specialize TFastObjectList<TShardReader>;
 
   private
     FPattern: TPattern;

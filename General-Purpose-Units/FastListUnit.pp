@@ -5,7 +5,7 @@ unit FastListUnit;
 interface
 
 type
-    // TFastList is a List with no range checking.
+  // TFastList is a List with no range checking.
   generic TFastList<T> = class(TObject)
   public
   type
@@ -35,6 +35,17 @@ type
     property Items[Index: integer]: T read GetItem write SetItem; default;
   end;
 
+  // TFastObjectList is a List with no range checking.
+  generic TFastObjectList<T: TObject> = class(specialize TFastList<T>)
+  protected
+    FOwnObjects: boolean;
+
+  public
+    constructor Create(OwnObjects: boolean; InitialCapacity: integer = 64);
+    destructor Destroy; override;
+
+  end;
+
 implementation
 
 constructor TFastList.Create(InitialCapacity: integer = 64);
@@ -44,6 +55,8 @@ begin
   FCount := 0;
   FCapacity := 0;
   SetCapacity(InitialCapacity);
+  if FCapacity = 0 then
+    FCapacity := 64;
 end;
 
 destructor TFastList.Destroy;
@@ -68,12 +81,7 @@ end;
 procedure TFastList.Add(const Item: T);
 begin
   if FCount = FCapacity then
-  begin
-    if FCapacity = 0 then
-      SetCapacity(64)
-    else
-      SetCapacity(FCapacity * 2); // Standard doubling strategy for O(1) amortized cost
-  end;
+    SetCapacity(FCapacity * 2);
 
   FItems[FCount] := Item;
   Inc(FCount);
@@ -102,6 +110,28 @@ begin
     Result := nil
   else
     Result := @FItems[0];
+end;
+
+{ TFastObjectList }
+
+constructor TFastObjectList.Create(OwnObjects: boolean; InitialCapacity: integer);
+begin
+  inherited Create;
+
+  FOwnObjects := OwnObjects;
+  SetCapacity(InitialCapacity);
+
+end;
+
+destructor TFastObjectList.Destroy;
+var
+  Obj: T;
+begin
+  if FOwnObjects then
+    for Obj in Self.FItems do
+      Obj.Free;
+
+  inherited Destroy;
 end;
 
 end.

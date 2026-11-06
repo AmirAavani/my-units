@@ -6,13 +6,13 @@ interface
 
 uses
   Classes, SysUtils, BufStream, PatternUnit, ProtoStreamUnit,
-  ProtoHelperUnit, Generics.Collections;
+  ProtoHelperUnit, FastListUnit;
 
 const
   OneGB = 1 shl 30;
 
 type
-  TIntList = specialize TList<integer>;
+  TIntList = specialize TFastList<integer>;
 
   { TRobustFileStream - Retries partial writes under kernel backpressure }
   TRobustFileStream = class(TFileStream)
@@ -56,7 +56,7 @@ type
 
     { TPartWriters }
 
-    TPartWriters = class(specialize TObjectList<TPartWriter>)
+    TPartWriters = class(specialize TFastObjectList<TPartWriter>)
     public
       function WriteMessage(const AKey: rawbytestring; AMessage: TMessage): boolean;
     end;
@@ -79,7 +79,7 @@ type
       function WriteMessage(const AKey: rawbytestring; AMessage: TMessage): boolean;
     end;
 
-    TShardWriters = specialize TObjectList<TShardWriter>;
+    TShardWriters = specialize TFastObjectList<TShardWriter>;
 
   private
     FPattern: TPattern;
@@ -89,7 +89,7 @@ type
     FTimestampStr: string;
     FNextWorkerID: integer;
 
-    function GetShardWriter(Index: integer): TShardWriter;
+    function GetShardWriter(Index: integer): TShardWriter; inline;
 
   public
     constructor Create(aPattern: TPattern; AMaxPartSize: int64 = OneGB;
@@ -100,9 +100,9 @@ type
 
     property ShardWriter[Index: integer]: TShardWriter read GetShardWriter;
 
-    function GetShardWriters: TShardWriters;
+    function GetShardWriters: TShardWriters; inline;
     // The caller owns and must free the instance.
-    function NewPartWriters: TPartWriters;
+    function NewPartWriters: TPartWriters; inline;
 
     procedure WriteMessage(ShardIndex: integer; AMessage: TMessage);
     function WriteMessage(const AKey: rawbytestring; AMessage: TMessage): boolean;
@@ -364,6 +364,7 @@ var
   i: integer;
 begin
   inherited Create;
+
   FPattern := TPattern.Create(aPattern);
   FMaxPartSize := AMaxPartSize;
   FBufferSize := ABufferSize;
@@ -371,7 +372,7 @@ begin
   FTimestampStr := FormatDateTime('yyyymmddhhnnss', Now);
   FNextWorkerID := 0; // Starts at 0 so the first worker becomes ID 1
 
-  FShards.Count := FPattern.NumShards;
+  FShards.Capacity := FPattern.NumShards;
   for i := 0 to FPattern.NumShards - 1 do
     FShards.Add(TShardWriter.Create(i, FPattern.GetShardPath(i),
       FTimestampStr, FMaxPartSize, FBufferSize));
@@ -395,8 +396,6 @@ end;
 
 function TDelimitedWriter.GetShardWriter(Index: integer): TShardWriter;
 begin
-  if (Index < 0) or (Index >= FShards.Count) then
-    raise EShardException.CreateFmt('Shard index %d out of bounds', [Index]);
   Result := FShards[Index];
 end;
 
