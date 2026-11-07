@@ -330,7 +330,7 @@ var
 begin
   inherited Create;
 
-  FPattern := TPattern.Create(aPattern.BasePath, aPattern.NumShards);
+  FPattern := TPattern.Create(aPattern);
   FBufferSize := ABufferSize;
   FShards := TShardReaders.Create(True); // Owns instances
   FShards.Capacity := FPattern.NumShards;

@@ -17,6 +17,7 @@ type
     FModulo: integer;
 
     function GetFilteredNumShards: integer;
+    function GetPhysicalShardIndex(LogicalIndex: integer): integer;
   public
     constructor Create(const Pattern: TPattern);
     constructor Create(const Pattern: ansistring);
@@ -71,21 +72,62 @@ end;
 constructor TPattern.Create(const Pattern: TPattern);
 begin
   inherited Create;
-  FBasePath := Pattern.BasePath;
-  FNumShards := Pattern.NumShards;
+  FBasePath := Pattern.FBasePath;
+  FNumShards := Pattern.FNumShards;
   FRemainder := Pattern.FRemainder;
   FModulo := Pattern.FModulo;
 end;
 
 function TPattern.GetFilteredNumShards: integer;
+var
+  i, Count: integer;
 begin
-  Result := FNumShards;
+  if FModulo <= 1 then
+    Exit(FNumShards);
+
+  {TODO: This is a naive implementation for this function. This could be improved. }
+
+  Count := 0;
+  for i := 0 to FNumShards - 1 do
+  begin
+    if (i mod FModulo) = FRemainder then
+      Inc(Count);
+  end;
+  Result := Count;
+end;
+
+
+
+function TPattern.GetPhysicalShardIndex(LogicalIndex: integer): integer;
+var
+  i, Count: integer;
+begin
+  if FModulo <= 1 then
+    Exit(LogicalIndex);
+
+  {TODO: This is a naive implementation for this function. This could be improved. }
+  Count := 0;
+  for i := 0 to FNumShards - 1 do
+  begin
+    if (i mod FModulo) = FRemainder then
+    begin
+      if Count = LogicalIndex then
+        Exit(i);
+      Inc(Count);
+    end;
+  end;
+  Result := LogicalIndex; // Fallback
 end;
 
 function TPattern.GetShardPath(ShardIndex: integer): ansistring;
+var
+  PhysicalIndex: integer;
 begin
-  // Example: data/shard-00000-of-00016
-  Result := Format('%s/shard-%.5d-of-%.5d', [FBasePath, ShardIndex, FNumShards]);
+  // Map the local loop index (0 to FilteredNumShards-1) to the actual physical shard index
+  PhysicalIndex := GetPhysicalShardIndex(ShardIndex);
+
+  // Format uses the physical index for the directory name, while keeping total shards for naming consistency
+  Result := Format('%s/shard-%.5d-of-%.5d', [FBasePath, PhysicalIndex, FNumShards]);
 end;
 
 function TPattern.WithModulo(Remainder, ModuloValue: integer): TPattern;
