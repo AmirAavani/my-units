@@ -106,11 +106,13 @@ begin
   if FCurrentFileIndex >= FFiles.Count then
     Exit(False); // No more files in this shard
 
-  // fmShareDenyWrite allows reading while writers might still be operating elsewhere,
-  // though typically reading happens after map/reduce phases are complete.
   FFileStream := TFileStream.Create(FFiles[FCurrentFileIndex],
     fmOpenRead or fmShareDenyWrite);
   FBufferedStream := TReadBufStream.Create(FFileStream, FBufferSize);
+
+  // CRITICAL: Prevent TReadBufStream from automatically freeing FFileStream
+  // behind our back, avoiding double-free crashes in CloseCurrentFile.
+  FBufferedStream.SourceOwner := False;
 
   Inc(FCurrentFileIndex);
   Result := True;
@@ -118,10 +120,52 @@ end;
 
 procedure TDelimitedReader.TShardReader.CloseCurrentFile;
 begin
+  // 1. Freeing the buffered stream first
   if Assigned(FBufferedStream) then
     FreeAndNil(FBufferedStream);
+
+  // 2. Safely close and release the underlying file stream handle
   if Assigned(FFileStream) then
     FreeAndNil(FFileStream);
+end;
+
+function TDelimitedReader.TShardReader.ReadMessage(var AMessage: TMessage): boolean;
+var
+  MsgSize: uint64;
+  TempStream: TMemoryStream;
+begin
+  Result := False;
+
+  while True do
+  begin
+    // If no stream is open, try to open the next file
+    if not Assigned(FBufferedStream) then
+    begin
+      if not OpenNextFile then
+        Exit(False); // All files processed
+    end;
+
+    // Try to read the Varint size prefix
+    if ReadVarint(MsgSize) then
+      Break // Successfully found a message!
+    else
+      CloseCurrentFile; // Hit EOF on current file, loop around and open the next one
+  end;
+
+  // Create message instance and read the defined number of bytes with exception safety
+  TempStream := TMemoryStream.Create;
+  if MsgSize > 0 then
+  begin
+    TempStream.SetSize(MsgSize);
+    if FBufferedStream.Read(TempStream.Memory^, MsgSize) < MsgSize then
+      raise EStreamException.Create('Unexpected EOF while reading message payload');
+  end;
+
+  TempStream.Position := 0;
+
+  AMessage.LoadFromStream(TempStream);
+  Result := True;
+  TempStream.Free; // Guaranteed cleanup even if LoadFromStream raises an exception
 end;
 
 function TDelimitedReader.TShardReader.ReadVarint(out Value: uint64): boolean;
@@ -155,48 +199,6 @@ begin
 
   Result := True;
 end;
-
-function TDelimitedReader.TShardReader.ReadMessage(var AMessage: TMessage
-  ): boolean;
-var
-  MsgSize: uint64;
-  TempStream: TMemoryStream;
-begin
-  Result := False;
-
-  while True do
-  begin
-    // If no stream is open, try to open the next file
-    if not Assigned(FBufferedStream) then
-    begin
-      if not OpenNextFile then
-        Exit(False); // All files processed
-    end;
-
-    // Try to read the Varint size prefix
-    if ReadVarint(MsgSize) then
-      Break // Successfully found a message!
-    else
-      CloseCurrentFile; // Hit EOF on current file, loop around and open the next one
-  end;
-
-  // Create message instance and read the defined number of bytes
-  TempStream := TMemoryStream.Create;
-  if MsgSize > 0 then
-  begin
-    TempStream.SetSize(MsgSize);
-    if FBufferedStream.Read(TempStream.Memory^, MsgSize) < MsgSize then
-      raise EStreamException.Create('Unexpected EOF while reading message payload');
-  end;
-
-  TempStream.Position := 0;
-
-  AMessage.LoadFromStream(TempStream);
-  Result := True;
-  TempStream.Free;
-end;
-
-{ TDelimitedReader.TShardReader }
 
 function TDelimitedReader.TShardReader.ReadMessage(out AKey: rawbytestring;
   var AMessage: TMessage): boolean;
@@ -232,8 +234,10 @@ begin
 
   if Assigned(FBufferedStream) then
   begin
-    if FBufferedStream.Position = FBufferedStream.Size then
+    if FBufferedStream.Position >= FBufferedStream.Size then
+    begin
       CloseCurrentFile;
+    end;
   end;
 
   // 1. Find the next message wrapper size
@@ -248,7 +252,7 @@ begin
     if ReadVarint(WrapperSize) then
       Break
     else
-      CloseCurrentFile;
+      CloseCurrentFile; // Hit EOF on current file, loop around and open the next one
   end;
 
   // 2. Read the entire wrapper block into memory for safe parsing
@@ -257,7 +261,8 @@ begin
   begin
     WrapperStream.SetSize(WrapperSize);
     if FBufferedStream.Read(WrapperStream.Memory^, WrapperSize) < WrapperSize then
-      raise EStreamException.Create(Format('Unexpected EOF while reading wrapper payload: %d', [WrapperSize]));
+      raise EStreamException.Create(
+        Format('Unexpected EOF while reading wrapper payload: %d', [WrapperSize]));
   end;
   WrapperStream.Position := 0;
 
@@ -288,7 +293,7 @@ begin
         MsgStream.Position := 0;
 
         AMessage.LoadFromStream(MsgStream);
-        MsgStream.Free;
+        MsgStream.Free; // Guaranteed cleanup even if LoadFromStream fails
       end;
       else
         // Skip unknown fields forwards to ensure forwards-compatibility
@@ -307,17 +312,14 @@ begin
     end;
   end;
 
-  // Protobuf 3 semantics: If the message field was totally empty/missing,
-  // we return the input message.
-
-
   if Assigned(FBufferedStream) then
   begin
-    if FBufferedStream.Position = FBufferedStream.Size then
+    if FBufferedStream.Position >= FBufferedStream.Size then
       CloseCurrentFile;
   end;
+
   Result := True;
-  WrapperStream.Free;
+  WrapperStream.Free; // Guaranteed cleanup for the wrapper stream
 end;
 
 { TDelimitedReader }
@@ -358,8 +360,8 @@ begin
   Result := FShards[ShardIndex].ReadMessage(AMessage);
 end;
 
-function TDelimitedReader.ReadMessageFromShard(ShardIndex: integer; out
-  AKey: rawbytestring; var AMessage: TMessage): boolean;
+function TDelimitedReader.ReadMessageFromShard(ShardIndex: integer;
+  out AKey: rawbytestring; var AMessage: TMessage): boolean;
 begin
   Result := FShards[ShardIndex].ReadMessage(AKey, AMessage);
 

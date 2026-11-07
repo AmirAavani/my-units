@@ -112,6 +112,7 @@ function HashKey(const Key: rawbytestring): cardinal;
 
 implementation
 
+
 { TRobustFileStream }
 
 function TRobustFileStream.Write(const Buffer; Count: longint): longint;
