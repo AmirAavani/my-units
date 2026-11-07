@@ -94,8 +94,6 @@ type
   public
     constructor Create(aPattern: TPattern; AMaxPartSize: int64 = OneGB;
       ABufferSize: integer = 65536);
-    constructor Create(const ABaseDir, ABaseName: string;
-      AMaxPartSize: int64 = OneGB; ABufferSize: integer = 65536);
     destructor Destroy; override;
 
     property ShardWriter[Index: integer]: TShardWriter read GetShardWriter;
@@ -379,19 +377,11 @@ begin
       FTimestampStr, FMaxPartSize, FBufferSize));
 end;
 
-constructor TDelimitedWriter.Create(const ABaseDir, ABaseName: string;
-  AMaxPartSize: int64; ABufferSize: integer);
-var
-  CombinedPath: string;
-begin
-  CombinedPath := IncludeTrailingPathDelimiter(ABaseDir) + ABaseName;
-  Create(TPattern.Create(CombinedPath, 1), AMaxPartSize, ABufferSize);
-end;
-
 destructor TDelimitedWriter.Destroy;
 begin
   FShards.Free;
   FPattern.Free;
+
   inherited Destroy;
 end;
 
