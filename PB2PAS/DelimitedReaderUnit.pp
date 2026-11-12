@@ -26,6 +26,10 @@ type
       FBufferedStream: TReadBufStream;
       FBufferSize: integer;
 
+      // Reusable streams to avoid allocations in the hot loop
+      FWrapperStream: TMemoryStream;
+      FMsgStream: TMemoryStream;
+
       function OpenNextFile: boolean;
       procedure CloseCurrentFile;
       function ReadVarint(out Value: uint64): boolean;
@@ -90,12 +94,18 @@ begin
   // Sorting alphabetically guarantees chronological/sequential order
   // because of the part-<timestamp>-<writerid>-<sequence>.pb naming convention
   FFiles.Sort;
+  FWrapperStream := TMemoryStream.Create;
+  FMsgStream := TMemoryStream.Create;
+
 end;
 
 destructor TDelimitedReader.TShardReader.Destroy;
 begin
   CloseCurrentFile;
   FFiles.Free;
+  FWrapperStream.Free;
+  FMsgStream.Free;
+
   inherited Destroy;
 end;
 
@@ -132,13 +142,11 @@ end;
 function TDelimitedReader.TShardReader.ReadMessage(var AMessage: TMessage): boolean;
 var
   MsgSize: uint64;
-  TempStream: TMemoryStream;
 begin
   Result := False;
 
   while True do
   begin
-    // If no stream is open, try to open the next file
     if not Assigned(FBufferedStream) then
     begin
       if not OpenNextFile then
@@ -152,20 +160,18 @@ begin
       CloseCurrentFile; // Hit EOF on current file, loop around and open the next one
   end;
 
-  // Create message instance and read the defined number of bytes with exception safety
-  TempStream := TMemoryStream.Create;
+  FMsgStream.Clear;
   if MsgSize > 0 then
   begin
-    TempStream.SetSize(MsgSize);
-    if FBufferedStream.Read(TempStream.Memory^, MsgSize) < MsgSize then
+    FMsgStream.SetSize(MsgSize);
+    if FBufferedStream.Read(FMsgStream.Memory^, MsgSize) < MsgSize then
       raise EStreamException.Create('Unexpected EOF while reading message payload');
   end;
 
-  TempStream.Position := 0;
+  FMsgStream.Position := 0;
 
-  AMessage.LoadFromStream(TempStream);
+  AMessage.LoadFromStream(FMsgStream);
   Result := True;
-  TempStream.Free; // Guaranteed cleanup even if LoadFromStream raises an exception
 end;
 
 function TDelimitedReader.TShardReader.ReadVarint(out Value: uint64): boolean;
@@ -227,7 +233,6 @@ var
   WrapperSize, FieldLen: uint64;
   TagInfo: uint64;
   WireType: integer;
-  WrapperStream, MsgStream: TMemoryStream;
 begin
   AKey := '';
   Result := False;
@@ -235,9 +240,7 @@ begin
   if Assigned(FBufferedStream) then
   begin
     if FBufferedStream.Position >= FBufferedStream.Size then
-    begin
       CloseCurrentFile;
-    end;
   end;
 
   // 1. Find the next message wrapper size
@@ -252,24 +255,24 @@ begin
     if ReadVarint(WrapperSize) then
       Break
     else
-      CloseCurrentFile; // Hit EOF on current file, loop around and open the next one
+      CloseCurrentFile;
   end;
 
-  // 2. Read the entire wrapper block into memory for safe parsing
-  WrapperStream := TMemoryStream.Create;
+  // 2. Read the entire wrapper block into the reusable wrapper stream
+  FWrapperStream.Clear;
   if WrapperSize > 0 then
   begin
-    WrapperStream.SetSize(WrapperSize);
-    if FBufferedStream.Read(WrapperStream.Memory^, WrapperSize) < WrapperSize then
+    FWrapperStream.SetSize(WrapperSize);
+    if FBufferedStream.Read(FWrapperStream.Memory^, WrapperSize) < WrapperSize then
       raise EStreamException.Create(
         Format('Unexpected EOF while reading wrapper payload: %d', [WrapperSize]));
   end;
-  WrapperStream.Position := 0;
+  FWrapperStream.Position := 0;
 
   // 3. Parse the Protobuf Wrapper tags
-  while WrapperStream.Position < WrapperStream.Size do
+  while FWrapperStream.Position < FWrapperStream.Size do
   begin
-    if not ReadVarintFromStream(WrapperStream, TagInfo) then
+    if not ReadVarintFromStream(FWrapperStream, TagInfo) then
       Break;
 
     WireType := TagInfo and 7;
@@ -277,35 +280,34 @@ begin
     case TagInfo of
       $0A: // Field 1 (Key): Tag 1, WireType 2 (Length-Delimited)
       begin
-        ReadVarintFromStream(WrapperStream, FieldLen);
+        ReadVarintFromStream(FWrapperStream, FieldLen);
         SetLength(AKey, FieldLen);
         if FieldLen > 0 then
-          WrapperStream.ReadBuffer(AKey[1], FieldLen);
+          FWrapperStream.ReadBuffer(AKey[1], FieldLen);
       end;
 
       $12: // Field 2 (Message): Tag 2, WireType 2 (Length-Delimited)
       begin
-        ReadVarintFromStream(WrapperStream, FieldLen);
-        MsgStream := TMemoryStream.Create;
-        MsgStream.SetSize(FieldLen);
+        ReadVarintFromStream(FWrapperStream, FieldLen);
+        FMsgStream.Clear;
+        FMsgStream.SetSize(FieldLen);
         if FieldLen > 0 then
-          WrapperStream.ReadBuffer(MsgStream.Memory^, FieldLen);
-        MsgStream.Position := 0;
+          FWrapperStream.ReadBuffer(FMsgStream.Memory^, FieldLen);
+        FMsgStream.Position := 0;
 
-        AMessage.LoadFromStream(MsgStream);
-        MsgStream.Free; // Guaranteed cleanup even if LoadFromStream fails
+        AMessage.LoadFromStream(FMsgStream);
       end;
       else
         // Skip unknown fields forwards to ensure forwards-compatibility
         case WireType of
-          0: ReadVarintFromStream(WrapperStream, FieldLen); // Varint
-          1: WrapperStream.Seek(8, soCurrent);              // 64-bit
+          0: ReadVarintFromStream(FWrapperStream, FieldLen); // Varint
+          1: FWrapperStream.Seek(8, soCurrent);              // 64-bit
           2: // Length-delimited block
           begin
-            ReadVarintFromStream(WrapperStream, FieldLen);
-            WrapperStream.Seek(FieldLen, soCurrent);
+            ReadVarintFromStream(FWrapperStream, FieldLen);
+            FWrapperStream.Seek(FieldLen, soCurrent);
           end;
-          5: WrapperStream.Seek(4, soCurrent);              // 32-bit
+          5: FWrapperStream.Seek(4, soCurrent);              // 32-bit
           else
             raise EStreamException.Create('Invalid wire type inside wrapper');
         end;
@@ -319,7 +321,6 @@ begin
   end;
 
   Result := True;
-  WrapperStream.Free; // Guaranteed cleanup for the wrapper stream
 end;
 
 { TDelimitedReader }
