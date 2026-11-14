@@ -696,9 +696,13 @@ begin
     Current := Next;
   end;
 
+
   FRoot.FNext := nil;
   FRoot.NextIndex := 0;
   FCurrentNode := FRoot;
+
+  FStream.Position := 0;
+  FStream.Size := 0;
 end;
 
 function TBitStreamReader.GetPosition: integer;

@@ -43,6 +43,7 @@ implementation
 constructor TPattern.Create(const ABasePath: ansistring; ANumShards: integer);
 begin
   inherited Create;
+
   FBasePath := ABasePath;
   FNumShards := ANumShards;
   FRemainder := 0;
@@ -54,6 +55,7 @@ var
   P: integer;
 begin
   inherited Create;
+
   P := Pos('@', Pattern);
   if P > 0 then
   begin

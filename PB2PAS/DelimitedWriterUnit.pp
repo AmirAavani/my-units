@@ -14,12 +14,6 @@ const
 type
   TIntList = specialize TList<integer>;
 
-  { TRobustFileStream - Retries partial writes under kernel backpressure }
-  TRobustFileStream = class(TFileStream)
-  public
-    function Write(const Buffer; Count: longint): longint; override;
-  end;
-
   { TDelimitedWriter }
   generic TDelimitedWriter<TMessage: TBaseMessage> = class(TObject)
   private
@@ -39,9 +33,9 @@ type
       FMaxPartSize: int64;
       FBufferSize: integer;
 
-      FFileStream: TRobustFileStream;
+      FFileStream: TFileStream;
       FBufferedStream: TWriteBufStream;
-      FTempStream: TMemoryStream;
+      FTempStream: TProtoStreamWriter;
       FProtoWriter: TProtoStreamWriter;
       FBytesWritten: int64;
 
@@ -115,30 +109,6 @@ function HashKey(const Key: rawbytestring): cardinal;
 
 implementation
 
-{ TRobustFileStream }
-
-function TRobustFileStream.Write(const Buffer; Count: longint): longint;
-var
-  TotalWritten, BytesWritten: longint;
-  P: pbyte;
-begin
-  TotalWritten := 0;
-  P := pbyte(@Buffer);
-
-  while TotalWritten < Count do
-  begin
-    BytesWritten := FileWrite(Handle, P^, Count - TotalWritten);
-    if BytesWritten <= 0 then
-      raise EStreamException.Create('Stream write failed or disk full');
-
-    Inc(TotalWritten, BytesWritten);
-    Inc(P, BytesWritten);
-  end;
-
-  Result := TotalWritten;
-end;
-
-
 { TDelimitedWriter.TPartWriter }
 
 constructor TDelimitedWriter.TPartWriter.Create(const AShardPath, ATimestampStr: string;
@@ -157,7 +127,8 @@ begin
 
   OpenNextPart;
 
-  FProtoWriter := TProtoStreamWriter.Create(FBufferedStream, False);
+  FTempStream := TProtoStreamWriter.Create(TMemoryStream.Create);
+  FProtoWriter := nil;
 end;
 
 destructor TDelimitedWriter.TPartWriter.Destroy;
@@ -180,7 +151,7 @@ procedure TDelimitedWriter.TPartWriter.OpenNextPart;
 begin
   CloseCurrentPart;
   FBytesWritten := 0;
-  FFileStream := TRobustFileStream.Create(GeneratePartPath, fmCreate);
+  FFileStream := TFileStream.Create(GeneratePartPath, fmCreate);
   FBufferedStream := TWriteBufStream.Create(FFileStream, FBufferSize);
   FBufferedStream.SourceOwner := True;
 
@@ -236,17 +207,6 @@ end;
 function TDelimitedWriter.TPartWriter.WriteMessage(const AKey: rawbytestring;
   AMessage: TMessage): boolean;
 
-  function GetVarintLen(Value: uint64): integer;
-  begin
-    if Value = 0 then Exit(1);
-    Result := 0;
-    while Value > 0 do
-    begin
-      Inc(Result);
-      Value := Value shr 7;
-    end;
-  end;
-
   function WriteVarintToBuf(Value: uint64; var Buf: array of byte;
     StartIdx: integer): integer;
   var
@@ -264,9 +224,8 @@ function TDelimitedWriter.TPartWriter.WriteMessage(const AKey: rawbytestring;
   end;
 
 var
-  KeySize, MsgSize, TotalPayloadSize: uint64;
-  KeySizeVarintLen, MsgSizeVarintLen, TotalSizeVarintLen: integer;
-  HeaderBuf: array[0..31] of byte;
+  TotalPayloadSize: uint64;
+  HeaderBuf: array[0..15] of byte;
   HeaderLen: integer;
 begin
   Result := True;
@@ -275,38 +234,21 @@ begin
   if FBytesWritten >= FMaxPartSize then
     OpenNextPart;
 
-  FProtoWriter.Clear;
-  AMessage.EncodeToProto(FProtoWriter);
+  FTempStream.Clear;
 
-  MsgSize := FProtoWriter.Size;
-  KeySize := Length(AKey);
-  KeySizeVarintLen := GetVarintLen(KeySize);
-  MsgSizeVarintLen := GetVarintLen(MsgSize);
+  SaveString(FTempStream, AKey, 1);
+  SaveMessage(FTempStream, AMessage, 2);
 
-  TotalPayloadSize := 1 + KeySizeVarintLen + KeySize + 1 + MsgSizeVarintLen + MsgSize;
+  TotalPayloadSize := FTempStream.Size;
 
-  // Build headers into local stack buffer
-  HeaderLen := 0;
-  TotalSizeVarintLen := WriteVarintToBuf(TotalPayloadSize, HeaderBuf, 0);
-  HeaderLen := TotalSizeVarintLen;
-
-  HeaderBuf[HeaderLen] := $0A;
-  Inc(HeaderLen);
-  HeaderLen := HeaderLen + WriteVarintToBuf(KeySize, HeaderBuf, HeaderLen);
-
-  HeaderBuf[HeaderLen] := $12;
-  Inc(HeaderLen);
-  HeaderLen := HeaderLen + WriteVarintToBuf(MsgSize, HeaderBuf, HeaderLen);
-
-  // Push headers + key directly to buffered stream
+  HeaderLen := WriteVarintToBuf(TotalPayloadSize, HeaderBuf, 0);
   FBufferedStream.WriteBuffer(HeaderBuf, HeaderLen);
-  if KeySize > 0 then
-    FBufferedStream.WriteBuffer(AKey[1], KeySize);
+  FTempStream.WriteToStream;
 
-  // Flush protobuf message nodes directly to buffered stream
-  FProtoWriter.WriteToStream;
+  TMemoryStream(FTempStream.FStream).Position := 0;
+  FBufferedStream.CopyFrom(TMemoryStream(FTempStream.FStream), TotalPayloadSize);
 
-  Inc(FBytesWritten, TotalSizeVarintLen + TotalPayloadSize);
+  Inc(FBytesWritten, HeaderLen + TotalPayloadSize);
 end;
 
 { TDelimitedWriter.TPartWriters }

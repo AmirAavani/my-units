@@ -258,7 +258,7 @@ begin
       CloseCurrentFile;
   end;
 
-  // 2. Read the entire wrapper block into the reusable wrapper stream
+  // 2. Read the entire wrapper block into FWrapperStream
   FWrapperStream.Clear;
   if WrapperSize > 0 then
   begin
@@ -295,9 +295,12 @@ begin
           FWrapperStream.ReadBuffer(FMsgStream.Memory^, FieldLen);
         FMsgStream.Position := 0;
 
-        AMessage.LoadFromStream(FMsgStream);
+        AMessage.DecodeFromProto(FProtoReader, FieldLen);
       end;
       else
+        WriteLn(Format('TagInfo: %d', [TagInfo]));
+        Halt(1);
+        {
         // Skip unknown fields forwards to ensure forwards-compatibility
         case WireType of
           0: ReadVarintFromStream(FWrapperStream, FieldLen); // Varint
@@ -311,6 +314,7 @@ begin
           else
             raise EStreamException.Create('Invalid wire type inside wrapper');
         end;
+        }
     end;
   end;
 
