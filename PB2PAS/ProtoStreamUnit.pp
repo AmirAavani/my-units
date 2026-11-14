@@ -1,6 +1,7 @@
 unit ProtoStreamUnit;
 
 {$mode objfpc}{$H+}
+{$modeswitch ADVANCEDRECORDS}
 
 interface
 
@@ -37,13 +38,28 @@ const
 type
   TByteArray = array [0..ByteArraySize - 1] of byte;
 
-  { TLinkListNode }
-  // TODO(Amir): Change this class to record.
+  PLinkedListNode = ^TLinkedListNode;
 
-  TLinkListNode = class(TObject)
+  { TNodePool }
+
+  TNodePool = class(TObject)
+    AvailableLinkListNodes: array of PLinkedListNode;
+    LastIndex: integer;
+
+    procedure Release(aNode: PLinkedListNode);
+    function Acquire: PLinkedListNode;
+
+  public
+    constructor Create;
+    destructor Destroy; override;
+
+  end;
+
+  { TLinkedListNode }
+
+  TLinkedListNode = record
   private
-    ID: integer;
-    FNext: TLinkListNode;
+    FNext: PLinkedListNode;
     FData: TByteArray;
     NextIndex: integer;
 
@@ -52,14 +68,15 @@ type
     function GetTotalSize: integer;
 
   public
-    property Next: TLinkListNode read FNext;
+    property Next: PLinkedListNode read FNext;
     property Size: integer read GetSize;
     property TotalSize: integer read GetTotalSize;
     property ByteAt[Index: integer]: byte read GetByteAt;
 
-    constructor Create;
+    procedure Init;
 
-    function WriteRawData(p: Pointer; Count: integer): TLinkListNode;
+    function WriteRawData(p: Pointer; Count: integer;
+      Pool: TNodePool = nil): PLinkedListNode;
     procedure WriteLength(n: uint32);
 
   end;
@@ -67,26 +84,29 @@ type
   { TProtoStreamWriter }
 
   TProtoStreamWriter = class(TObject)
+  private
+    FNodePool: TNodePool;
+
   protected
     FStream: TStream;
-    FRoot: TLinkListNode;
-    FCurrentNode: TLinkListNode;
+    FRoot: PLinkedListNode;
+    FCurrentNode: PLinkedListNode;
     TakeOwnership: boolean;
 
     function GetSize: int64;
-    property CurrentNode: TLinkListNode read FCurrentNode;
+    property CurrentNode: PLinkedListNode read FCurrentNode;
 
     procedure WriteToStream;
 
   public
     // Size in Bit.
     property Size: int64 read GetSize;
-    property Root: TLinkListNode read FRoot;
+    property Root: PLinkedListNode read FRoot;
 
     constructor Create(AnStream: TStream; _TakeOwnership: boolean = True);
     destructor Destroy; override;
 
-    function AddIntervalNode: TLinkListNode;
+    function AddIntervalNode: PLinkedListNode;
 
     (* Encode and write varint. *)
     procedure WriteRawVarint32(Value: integer); inline;
@@ -124,8 +144,6 @@ type
     procedure WriteByte(FieldNumber: integer; Value: byte); inline;
     (* Write a string field, including tag. *)
     procedure WriteString(FieldNumber: integer; const Value: ansistring); inline;
-    //    (*  Write a unsigned int32 field, including tag. *)
-    //    procedure WriteUInt32(FieldNumber: Integer; Value: cardinal);
 
     procedure Clear; inline;
 
@@ -226,19 +244,17 @@ var
 begin
   BytesRead := FStream.Read(Result, 1);
   if BytesRead = 0 then
-    Result := 0;  // Return 0 on EOF instead of undefined value
+    Result := 0;
 end;
 
 procedure TProtoStreamReader.ReadRawData(P: Pointer; Count: integer);
 begin
   FStream.Read(P^, Count);
-
 end;
 
 procedure TProtoStreamReader.SetPosition(AValue: int64);
 begin
   Self.FStream.Position := AValue;
-
 end;
 
 constructor TProtoStreamReader.Create(AnStream: TStream; _TakeOwnership: boolean);
@@ -247,7 +263,6 @@ begin
 
   FStream := AnStream;
   TakeOwnership := _TakeOwnership;
-
 end;
 
 destructor TProtoStreamReader.Destroy;
@@ -265,7 +280,6 @@ begin
   l := ReadRawVarint32;
   SetLength(Result, l);
   ReadRawData(PChar(Result), l);
-
 end;
 
 function TProtoStreamReader.ReadBool: boolean;
@@ -274,13 +288,11 @@ var
 begin
   Self.ReadRawData(@b, 1);
   Result := b <> 0;
-
 end;
 
 function TProtoStreamReader.ReadByte: byte;
 begin
   Self.ReadRawData(@Result, 1);
-
 end;
 
 function TProtoStreamReader.ReadRawVarint64: int64;
@@ -292,10 +304,6 @@ begin
   Shift := 0;
   while Shift < 64 do
   begin
-    { PERFORMANCE FIX: Removed GetSize check that caused ~1M lseek() syscalls
-      The buffered stream will return 0 bytes on EOF, which is sufficient
-      for detecting end-of-stream without expensive system calls }
-
     b := ReadNextByte;
     Result := Result or ((b and $7F) shl shift);
     if b < $80 then
@@ -313,10 +321,6 @@ begin
   Shift := 0;
   while Shift < 32 do
   begin
-    { PERFORMANCE FIX: Removed GetSize check that caused ~1M lseek() syscalls
-      The buffered stream will return 0 bytes on EOF, which is sufficient
-      for detecting end-of-stream without expensive system calls }
-
     b := ReadNextByte;
     Result := Result or ((b and $7F) shl shift);
     if b < $80 then
@@ -333,55 +337,46 @@ end;
 function TProtoStreamReader.ReadVarInt64: int64;
 begin
   Result := Self.ReadRawVarint64;
-
 end;
 
 function TProtoStreamReader.ReadVarInt32: integer;
 begin
   Result := Self.ReadRawVarint32;
-
 end;
 
 function TProtoStreamReader.ReadVarUInt64: uint64;
 begin
   Result := Self.ReadRawVarint64;
-
 end;
 
 function TProtoStreamReader.ReadFixed32: uint32;
 begin
   ReadRawData(@Result, SizeOf(uint32));
-
 end;
 
 function TProtoStreamReader.ReadFixed64: uint64;
 begin
   ReadRawData(@Result, SizeOf(uint64));
-
 end;
 
 function TProtoStreamReader.ReadSFixed32: int32;
 begin
   ReadRawData(@Result, SizeOf(int32));
-
 end;
 
 function TProtoStreamReader.ReadSFixed64: int64;
 begin
   ReadRawData(@Result, SizeOf(int64));
-
 end;
 
 function TProtoStreamReader.ReadVarUInt32: uint32;
 begin
   Result := Self.ReadRawVarint32;
-
 end;
 
 function TProtoStreamReader.ReadDouble: double;
 begin
   Self.ReadRawData(@Result, SizeOf(double));
-
 end;
 
 procedure TProtoStreamReader.ReadTag(var FieldNumber, WireType: integer);
@@ -390,87 +385,6 @@ var
 begin
   Tag := ReadRawVarint32;
   DecodeTag(Tag, FieldNumber, WireType);
-
-end;
-
-{ TLinkListNode }
-
-function TLinkListNode.GetByteAt(Index: integer): byte;
-begin
-  Result := FData[Index];
-
-end;
-
-function TLinkListNode.GetSize: integer;
-begin
-  Result := NextIndex;
-end;
-
-function TLinkListNode.GetTotalSize: integer;
-var
-  Node: TLinkListNode;
-begin
-  Result := 0;
-  Node := Self;
-
-  while Node <> nil do
-  begin
-    Inc(Result, Node.Size);
-
-    Node := Node.Next;
-  end;
-end;
-
-var
-  CId: integer;
-
-constructor TLinkListNode.Create;
-begin
-  inherited;
-
-  FNext := nil;
-  NextIndex := 0;
-  Inc(CId);
-  ID := CID;
-end;
-
-
-function TLinkListNode.WriteRawData(p: Pointer; Count: integer): TLinkListNode;
-var
-  Delta: integer;
-begin
-  {
-    NextIndex ... 1023
-  }
-  if NextIndex + Count <= ByteArraySize then
-  begin
-    Move(p^, FData[NextIndex], Count);
-    Inc(NextIndex, Count);
-    Exit(Self);
-
-  end;
-
-  Delta := ByteArraySize - NextIndex;
-  Move(p^, FData[NextIndex], Delta);
-  NextIndex := ByteArraySize;
-  FNext := TLinkListNode.Create;
-
-  Exit(Next.WriteRawData(pbyte(p) + Delta, Count - Delta));
-
-end;
-
-procedure TLinkListNode.WriteLength(n: uint32);
-var
-  b: byte;
-begin
-  repeat
-    b := n and $7F;
-    n := n shr 7;
-    if n <> 0 then
-      b := b + $80;
-    WriteRawData(@b, 1);
-  until n = 0;
-
 end;
 
 
@@ -478,16 +392,15 @@ end;
 
 function TProtoStreamWriter.GetSize: int64;
 var
-  Node: TLinkListNode;
+  Node: PLinkedListNode;
 begin
   Result := 0;
   Node := Root;
 
   while Node <> nil do
   begin
-    Inc(Result, Node.Size);
-
-    Node := Node.Next;
+    Inc(Result, Node^.Size);
+    Node := Node^.Next;
   end;
 end;
 
@@ -495,56 +408,63 @@ constructor TProtoStreamWriter.Create(AnStream: TStream; _TakeOwnership: boolean
 begin
   inherited Create;
 
-  FRoot := TLinkListNode.Create;
-  FCurrentNode := Root;
+  FNodePool := TNodePool.Create;
+  FRoot := FNodePool.Acquire;
+  FRoot^.Init;
+  FCurrentNode := FRoot;
   FStream := AnStream;
   TakeOwnership := _TakeOwnership;
 end;
 
 destructor TProtoStreamWriter.Destroy;
 var
-  Current, Next: TLinkListNode;
+  Current, Next: PLinkedListNode;
 begin
   Self.WriteToStream;
-  Current := Root;
+  Current := FRoot;
   while Current <> nil do
   begin
-    Next := Current.Next;
-    Current.Free;
+    Next := Current^.FNext;
+    FNodePool.Release(Current);
     Current := Next;
-
   end;
+  FRoot := nil;
+  FCurrentNode := nil;
+
+  FNodePool.Free;
 
   if TakeOwnership then
     FStream.Free;
 
   inherited;
-
 end;
 
 procedure TProtoStreamWriter.WriteToStream;
 var
-  Node: TLinkListNode;
+  Node: PLinkedListNode;
 begin
   Node := Root;
   while Node <> nil do
   begin
-    if Node.Size > 0 then
-      FStream.Write(Node.FData[0], Node.Size);
+    if Node^.Size > 0 then
+      FStream.Write(Node^.FData[0], Node^.Size);
 
-    Node := Node.Next;
+    Node := Node^.Next;
   end;
 end;
 
-function TProtoStreamWriter.AddIntervalNode: TLinkListNode;
+function TProtoStreamWriter.AddIntervalNode: PLinkedListNode;
+var
+  NextNode: PLinkedListNode;
 begin
-  Assert(FCurrentNode.Next <> nil, 'FCurrentNode <> nil');
-  Result := TLinkListNode.Create;
-  FCurrentNode.FNext := Result;
-  Result.FNext := TLinkListNode.Create;
+  Result := FNodePool.Acquire;
+  Result^.Init;
+  NextNode := FNodePool.Acquire;
+  NextNode^.Init;
 
-  FCurrentNode := Result.FNext;
-
+  FCurrentNode^.FNext := Result;
+  Result^.FNext := NextNode;
+  FCurrentNode := NextNode;
 end;
 
 procedure TProtoStreamWriter.WriteRawVarint32(Value: integer);
@@ -558,7 +478,6 @@ begin
       b := b + $80;
     WriteRawByte(b);
   until Value = 0;
-
 end;
 
 procedure TProtoStreamWriter.WriteRawVarint64(Value: int64);
@@ -579,101 +498,86 @@ begin
   if FieldNumber = -1 then
     Exit;
   WriteRawVarint32(MakeTag(FieldNumber, WireType));
-
 end;
 
 procedure TProtoStreamWriter.WriteRawByte(Value: byte);
 begin
   WriteRawData(@Value, 1);
-
 end;
 
 procedure TProtoStreamWriter.WriteRawData(const p: Pointer; Count: integer);
 begin
-  FCurrentNode := CurrentNode.WriteRawData(p, Count);
-
+  FCurrentNode := CurrentNode^.WriteRawData(p, Count, FNodePool);
 end;
 
 procedure TProtoStreamWriter.WriteDouble(FieldNumber: integer; Value: double);
 begin
   WriteTag(FieldNumber, WIRETYPE_FIXED64);
   WriteRawData(@Value, SizeOf(Value));
-
 end;
 
 procedure TProtoStreamWriter.WriteFloat(FieldNumber: integer; Value: single);
 begin
   WriteTag(FieldNumber, WIRETYPE_FIXED32);
   WriteRawData(@Value, SizeOf(Value));
-
 end;
 
 procedure TProtoStreamWriter.WriteVarInt64(FieldNumber: integer; Value: int64);
 begin
   WriteTag(FieldNumber, WIRETYPE_VARINT);
   WriteRawVarint64(Value);
-
 end;
 
 procedure TProtoStreamWriter.WriteVarInt32(FieldNumber: integer; Value: integer);
 begin
   WriteTag(FieldNumber, WIRETYPE_VARINT);
   WriteRawVarint32(Value);
-
 end;
 
 procedure TProtoStreamWriter.WriteVarUInt64(FieldNumber: integer; Value: uint64);
 begin
   WriteVarInt64(FieldNumber, Value);
-
 end;
 
 procedure TProtoStreamWriter.WriteVarUInt32(FieldNumber: integer; Value: uint32);
 begin
   WriteVarInt32(FieldNumber, Value);
-
 end;
 
 procedure TProtoStreamWriter.WriteFixed64(FieldNumber: integer; Value: uint64);
 begin
   WriteTag(fieldNumber, WIRETYPE_FIXED64);
   WriteRawData(@Value, SizeOf(Value));
-
 end;
 
 procedure TProtoStreamWriter.WriteSFixed32(FieldNumber: integer; Value: int32);
 begin
   WriteTag(fieldNumber, WIRETYPE_FIXED32);
   WriteRawData(@Value, SizeOf(Value));
-
 end;
 
 procedure TProtoStreamWriter.WriteSFixed64(FieldNumber: integer; Value: int64);
 begin
   WriteTag(fieldNumber, WIRETYPE_FIXED64);
   WriteRawData(@Value, SizeOf(Value));
-
 end;
 
 procedure TProtoStreamWriter.WriteFixed32(FieldNumber: integer; Value: uint32);
 begin
   WriteTag(fieldNumber, WIRETYPE_FIXED32);
   WriteRawData(@Value, SizeOf(Value));
-
 end;
 
 procedure TProtoStreamWriter.WriteBoolean(FieldNumber: integer; Value: boolean);
 begin
   WriteTag(FieldNumber, WIRETYPE_VARINT);
   WriteRawByte(Ord(Value));
-
 end;
 
 procedure TProtoStreamWriter.WriteByte(FieldNumber: integer; Value: byte);
 begin
   WriteTag(FieldNumber, WIRETYPE_VARINT);
   WriteRawByte(Value);
-
 end;
 
 procedure TProtoStreamWriter.WriteString(FieldNumber: integer; const Value: ansistring);
@@ -681,40 +585,37 @@ begin
   WriteTag(FieldNumber, WIRETYPE_LENGTH_DELIMITED);
   WriteRawVarint32(Length(Value));
   WriteRawData(PChar(Value), Length(Value));
-
 end;
 
 procedure TProtoStreamWriter.Clear;
 var
-  Current, Next: TLinkListNode;
+  Current, Next: PLinkedListNode;
 begin
-  Current := FRoot.FNext;
+  Current := FRoot^.FNext;
   while Current <> nil do
   begin
-    Next := Current.FNext;
-    Current.Free;
+    Next := Current^.FNext;
+    FNodePool.Release(Current);
     Current := Next;
   end;
 
-
-  FRoot.FNext := nil;
-  FRoot.NextIndex := 0;
+  FRoot^.FNext := nil;
+  FRoot^.NextIndex := 0;
   FCurrentNode := FRoot;
 
   FStream.Position := 0;
   FStream.Size := 0;
 end;
 
+
 function TBitStreamReader.GetPosition: integer;
 begin
   Result := FStream.Position * 8 - (8 - CurrentIndex);
-
 end;
 
 function TBitStreamReader.GetSize: int64;
 begin
   Result := FStream.Size * 8;
-
 end;
 
 constructor TBitStreamReader.Create(AnStream: TStream);
@@ -731,7 +632,6 @@ begin
   FStream.Free;
 
   inherited;
-
 end;
 
 function TBitStreamReader.ReadNextBit: integer;
@@ -742,7 +642,6 @@ begin
   begin
     CurrentIndex := 0;
     FStream.ReadBuffer(CurrentByte, 1);
-
   end;
 end;
 
@@ -758,6 +657,136 @@ begin
     if ReadNextBit = 1 then
       Result := Result or P2;
     Inc(P2, P2);
+  end;
+end;
+
+{ TLinkedListNode }
+
+function TLinkedListNode.GetByteAt(Index: integer): byte;
+begin
+  Result := FData[Index];
+end;
+
+function TLinkedListNode.GetSize: integer;
+begin
+  Result := NextIndex;
+end;
+
+function TLinkedListNode.GetTotalSize: integer;
+var
+  Node: PLinkedListNode;
+begin
+  Result := 0;
+  Node := @Self;
+
+  while Node <> nil do
+  begin
+    Inc(Result, Node^.Size);
+    Node := Node^.Next;
+  end;
+end;
+
+procedure TLinkedListNode.Init;
+begin
+  FNext := nil;
+  NextIndex := 0;
+end;
+
+
+function TLinkedListNode.WriteRawData(p: Pointer; Count: integer;
+  Pool: TNodePool = nil): PLinkedListNode;
+var
+  Delta: integer;
+  NewNode: PLinkedListNode;
+begin
+  if NextIndex + Count <= ByteArraySize then
+  begin
+    Move(p^, FData[NextIndex], Count);
+    Inc(NextIndex, Count);
+    Exit(@Self);
+  end;
+
+  Delta := ByteArraySize - NextIndex;
+  Move(p^, FData[NextIndex], Delta);
+  NextIndex := ByteArraySize;
+
+  if Pool <> nil then
+    NewNode := Pool.Acquire
+  else
+    New(NewNode);
+  NewNode^.Init;
+  FNext := NewNode;
+
+  Exit(FNext^.WriteRawData(pbyte(p) + Delta, Count - Delta, Pool));
+end;
+
+procedure TLinkedListNode.WriteLength(n: uint32);
+var
+  b: byte;
+begin
+  repeat
+    b := n and $7F;
+    n := n shr 7;
+    if n <> 0 then
+      b := b + $80;
+    WriteRawData(@b, 1);
+  until n = 0;
+end;
+
+
+{ TNodePool }
+
+constructor TNodePool.Create;
+begin
+  inherited Create;
+
+  LastIndex := -1;
+  SetLength(AvailableLinkListNodes, 64);
+end;
+
+destructor TNodePool.Destroy;
+var
+  Idx: integer;
+begin
+  for Idx := 0 to LastIndex do
+  begin
+    if AvailableLinkListNodes[Idx] <> nil then
+      Dispose(AvailableLinkListNodes[Idx]);
+  end;
+
+  LastIndex := -1;
+  SetLength(AvailableLinkListNodes, 0);
+  inherited Destroy;
+end;
+
+procedure TNodePool.Release(aNode: PLinkedListNode);
+var
+  NewLen: integer;
+begin
+  if aNode = nil then
+    Exit;
+
+  Inc(LastIndex);
+  if LastIndex >= Length(AvailableLinkListNodes) then
+  begin
+    NewLen := Length(AvailableLinkListNodes) * 2;
+    SetLength(AvailableLinkListNodes, NewLen);
+  end;
+
+  AvailableLinkListNodes[LastIndex] := aNode;
+end;
+
+function TNodePool.Acquire: PLinkedListNode;
+begin
+  if LastIndex >= 0 then
+  begin
+    Result := AvailableLinkListNodes[LastIndex];
+    AvailableLinkListNodes[LastIndex] := nil;
+    Dec(LastIndex);
+  end
+  else
+  begin
+    New(Result);
   end;
 end;
 

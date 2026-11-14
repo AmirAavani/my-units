@@ -256,7 +256,7 @@ procedure SaveRepeatedSInt32(Stream: TProtoStreamWriter; const Data: TInt32s;
   const TagID: integer);
 var
   SingleData: int32;
-  SizeNode: TLinkListNode;
+  SizeNode: PLinkedListNode;
 begin
   if Data = nil then
     Exit;
@@ -266,7 +266,7 @@ begin
   for SingleData in Data do
     SaveSInt32(Stream, SingleData, -1);
 
-  SizeNode.WriteLength(SizeNode.TotalSize);
+  SizeNode^.WriteLength(SizeNode^.TotalSize);
 
 end;
 
@@ -274,7 +274,7 @@ procedure SaveRepeatedSInt64(Stream: TProtoStreamWriter; const Data: TInt64s;
   const TagID: integer);
 var
   SingleData: int64;
-  SizeNode: TLinkListNode;
+  SizeNode: PLinkedListNode;
 begin
   if Data = nil then
     Exit;
@@ -284,7 +284,7 @@ begin
   for SingleData in Data do
     SaveSInt64(Stream, SingleData, -1);
 
-  SizeNode.WriteLength(SizeNode.TotalSize);
+  SizeNode^.WriteLength(SizeNode^.TotalSize);
 
 end;
 
@@ -292,7 +292,7 @@ procedure SaveRepeatedFixed32(Stream: TProtoStreamWriter; const Data: TUInt32s;
   const TagID: integer);
 var
   SingleData: uint32;
-  SizeNode: TLinkListNode;
+  SizeNode: PLinkedListNode;
 begin
   if Data = nil then
     Exit;
@@ -302,7 +302,7 @@ begin
   for SingleData in Data do
     SaveFixed32(Stream, SingleData, -1);
 
-  SizeNode.WriteLength(SizeNode.TotalSize);
+  SizeNode^.WriteLength(SizeNode^.TotalSize);
 
 end;
 
@@ -310,7 +310,7 @@ procedure SaveRepeatedFixed64(Stream: TProtoStreamWriter; const Data: TUInt64s;
   const TagID: integer);
 var
   SingleData: uint64;
-  SizeNode: TLinkListNode;
+  SizeNode: PLinkedListNode;
 begin
   if Data = nil then
     Exit;
@@ -320,7 +320,7 @@ begin
   for SingleData in Data do
     SaveFixed64(Stream, SingleData, -1);
 
-  SizeNode.WriteLength(SizeNode.TotalSize);
+  SizeNode^.WriteLength(SizeNode^.TotalSize);
 
 end;
 
@@ -328,7 +328,7 @@ procedure SaveRepeatedSFixed32(Stream: TProtoStreamWriter; const Data: TInt32s;
   const TagID: integer);
 var
   SingleData: int32;
-  SizeNode: TLinkListNode;
+  SizeNode: PLinkedListNode;
 begin
   if Data = nil then
     Exit;
@@ -338,7 +338,7 @@ begin
   for SingleData in Data do
     SaveSFixed32(Stream, SingleData, -1);
 
-  SizeNode.WriteLength(SizeNode.TotalSize);
+  SizeNode^.WriteLength(SizeNode^.TotalSize);
 
 end;
 
@@ -346,7 +346,7 @@ procedure SaveRepeatedSFixed64(Stream: TProtoStreamWriter; const Data: TInt64s;
   const TagID: integer);
 var
   SingleData: uint64;
-  SizeNode: TLinkListNode;
+  SizeNode: PLinkedListNode;
 begin
   if Data = nil then
     Exit;
@@ -356,7 +356,7 @@ begin
   for SingleData in Data do
     SaveSFixed64(Stream, SingleData, -1);
 
-  SizeNode.WriteLength(SizeNode.TotalSize);
+  SizeNode^.WriteLength(SizeNode^.TotalSize);
 
 end;
 
@@ -380,7 +380,7 @@ procedure SaveRepeatedBool(Stream: TProtoStreamWriter; const Data: TBooleans;
   const TagID: integer);
 var
   SingleData: boolean;
-  SizeNode: TLinkListNode;
+  SizeNode: PLinkedListNode;
 begin
   if Data = nil then
     Exit;
@@ -390,7 +390,7 @@ begin
   for SingleData in Data do
     SaveBool(Stream, SingleData, -1);
 
-  SizeNode.WriteLength(SizeNode.TotalSize);
+  SizeNode^.WriteLength(SizeNode^.TotalSize);
 
 end;
 
@@ -398,7 +398,7 @@ procedure SaveRepeatedByte(Stream: TProtoStreamWriter; const Data: TBytes;
   const TagID: integer);
 var
   SingleData: byte;
-  SizeNode: TLinkListNode;
+  SizeNode: PLinkedListNode;
 begin
   if Data = nil then
     Exit;
@@ -408,7 +408,7 @@ begin
   for SingleData in Data do
     SaveByte(Stream, SingleData, -1);
 
-  SizeNode.WriteLength(SizeNode.TotalSize);
+  SizeNode^.WriteLength(SizeNode^.TotalSize);
 
 end;
 
@@ -694,10 +694,11 @@ begin
   Result := StartPos + Len = Stream.Position;
 end;
 
+
 procedure SaveMessage(Stream: TProtoStreamWriter; const Data: TBaseMessage;
   const TagID: integer);
 var
-  SizeNode: TLinkListNode;
+  SizeNode: PLinkedListNode;
 begin
   if Data = nil then
     Exit;
@@ -706,8 +707,7 @@ begin
   SizeNode := Stream.AddIntervalNode;
   Data.SaveToStream(Stream);
 
-  SizeNode.WriteLength(SizeNode.TotalSize);
-
+  SizeNode^.WriteLength(SizeNode^.TotalSize);
 end;
 
 function LoadMessage(Stream: TProtoStreamReader; Data: TBaseMessage): boolean;
@@ -728,17 +728,13 @@ end;
 generic procedure SaveRepeatedMessage<TMessage>(Stream: TProtoStreamWriter;
   const Data: specialize TObjectList<TMessage>; const TagID: integer);
 var
-  SizeNode: TLinkListNode;
   Message: TMessage;
 begin
   if Data = nil then
     Exit;
 
   for Message in Data do
-  begin
     SaveMessage(Stream, Message, TagID);
-
-  end;
 end;
 
 generic function LoadRepeatedMessage<TMessage>(Stream: TProtoStreamReader;
@@ -834,108 +830,102 @@ procedure SaveRepeatedFloat(Stream: TProtoStreamWriter; const Data: TSingles;
   const TagID: integer);
 var
   SingleData: single;
-  SizeNode: TLinkListNode;
+  SizeNode: PLinkedListNode;
 begin
   if Data = nil then
     Exit;
 
-  Stream.WriteTag(TagID, 2);
+  Stream.WriteTag(TagID, WIRETYPE_LENGTH_DELIMITED);
   SizeNode := Stream.AddIntervalNode;
   for SingleData in Data do
     Stream.WriteRawData(@SingleData, SizeOf(single));
 
-  SizeNode.WriteLength(SizeNode.TotalSize);
-
+  SizeNode^.WriteLength(SizeNode^.TotalSize);
 end;
 
 procedure SaveRepeatedDouble(Stream: TProtoStreamWriter; const Data: TDoubles;
   const TagID: integer);
 var
   SingleData: double;
-  SizeNode: TLinkListNode;
+  SizeNode: PLinkedListNode;
 begin
   if Data = nil then
     Exit;
 
-  Stream.WriteTag(TagID, 2);
+  Stream.WriteTag(TagID, WIRETYPE_LENGTH_DELIMITED);
   SizeNode := Stream.AddIntervalNode;
   for SingleData in Data do
     Stream.WriteRawData(@SingleData, SizeOf(double));
 
-  SizeNode.WriteLength(SizeNode.TotalSize);
-
+  SizeNode^.WriteLength(SizeNode^.TotalSize);
 end;
 
 procedure SaveRepeatedInt32(Stream: TProtoStreamWriter; const Data: TInt32s;
   const TagID: integer);
 var
   SingleData: int32;
-  SizeNode: TLinkListNode;
+  SizeNode: PLinkedListNode;
 begin
   if Data = nil then
     Exit;
 
-  Stream.WriteTag(TagID, 2);
+  Stream.WriteTag(TagID, WIRETYPE_LENGTH_DELIMITED);
   SizeNode := Stream.AddIntervalNode;
   for SingleData in Data do
     Stream.WriteRawVarint32(SingleData);
 
-  SizeNode.WriteLength(SizeNode.TotalSize);
-
+  SizeNode^.WriteLength(SizeNode^.TotalSize);
 end;
 
 procedure SaveRepeatedInt64(Stream: TProtoStreamWriter; const Data: TInt64s;
   const TagID: integer);
 var
   SingleData: int64;
-  SizeNode: TLinkListNode;
+  SizeNode: PLinkedListNode;
 begin
   if Data = nil then
     Exit;
 
-  Stream.WriteTag(TagID, 2);
+  Stream.WriteTag(TagID, WIRETYPE_LENGTH_DELIMITED);
   SizeNode := Stream.AddIntervalNode;
   for SingleData in Data do
     Stream.WriteRawVarint64(SingleData);
 
-  SizeNode.WriteLength(SizeNode.TotalSize);
-
+  SizeNode^.WriteLength(SizeNode^.TotalSize);
 end;
 
 procedure SaveRepeatedUInt32(Stream: TProtoStreamWriter; const Data: TUInt32s;
   const TagID: integer);
 var
   SingleData: uint32;
-  SizeNode: TLinkListNode;
+  SizeNode: PLinkedListNode;
 begin
   if Data = nil then
     Exit;
 
-  Stream.WriteTag(TagID, 2);
+  Stream.WriteTag(TagID, WIRETYPE_LENGTH_DELIMITED);
   SizeNode := Stream.AddIntervalNode;
   for SingleData in Data do
     Stream.WriteRawVarint32(SingleData);
 
-  SizeNode.WriteLength(SizeNode.TotalSize);
-
+  SizeNode^.WriteLength(SizeNode^.TotalSize);
 end;
 
 procedure SaveRepeatedUInt64(Stream: TProtoStreamWriter; const Data: TUInt64s;
   const TagID: integer);
 var
   SingleData: uint64;
-  SizeNode: TLinkListNode;
+  SizeNode: PLinkedListNode;
 begin
   if Data = nil then
     Exit;
 
-  Stream.WriteTag(TagID, 2);
+  Stream.WriteTag(TagID, WIRETYPE_LENGTH_DELIMITED);
   SizeNode := Stream.AddIntervalNode;
   for SingleData in Data do
     Stream.WriteRawVarint64(SingleData);
 
-  SizeNode.WriteLength(SizeNode.TotalSize);
-
+  SizeNode^.WriteLength(SizeNode^.TotalSize);
 end;
 
 procedure SaveFloat(Stream: TProtoStreamWriter; const Data: single;
