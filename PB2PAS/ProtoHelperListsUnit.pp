@@ -11,14 +11,15 @@ type
   { TObjectList }
 
   generic TObjectList<TMyObject> = class(specialize TList<TMyObject>)
-  private type
+  private
+  type
     _TObjectList = specialize TObjectList<TMyObject>;
   protected
     function GetCount: SizeInt; override;
 
   public
     property Count: SizeInt read GetCount;  // Redeclare to use overridden getter
-    
+
     destructor Destroy; override;
 
     function ItemsPtr: Pointer; inline;
@@ -27,7 +28,8 @@ type
   { TSimpleTypeList }
 
   generic TSimpleTypeList<TSimpleType> = class(specialize TList<TSimpleType>)
-  private type
+  private
+  type
     TSimpleList = specialize TSimpleTypeList<TSimpleType>;
     PSimpleType = ^TSimpleType;
   protected
@@ -35,8 +37,9 @@ type
     procedure SetCount(c: SizeInt);
 
   public
-    property Count: SizeInt read GetCount write SetCount;  // Redeclare to use overridden getter
-    
+    property Count: SizeInt read GetCount write SetCount;
+    // Redeclare to use overridden getter
+
     constructor Create;
     destructor Destroy; override;
 
@@ -63,7 +66,7 @@ begin
     Self.ItemsPtr^,
     Result.ItemsPtr^,
     NewCount * SizeOf(TSimpleType)
-  );
+    );
 
 end;
 
@@ -78,11 +81,7 @@ end;
 function TSimpleTypeList.GetCount: SizeInt;
 begin
   if Self = nil then
-  begin
-    WriteLn('I am doing my job!');
-    Flush(Output);
     Exit(0);
-  end;
 
   Result := inherited GetCount;
 end;
@@ -121,7 +120,6 @@ end;
 destructor TObjectList.Destroy;
 var
   Obj: TObject;
-
 begin
   for Obj in Self do
     Obj.Free;
@@ -137,4 +135,3 @@ begin
 end;
 
 end.
-

@@ -61,7 +61,7 @@ var
 
 begin
   if DirectoryExists(Path) then
-    Exit;
+    Exit(True);
   Parts := Path.Split(['/']);
   Current := Parts[0];
   for i := 1 to High(Parts) do

@@ -6,7 +6,7 @@ interface
 
 uses
   Classes, SysUtils, BufStream, PatternUnit, ProtoStreamUnit,
-  ProtoHelperUnit, Generics.Collections;
+  ProtoHelperUnit, Generics.Collections, FileSystemUnit;
 
 const
   OneGB = 1000000000;
@@ -268,11 +268,13 @@ constructor TDelimitedWriter.TShardWriter.Create(AShardIndex: integer;
   const AShardPath, ATimestampStr: string; AMaxPartSize: int64; ABufferSize: integer);
 begin
   inherited Create;
+
   FShardIndex := AShardIndex;
   FShardPath := AShardPath;
   FTimestampStr := ATimestampStr;
   FMaxPartSize := AMaxPartSize;
   FBufferSize := ABufferSize;
+  FileSystemUnit.MustCreateDir(AShardPath);
 
   FPartZeroWriter := TPartWriter.Create(FShardPath, FTimestampStr,
     0, FMaxPartSize, FBufferSize);
@@ -310,6 +312,7 @@ begin
   FShards := TShardWriters.Create(True);
   FTimestampStr := FormatDateTime('yyyymmddhhnnss', Now);
   FNextWorkerID := 0;
+  FileSystemUnit.MustCreateDir(aPattern.BasePath);
 
   for i := 0 to FPattern.NumShards - 1 do
     FShards.Add(TShardWriter.Create(i, FPattern.GetShardPath(i),
