@@ -67,7 +67,7 @@ type
   { TProtoStreamWriter }
 
   TProtoStreamWriter = class(TObject)
-  private
+  protected
     FStream: TStream;
     FRoot: TLinkListNode;
     FCurrentNode: TLinkListNode;
@@ -76,7 +76,6 @@ type
     function GetSize: int64;
     property CurrentNode: TLinkListNode read FCurrentNode;
 
-  protected
     procedure WriteToStream;
 
   public

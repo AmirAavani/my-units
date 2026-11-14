@@ -151,20 +151,20 @@ begin
   FSequence := 0;
   FMaxPartSize := AMaxPartSize;
   FBufferSize := ABufferSize;
-  FTempStream := TMemoryStream.Create;
-  FProtoWriter := TProtoStreamWriter.Create(FTempStream, False);
 
   if not DirectoryExists(FShardPath) then
     ForceDirectories(FShardPath);
 
   OpenNextPart;
+
+  FProtoWriter := TProtoStreamWriter.Create(FBufferedStream, False);
 end;
 
 destructor TDelimitedWriter.TPartWriter.Destroy;
 begin
+  // Free FProtoWriter first before closing streams
+  FreeAndNil(FProtoWriter);
   CloseCurrentPart;
-  FProtoWriter.Free;
-  FTempStream.Free;
 
   inherited Destroy;
 end;
@@ -182,14 +182,17 @@ begin
   FBytesWritten := 0;
   FFileStream := TRobustFileStream.Create(GeneratePartPath, fmCreate);
   FBufferedStream := TWriteBufStream.Create(FFileStream, FBufferSize);
-  FBufferedStream.SourceOwner := False;
+  FBufferedStream.SourceOwner := True;
+
+  if Assigned(FProtoWriter) then
+    FProtoWriter.FStream := FBufferedStream;
 end;
 
 procedure TDelimitedWriter.TPartWriter.CloseCurrentPart;
 begin
   if Assigned(FBufferedStream) then
-    FreeAndNil(FBufferedStream);
-  if Assigned(FFileStream) then
+    FreeAndNil(FBufferedStream)
+  else if Assigned(FFileStream) then
     FreeAndNil(FFileStream);
 end;
 
@@ -197,6 +200,7 @@ function TDelimitedWriter.TPartWriter.WriteMessage(AMessage: TMessage): boolean;
 var
   VarintBuf: array[0..9] of byte;
   VarintLen: integer;
+  MsgSize: uint64;
   Value: uint64;
 begin
   Result := True;
@@ -205,16 +209,14 @@ begin
   if FBytesWritten >= FMaxPartSize then
     OpenNextPart;
 
-  FTempStream.Clear;
   FProtoWriter.Clear;
-
   AMessage.EncodeToProto(FProtoWriter);
 
-  Value := FProtoWriter.Size;
-  FProtoWriter.WriteToStream;
-  FTempStream.Position := 0;
+  MsgSize := FProtoWriter.Size;
 
+  // Build varint size prefix
   VarintLen := 0;
+  Value := MsgSize;
   while Value >= $80 do
   begin
     VarintBuf[VarintLen] := byte((Value and $7F) or $80);
@@ -224,11 +226,11 @@ begin
   VarintBuf[VarintLen] := byte(Value);
   Inc(VarintLen);
 
+  // Write length prefix and flush proto nodes directly to the buffer stream
   FBufferedStream.WriteBuffer(VarintBuf, VarintLen);
-  if FTempStream.Size > 0 then
-    FBufferedStream.WriteBuffer(FTempStream.Memory^, FTempStream.Size);
+  FProtoWriter.WriteToStream;
 
-  Inc(FBytesWritten, VarintLen + FTempStream.Size);
+  Inc(FBytesWritten, VarintLen + MsgSize);
 end;
 
 function TDelimitedWriter.TPartWriter.WriteMessage(const AKey: rawbytestring;
@@ -264,8 +266,8 @@ function TDelimitedWriter.TPartWriter.WriteMessage(const AKey: rawbytestring;
 var
   KeySize, MsgSize, TotalPayloadSize: uint64;
   KeySizeVarintLen, MsgSizeVarintLen, TotalSizeVarintLen: integer;
-  VarintBuf: array[0..31] of byte;
-  BufLen: integer;
+  HeaderBuf: array[0..31] of byte;
+  HeaderLen: integer;
 begin
   Result := True;
   if AMessage = nil then Exit(False);
@@ -273,39 +275,36 @@ begin
   if FBytesWritten >= FMaxPartSize then
     OpenNextPart;
 
-  FTempStream.Clear;
   FProtoWriter.Clear;
-
   AMessage.EncodeToProto(FProtoWriter);
 
   MsgSize := FProtoWriter.Size;
-  FProtoWriter.WriteToStream;
-  FTempStream.Position := 0;
-
   KeySize := Length(AKey);
   KeySizeVarintLen := GetVarintLen(KeySize);
   MsgSizeVarintLen := GetVarintLen(MsgSize);
 
   TotalPayloadSize := 1 + KeySizeVarintLen + KeySize + 1 + MsgSizeVarintLen + MsgSize;
 
-  TotalSizeVarintLen := WriteVarintToBuf(TotalPayloadSize, VarintBuf, 0);
-  FBufferedStream.WriteBuffer(VarintBuf, TotalSizeVarintLen);
+  // Build headers into local stack buffer
+  HeaderLen := 0;
+  TotalSizeVarintLen := WriteVarintToBuf(TotalPayloadSize, HeaderBuf, 0);
+  HeaderLen := TotalSizeVarintLen;
 
-  VarintBuf[0] := $0A;
-  BufLen := 1;
-  BufLen := BufLen + WriteVarintToBuf(KeySize, VarintBuf, BufLen);
-  FBufferedStream.WriteBuffer(VarintBuf, BufLen);
+  HeaderBuf[HeaderLen] := $0A;
+  Inc(HeaderLen);
+  HeaderLen := HeaderLen + WriteVarintToBuf(KeySize, HeaderBuf, HeaderLen);
 
+  HeaderBuf[HeaderLen] := $12;
+  Inc(HeaderLen);
+  HeaderLen := HeaderLen + WriteVarintToBuf(MsgSize, HeaderBuf, HeaderLen);
+
+  // Push headers + key directly to buffered stream
+  FBufferedStream.WriteBuffer(HeaderBuf, HeaderLen);
   if KeySize > 0 then
     FBufferedStream.WriteBuffer(AKey[1], KeySize);
 
-  VarintBuf[0] := $12;
-  BufLen := 1;
-  BufLen := BufLen + WriteVarintToBuf(MsgSize, VarintBuf, BufLen);
-  FBufferedStream.WriteBuffer(VarintBuf, BufLen);
-
-  if MsgSize > 0 then
-    FBufferedStream.WriteBuffer(FTempStream.Memory^, MsgSize);
+  // Flush protobuf message nodes directly to buffered stream
+  FProtoWriter.WriteToStream;
 
   Inc(FBytesWritten, TotalSizeVarintLen + TotalPayloadSize);
 end;
