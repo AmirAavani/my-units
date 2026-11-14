@@ -27,7 +27,7 @@ type
   protected
 
     procedure SaveToStream(Stream: TProtoStreamWriter); virtual; abstract;
-    function LoadFromStream(Stream: TProtoStreamReader; Len: integer): boolean;
+    function LoadFromStream(Stream: TProtoStreamReader; Len: longint): boolean;
       virtual; abstract;
   public
     constructor Create;
@@ -36,7 +36,8 @@ type
 
     function LoadFromStream(Stream: TStream): boolean; virtual;
     procedure SaveToStream(Stream: TStream); virtual;
-
+    function DecodeFromProto(AReader: TProtoStreamReader; ALen: longint): boolean;
+    procedure EncodeToProto(AWriter: TProtoStreamWriter);
 
     function ToJSON: ansistring; virtual;
 
@@ -1274,6 +1275,19 @@ begin
   Self.SaveToStream(ProtoStream);
 
   ProtoStream.Free;
+end;
+
+function TBaseMessage.DecodeFromProto(AReader: TProtoStreamReader;
+  ALen: longint): boolean;
+begin
+  Self.Clear;
+  Result := Self.LoadFromStream(AReader, ALen);
+end;
+
+procedure TBaseMessage.EncodeToProto(AWriter: TProtoStreamWriter);
+begin
+  Self.SaveToStream(AWriter);
+
 end;
 
 function TBaseMessage.ToJSON: ansistring;

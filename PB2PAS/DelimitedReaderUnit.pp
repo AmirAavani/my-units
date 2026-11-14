@@ -6,9 +6,10 @@ interface
 
 uses
   Classes, SysUtils, BufStream, FastListUnit,
-  PatternUnit, ProtoHelperUnit;
+  PatternUnit, ProtoHelperUnit, ProtoStreamUnit;
 
 type
+
   { TDelimitedReader }
   generic TDelimitedReader<TMessage: TBaseMessage> = class(TObject)
   public
@@ -29,6 +30,7 @@ type
       // Reusable streams to avoid allocations in the hot loop
       FWrapperStream: TMemoryStream;
       FMsgStream: TMemoryStream;
+      FProtoReader: TProtoStreamReader;
 
       function OpenNextFile: boolean;
       procedure CloseCurrentFile;
@@ -96,6 +98,7 @@ begin
   FFiles.Sort;
   FWrapperStream := TMemoryStream.Create;
   FMsgStream := TMemoryStream.Create;
+  FProtoReader := TProtoStreamReader.Create(FMsgStream, False);
 
 end;
 
@@ -103,6 +106,7 @@ destructor TDelimitedReader.TShardReader.Destroy;
 begin
   CloseCurrentFile;
   FFiles.Free;
+  FProtoReader.Free;
   FWrapperStream.Free;
   FMsgStream.Free;
 
@@ -120,8 +124,6 @@ begin
     fmOpenRead or fmShareDenyWrite);
   FBufferedStream := TReadBufStream.Create(FFileStream, FBufferSize);
 
-  // CRITICAL: Prevent TReadBufStream from automatically freeing FFileStream
-  // behind our back, avoiding double-free crashes in CloseCurrentFile.
   FBufferedStream.SourceOwner := False;
 
   Inc(FCurrentFileIndex);
@@ -169,9 +171,7 @@ begin
   end;
 
   FMsgStream.Position := 0;
-
-  AMessage.LoadFromStream(FMsgStream);
-  Result := True;
+  Result := AMessage.DecodeFromProto(FProtoReader, FMsgStream.Size);
 end;
 
 function TDelimitedReader.TShardReader.ReadVarint(out Value: uint64): boolean;
@@ -331,7 +331,7 @@ var
 begin
   inherited Create;
 
-  FPattern := TPattern.Create(aPattern);
+  FPattern := aPattern;
   FBufferSize := ABufferSize;
   FShards := TShardReaders.Create(True); // Owns instances
   FShards.Capacity := FPattern.NumShards;

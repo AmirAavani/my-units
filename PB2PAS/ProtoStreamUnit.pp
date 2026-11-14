@@ -14,20 +14,20 @@ type
   TBitStreamReader = class(TObject)
   private
     FStream: TStream;
-    CurrentByte: Byte;
-    CurrentIndex: Integer;
-    function GetPosition: Integer;
-    function GetSize: Int64;
+    CurrentByte: byte;
+    CurrentIndex: integer;
+    function GetPosition: integer;
+    function GetSize: int64;
 
   public
-    property Position: Integer read GetPosition;
-    property Size: Int64 read GetSize;
+    property Position: integer read GetPosition;
+    property Size: int64 read GetSize;
     // Takes the ownership of AnStream Object.
     constructor Create(AnStream: TStream);
     destructor Destroy; override;
 
-    function ReadNextBit: Integer;
-    function ReadNextByte: Integer;
+    function ReadNextBit: integer;
+    function ReadNextByte: integer;
 
   end;
 
@@ -35,32 +35,32 @@ const
   ByteArraySize = 4096;
 
 type
-  TByteArray = array [0..ByteArraySize - 1] of Byte;
+  TByteArray = array [0..ByteArraySize - 1] of byte;
 
   { TLinkListNode }
   // TODO(Amir): Change this class to record.
 
   TLinkListNode = class(TObject)
   private
-    ID: Integer;
+    ID: integer;
     FNext: TLinkListNode;
     FData: TByteArray;
-    NextIndex: Integer;
+    NextIndex: integer;
 
-    function GetByteAt(Index: Integer): Byte;
-    function GetSize: Integer;
-    function GetTotalSize: Integer;
+    function GetByteAt(Index: integer): byte;
+    function GetSize: integer;
+    function GetTotalSize: integer;
 
   public
     property Next: TLinkListNode read FNext;
-    property Size: Integer read GetSize;
-    property TotalSize: Integer read GetTotalSize;
-    property ByteAt[Index: Integer]: Byte read GetByteAt;
+    property Size: integer read GetSize;
+    property TotalSize: integer read GetTotalSize;
+    property ByteAt[Index: integer]: byte read GetByteAt;
 
     constructor Create;
 
-    function WriteRawData(p: Pointer; Count: Integer): TLinkListNode;
-    procedure WriteLength(n: Uint32);
+    function WriteRawData(p: Pointer; Count: integer): TLinkListNode;
+    procedure WriteLength(n: uint32);
 
   end;
 
@@ -71,60 +71,64 @@ type
     FStream: TStream;
     FRoot: TLinkListNode;
     FCurrentNode: TLinkListNode;
-    TakeOwnership: Boolean;
+    TakeOwnership: boolean;
 
-    function GetSize: Int64;
+    function GetSize: int64;
     property CurrentNode: TLinkListNode read FCurrentNode;
+
+  protected
     procedure WriteToStream;
 
   public
     // Size in Bit.
-    property Size: Int64 read GetSize;
+    property Size: int64 read GetSize;
     property Root: TLinkListNode read FRoot;
 
-    constructor Create(AnStream: TStream; _TakeOwnership: Boolean = True);
+    constructor Create(AnStream: TStream; _TakeOwnership: boolean = True);
     destructor Destroy; override;
 
     function AddIntervalNode: TLinkListNode;
 
     (* Encode and write varint. *)
-    procedure WriteRawVarint32(Value: Integer);
+    procedure WriteRawVarint32(Value: integer); inline;
     (* Encode and write varint. *)
-    procedure WriteRawVarint64(Value: Int64);
+    procedure WriteRawVarint64(Value: int64); inline;
     (* Encode and write tag. *)
-    procedure WriteTag(FieldNumber: Integer; WireType: Integer);
+    procedure WriteTag(FieldNumber: integer; WireType: integer); inline;
     (* Encode and write a single byte. *)
-    procedure WriteRawByte(value: Byte);
+    procedure WriteRawByte(Value: byte); inline;
     (* Write the data with specified Count. *)
-    procedure WriteRawData(const p: Pointer; Count: Integer);
+    procedure WriteRawData(const p: Pointer; Count: integer); inline;
     (* Write a double field, including tag. *)
-    procedure WriteDouble(FieldNumber: Integer; Value: Double);
+    procedure WriteDouble(FieldNumber: integer; Value: double); inline;
     (* Write a single field, including tag. *)
-    procedure WriteFloat(FieldNumber: Integer; Value: Single);
+    procedure WriteFloat(FieldNumber: integer; Value: single); inline;
     (* Write a int64 field, including tag. *)
-    procedure WriteVarInt64(FieldNumber: Integer; Value: Int64);
+    procedure WriteVarInt64(FieldNumber: integer; Value: int64); inline;
     (* Write a varint32 field, including tag. *)
-    procedure WriteVarInt32(FieldNumber: Integer; Value: Integer);
+    procedure WriteVarInt32(FieldNumber: integer; Value: integer); inline;
     (* Write a UInt64 field, including tag. *)
-    procedure WriteVarUInt64(FieldNumber: Integer; Value: UInt64);
+    procedure WriteVarUInt64(FieldNumber: integer; Value: uint64); inline;
     (* Write a UInt32 field, including tag. *)
-    procedure WriteVarUInt32(FieldNumber: Integer; Value: UInt32);
+    procedure WriteVarUInt32(FieldNumber: integer; Value: uint32); inline;
     (* Write a fixed32 field, including tag. *)
-    procedure WriteFixed32(FieldNumber: Integer; Value: UInt32);
+    procedure WriteFixed32(FieldNumber: integer; Value: uint32); inline;
     (* Write a fixed64 field, including tag. *)
-    procedure WriteFixed64(FieldNumber: Integer; Value: UInt64);
+    procedure WriteFixed64(FieldNumber: integer; Value: uint64); inline;
     (* Write a sfixed32 field, including tag. *)
-    procedure WriteSFixed32(FieldNumber: Integer; Value: Int32);
+    procedure WriteSFixed32(FieldNumber: integer; Value: int32); inline;
     (* Write a fixed64 field, including tag. *)
-    procedure WriteSFixed64(FieldNumber: Integer; Value: Int64);
+    procedure WriteSFixed64(FieldNumber: integer; Value: int64); inline;
     (* Write a Boolean field, including tag. *)
-    procedure WriteBoolean(FieldNumber: Integer; Value: Boolean);
+    procedure WriteBoolean(FieldNumber: integer; Value: boolean); inline;
     (* Write a byte field, including tag. *)
-    procedure WriteByte(FieldNumber: Integer; Value: Byte);
+    procedure WriteByte(FieldNumber: integer; Value: byte); inline;
     (* Write a string field, including tag. *)
-    procedure WriteString(FieldNumber: Integer; const Value: AnsiString);
-//    (*  Write a unsigned int32 field, including tag. *)
-//    procedure WriteUInt32(FieldNumber: Integer; Value: cardinal);
+    procedure WriteString(FieldNumber: integer; const Value: ansistring); inline;
+    //    (*  Write a unsigned int32 field, including tag. *)
+    //    procedure WriteUInt32(FieldNumber: Integer; Value: cardinal);
+
+    procedure Clear; inline;
 
   end;
 
@@ -133,113 +137,112 @@ type
   TProtoStreamReader = class(TObject)
   private
     FStream: TStream;
-    TakeOwnership: Boolean;
+    TakeOwnership: boolean;
 
-    function GetPosition: Int64;
-    function GetSize: Int64;
-    function ReadNextByte: Byte;
+    function GetPosition: int64;
+    function GetSize: int64;
+    function ReadNextByte: byte;
 
-    procedure ReadRawData(P: Pointer; Count: Integer);
-    procedure SetPosition(AValue: Int64);
+    procedure ReadRawData(P: Pointer; Count: integer);
+    procedure SetPosition(AValue: int64);
 
   public
-    property Size: Int64 read GetSize;
-    property Position: Int64 read GetPosition write SetPosition;
+    property Size: int64 read GetSize;
+    property Position: int64 read GetPosition write SetPosition;
 
-    constructor Create(AnStream: TStream; _TakeOwnership: Boolean = True);
+    constructor Create(AnStream: TStream; _TakeOwnership: boolean = True);
     destructor Destroy; override;
 
-    function ReadString: AnsiString;
-    function ReadBool: Boolean;
-    function ReadByte: Byte;
-    function ReadDouble: Double;
-    function ReadRawVarint64: Int64;
-    function ReadRawVarint32: Int32;
-    function ReadFloat: Single;
-    function ReadVarInt32: Integer;
-    function ReadVarInt64: Int64;
-    function ReadVarUInt32: UInt32;
-    function ReadVarUInt64: UInt64;
-    function ReadFixed32: UInt32;
-    function ReadFixed64: UInt64;
-    function ReadSFixed32: Int32;
-    function ReadSFixed64: Int64;
+    function ReadString: ansistring;
+    function ReadBool: boolean;
+    function ReadByte: byte;
+    function ReadDouble: double;
+    function ReadRawVarint64: int64;
+    function ReadRawVarint32: int32;
+    function ReadFloat: single;
+    function ReadVarInt32: integer;
+    function ReadVarInt64: int64;
+    function ReadVarUInt32: uint32;
+    function ReadVarUInt64: uint64;
+    function ReadFixed32: uint32;
+    function ReadFixed64: uint64;
+    function ReadSFixed32: int32;
+    function ReadSFixed64: int64;
 
     (* Read and decode tag. *)
-    procedure ReadTag(var FieldNumber, WireType: Integer);
+    procedure ReadTag(var FieldNumber, WireType: integer);
 
   end;
 
 const
-  WIRETYPE_VARINT           = 0;
-  WIRETYPE_FIXED64          = 1;
+  WIRETYPE_VARINT = 0;
+  WIRETYPE_FIXED64 = 1;
   WIRETYPE_LENGTH_DELIMITED = 2;
-  WIRETYPE_START_GROUP      = 3;
-  WIRETYPE_END_GROUP        = 4;
-  WIRETYPE_FIXED32          = 5;
+  WIRETYPE_START_GROUP = 3;
+  WIRETYPE_END_GROUP = 4;
+  WIRETYPE_FIXED32 = 5;
 
   TAG_TYPE_BITS = 3;
   TAG_TYPE_MASK = (1 shl TAG_TYPE_BITS) - 1;
 
 implementation
 
-function GetTagWireType(Tag: Integer): Integer;
+function GetTagWireType(Tag: integer): integer;
 begin
   Result := Tag and TAG_TYPE_MASK;
 end;
 
-function GetTagFieldNumber(Tag: Integer): Integer;
+function GetTagFieldNumber(Tag: integer): integer;
 begin
   Result := Tag shr Tag_TYPE_BITS;
 end;
 
-function MakeTag(FieldNumber, WireType: Integer): Integer;
+function MakeTag(FieldNumber, WireType: integer): integer;
 begin
   Result := (FieldNumber shl Tag_TYPE_BITS) or WireType;
 end;
 
-procedure DecodeTag(Tag: Integer; var FieldNumber, WireType: Integer);
+procedure DecodeTag(Tag: integer; var FieldNumber, WireType: integer);
 begin
   FieldNumber := Tag shr TAG_TYPE_BITS;
-  WireType := Tag and ((1 shl TAG_TYPE_BITS) - 1) ;
+  WireType := Tag and ((1 shl TAG_TYPE_BITS) - 1);
 end;
 
 
 { TProtoStreamReader }
 
-function TProtoStreamReader.GetSize: Int64;
+function TProtoStreamReader.GetSize: int64;
 begin
   Result := FStream.Size;
 end;
 
-function TProtoStreamReader.GetPosition: Int64;
+function TProtoStreamReader.GetPosition: int64;
 begin
   Result := FStream.Position;
 end;
 
-function TProtoStreamReader.ReadNextByte: Byte;
+function TProtoStreamReader.ReadNextByte: byte;
 var
-  BytesRead: Integer;
+  BytesRead: integer;
 begin
   BytesRead := FStream.Read(Result, 1);
   if BytesRead = 0 then
     Result := 0;  // Return 0 on EOF instead of undefined value
 end;
 
-procedure TProtoStreamReader.ReadRawData(P: Pointer; Count: Integer);
+procedure TProtoStreamReader.ReadRawData(P: Pointer; Count: integer);
 begin
-   FStream.Read(P^, Count);
+  FStream.Read(P^, Count);
 
 end;
 
-procedure TProtoStreamReader.SetPosition(AValue: Int64);
+procedure TProtoStreamReader.SetPosition(AValue: int64);
 begin
   Self.FStream.Position := AValue;
 
 end;
 
-constructor TProtoStreamReader.Create(AnStream: TStream; _TakeOwnership: Boolean
-  );
+constructor TProtoStreamReader.Create(AnStream: TStream; _TakeOwnership: boolean);
 begin
   inherited Create;
 
@@ -256,10 +259,9 @@ begin
   inherited Destroy;
 end;
 
-function TProtoStreamReader.ReadString: AnsiString;
+function TProtoStreamReader.ReadString: ansistring;
 var
-  l: Integer;
-
+  l: integer;
 begin
   l := ReadRawVarint32;
   SetLength(Result, l);
@@ -267,27 +269,25 @@ begin
 
 end;
 
-function TProtoStreamReader.ReadBool: Boolean;
+function TProtoStreamReader.ReadBool: boolean;
 var
-  b: Byte;
-
+  b: byte;
 begin
   Self.ReadRawData(@b, 1);
   Result := b <> 0;
 
 end;
 
-function TProtoStreamReader.ReadByte: Byte;
+function TProtoStreamReader.ReadByte: byte;
 begin
   Self.ReadRawData(@Result, 1);
 
 end;
 
-function TProtoStreamReader.ReadRawVarint64: Int64;
+function TProtoStreamReader.ReadRawVarint64: int64;
 var
-  Shift: Integer;
-  b: Int64;
-
+  Shift: integer;
+  b: int64;
 begin
   Result := 0;
   Shift := 0;
@@ -296,20 +296,19 @@ begin
     { PERFORMANCE FIX: Removed GetSize check that caused ~1M lseek() syscalls
       The buffered stream will return 0 bytes on EOF, which is sufficient
       for detecting end-of-stream without expensive system calls }
-    
+
     b := ReadNextByte;
     Result := Result or ((b and $7F) shl shift);
     if b < $80 then
-	Break;
+      Break;
     Inc(Shift, 7);
   end;
 end;
 
-function TProtoStreamReader.ReadRawVarint32: Int32;
+function TProtoStreamReader.ReadRawVarint32: int32;
 var
-  Shift: Integer;
-  b: Int32;
-
+  Shift: integer;
+  b: int32;
 begin
   Result := 0;
   Shift := 0;
@@ -318,78 +317,77 @@ begin
     { PERFORMANCE FIX: Removed GetSize check that caused ~1M lseek() syscalls
       The buffered stream will return 0 bytes on EOF, which is sufficient
       for detecting end-of-stream without expensive system calls }
-    
+
     b := ReadNextByte;
     Result := Result or ((b and $7F) shl shift);
     if b < $80 then
-	Break;
+      Break;
     Inc(Shift, 7);
   end;
 end;
 
-function TProtoStreamReader.ReadFloat: Single;
+function TProtoStreamReader.ReadFloat: single;
 begin
-  Self.ReadRawData(@Result, SizeOf(Single));
+  Self.ReadRawData(@Result, SizeOf(single));
 end;
 
-function TProtoStreamReader.ReadVarInt64: Int64;
-begin
-  Result := Self.ReadRawVarint64;
-
-end;
-
-function TProtoStreamReader.ReadVarInt32: Integer;
-begin
-  Result := Self.ReadRawVarint32;
-
-end;
-
-function TProtoStreamReader.ReadVarUInt64: UInt64;
+function TProtoStreamReader.ReadVarInt64: int64;
 begin
   Result := Self.ReadRawVarint64;
 
 end;
 
-function TProtoStreamReader.ReadFixed32: UInt32;
-begin
-  ReadRawData(@Result, SizeOf(UInt32));
-
-end;
-
-function TProtoStreamReader.ReadFixed64: UInt64;
-begin
-  ReadRawData(@Result, SizeOf(UInt64));
-
-end;
-
-function TProtoStreamReader.ReadSFixed32: Int32;
-begin
-  ReadRawData(@Result, SizeOf(Int32));
-
-end;
-
-function TProtoStreamReader.ReadSFixed64: Int64;
-begin
-  ReadRawData(@Result, SizeOf(Int64));
-
-end;
-
-function TProtoStreamReader.ReadVarUInt32: UInt32;
+function TProtoStreamReader.ReadVarInt32: integer;
 begin
   Result := Self.ReadRawVarint32;
 
 end;
 
-function TProtoStreamReader.ReadDouble: Double;
+function TProtoStreamReader.ReadVarUInt64: uint64;
 begin
-  Self.ReadRawData(@Result, SizeOf(Double));
+  Result := Self.ReadRawVarint64;
 
 end;
 
-procedure TProtoStreamReader.ReadTag(var FieldNumber, WireType: Integer);
+function TProtoStreamReader.ReadFixed32: uint32;
+begin
+  ReadRawData(@Result, SizeOf(uint32));
+
+end;
+
+function TProtoStreamReader.ReadFixed64: uint64;
+begin
+  ReadRawData(@Result, SizeOf(uint64));
+
+end;
+
+function TProtoStreamReader.ReadSFixed32: int32;
+begin
+  ReadRawData(@Result, SizeOf(int32));
+
+end;
+
+function TProtoStreamReader.ReadSFixed64: int64;
+begin
+  ReadRawData(@Result, SizeOf(int64));
+
+end;
+
+function TProtoStreamReader.ReadVarUInt32: uint32;
+begin
+  Result := Self.ReadRawVarint32;
+
+end;
+
+function TProtoStreamReader.ReadDouble: double;
+begin
+  Self.ReadRawData(@Result, SizeOf(double));
+
+end;
+
+procedure TProtoStreamReader.ReadTag(var FieldNumber, WireType: integer);
 var
-  Tag: Int32;
-
+  Tag: int32;
 begin
   Tag := ReadRawVarint32;
   DecodeTag(Tag, FieldNumber, WireType);
@@ -398,21 +396,20 @@ end;
 
 { TLinkListNode }
 
-function TLinkListNode.GetByteAt(Index: Integer): Byte;
+function TLinkListNode.GetByteAt(Index: integer): byte;
 begin
   Result := FData[Index];
 
 end;
 
-function TLinkListNode.GetSize: Integer;
+function TLinkListNode.GetSize: integer;
 begin
   Result := NextIndex;
 end;
 
-function TLinkListNode.GetTotalSize: Integer;
+function TLinkListNode.GetTotalSize: integer;
 var
   Node: TLinkListNode;
-
 begin
   Result := 0;
   Node := Self;
@@ -426,7 +423,7 @@ begin
 end;
 
 var
-  CId: Integer;
+  CId: integer;
 
 constructor TLinkListNode.Create;
 begin
@@ -439,15 +436,14 @@ begin
 end;
 
 
-function TLinkListNode.WriteRawData(p: Pointer; Count: Integer): TLinkListNode;
+function TLinkListNode.WriteRawData(p: Pointer; Count: integer): TLinkListNode;
 var
-  Delta: Integer;
-
+  Delta: integer;
 begin
   {
     NextIndex ... 1023
   }
-  if NextIndex + Count <= ByteArraySize  then
+  if NextIndex + Count <= ByteArraySize then
   begin
     Move(p^, FData[NextIndex], Count);
     Inc(NextIndex, Count);
@@ -460,14 +456,13 @@ begin
   NextIndex := ByteArraySize;
   FNext := TLinkListNode.Create;
 
-  Exit(Next.WriteRawData(p + Delta, Count - Delta));
+  Exit(Next.WriteRawData(pbyte(p) + Delta, Count - Delta));
 
 end;
 
-procedure TLinkListNode.WriteLength(n: Uint32);
+procedure TLinkListNode.WriteLength(n: uint32);
 var
-  b: Byte;
-
+  b: byte;
 begin
   repeat
     b := n and $7F;
@@ -482,10 +477,9 @@ end;
 
 { TProtoStreamWriter }
 
-function TProtoStreamWriter.GetSize: Int64;
+function TProtoStreamWriter.GetSize: int64;
 var
   Node: TLinkListNode;
-
 begin
   Result := 0;
   Node := Root;
@@ -498,8 +492,7 @@ begin
   end;
 end;
 
-constructor TProtoStreamWriter.Create(AnStream: TStream; _TakeOwnership: Boolean
-  );
+constructor TProtoStreamWriter.Create(AnStream: TStream; _TakeOwnership: boolean);
 begin
   inherited Create;
 
@@ -512,7 +505,6 @@ end;
 destructor TProtoStreamWriter.Destroy;
 var
   Current, Next: TLinkListNode;
-
 begin
   Self.WriteToStream;
   Current := Root;
@@ -534,12 +526,12 @@ end;
 procedure TProtoStreamWriter.WriteToStream;
 var
   Node: TLinkListNode;
-
 begin
   Node := Root;
   while Node <> nil do
   begin
-    FStream.Write(Node.FData, Node.Size);
+    if Node.Size > 0 then
+      FStream.Write(Node.FData[0], Node.Size);
 
     Node := Node.Next;
   end;
@@ -556,10 +548,9 @@ begin
 
 end;
 
-procedure TProtoStreamWriter.WriteRawVarint32(Value: Integer);
+procedure TProtoStreamWriter.WriteRawVarint32(Value: integer);
 var
-  b: Byte;
-
+  b: byte;
 begin
   repeat
     b := Value and $7F;
@@ -571,10 +562,9 @@ begin
 
 end;
 
-procedure TProtoStreamWriter.WriteRawVarint64(Value: Int64);
+procedure TProtoStreamWriter.WriteRawVarint64(Value: int64);
 var
-  b: Byte;
-
+  b: byte;
 begin
   repeat
     b := Value and $7F;
@@ -585,7 +575,7 @@ begin
   until Value = 0;
 end;
 
-procedure TProtoStreamWriter.WriteTag(FieldNumber: Integer; WireType: Integer);
+procedure TProtoStreamWriter.WriteTag(FieldNumber: integer; WireType: integer);
 begin
   if FieldNumber = -1 then
     Exit;
@@ -593,102 +583,101 @@ begin
 
 end;
 
-procedure TProtoStreamWriter.WriteRawByte(value: Byte);
+procedure TProtoStreamWriter.WriteRawByte(Value: byte);
 begin
-  WriteRawData(@value, 1);
+  WriteRawData(@Value, 1);
 
 end;
 
-procedure TProtoStreamWriter.WriteRawData(const p: Pointer; Count: Integer);
+procedure TProtoStreamWriter.WriteRawData(const p: Pointer; Count: integer);
 begin
   FCurrentNode := CurrentNode.WriteRawData(p, Count);
 
 end;
 
-procedure TProtoStreamWriter.WriteDouble(FieldNumber: Integer; Value: Double);
+procedure TProtoStreamWriter.WriteDouble(FieldNumber: integer; Value: double);
 begin
   WriteTag(FieldNumber, WIRETYPE_FIXED64);
   WriteRawData(@Value, SizeOf(Value));
 
 end;
 
-procedure TProtoStreamWriter.WriteFloat(FieldNumber: Integer; Value: Single);
+procedure TProtoStreamWriter.WriteFloat(FieldNumber: integer; Value: single);
 begin
   WriteTag(FieldNumber, WIRETYPE_FIXED32);
   WriteRawData(@Value, SizeOf(Value));
 
 end;
 
-procedure TProtoStreamWriter.WriteVarInt64(FieldNumber: Integer; Value: Int64);
+procedure TProtoStreamWriter.WriteVarInt64(FieldNumber: integer; Value: int64);
 begin
   WriteTag(FieldNumber, WIRETYPE_VARINT);
   WriteRawVarint64(Value);
 
 end;
 
-procedure TProtoStreamWriter.WriteVarInt32(FieldNumber: Integer; Value: Integer);
+procedure TProtoStreamWriter.WriteVarInt32(FieldNumber: integer; Value: integer);
 begin
   WriteTag(FieldNumber, WIRETYPE_VARINT);
   WriteRawVarint32(Value);
 
 end;
 
-procedure TProtoStreamWriter.WriteVarUInt64(FieldNumber: Integer; Value: UInt64);
+procedure TProtoStreamWriter.WriteVarUInt64(FieldNumber: integer; Value: uint64);
 begin
   WriteVarInt64(FieldNumber, Value);
 
 end;
 
-procedure TProtoStreamWriter.WriteVarUInt32(FieldNumber: Integer; Value: UInt32);
+procedure TProtoStreamWriter.WriteVarUInt32(FieldNumber: integer; Value: uint32);
 begin
   WriteVarInt32(FieldNumber, Value);
 
 end;
 
-procedure TProtoStreamWriter.WriteFixed64(FieldNumber: Integer; Value: UInt64);
+procedure TProtoStreamWriter.WriteFixed64(FieldNumber: integer; Value: uint64);
 begin
   WriteTag(fieldNumber, WIRETYPE_FIXED64);
-  WriteRawData(@value, SizeOf(value));
+  WriteRawData(@Value, SizeOf(Value));
 
 end;
 
-procedure TProtoStreamWriter.WriteSFixed32(FieldNumber: Integer; Value: Int32);
+procedure TProtoStreamWriter.WriteSFixed32(FieldNumber: integer; Value: int32);
 begin
   WriteTag(fieldNumber, WIRETYPE_FIXED32);
-  WriteRawData(@value, SizeOf(value));
+  WriteRawData(@Value, SizeOf(Value));
 
 end;
 
-procedure TProtoStreamWriter.WriteSFixed64(FieldNumber: Integer; Value: Int64);
+procedure TProtoStreamWriter.WriteSFixed64(FieldNumber: integer; Value: int64);
 begin
   WriteTag(fieldNumber, WIRETYPE_FIXED64);
-  WriteRawData(@value, SizeOf(value));
+  WriteRawData(@Value, SizeOf(Value));
 
 end;
 
-procedure TProtoStreamWriter.WriteFixed32(FieldNumber: Integer; Value: UInt32);
+procedure TProtoStreamWriter.WriteFixed32(FieldNumber: integer; Value: uint32);
 begin
   WriteTag(fieldNumber, WIRETYPE_FIXED32);
-  WriteRawData(@value, SizeOf(value));
+  WriteRawData(@Value, SizeOf(Value));
 
 end;
 
-procedure TProtoStreamWriter.WriteBoolean(FieldNumber: Integer; Value: Boolean);
+procedure TProtoStreamWriter.WriteBoolean(FieldNumber: integer; Value: boolean);
 begin
   WriteTag(FieldNumber, WIRETYPE_VARINT);
   WriteRawByte(Ord(Value));
 
 end;
 
-procedure TProtoStreamWriter.WriteByte(FieldNumber: Integer; Value: Byte);
+procedure TProtoStreamWriter.WriteByte(FieldNumber: integer; Value: byte);
 begin
   WriteTag(FieldNumber, WIRETYPE_VARINT);
   WriteRawByte(Value);
 
 end;
 
-procedure TProtoStreamWriter.WriteString(FieldNumber: Integer;
-  const Value: AnsiString);
+procedure TProtoStreamWriter.WriteString(FieldNumber: integer; const Value: ansistring);
 begin
   WriteTag(FieldNumber, WIRETYPE_LENGTH_DELIMITED);
   WriteRawVarint32(Length(Value));
@@ -696,13 +685,30 @@ begin
 
 end;
 
-function TBitStreamReader.GetPosition: Integer;
+procedure TProtoStreamWriter.Clear;
+var
+  Current, Next: TLinkListNode;
+begin
+  Current := FRoot.FNext;
+  while Current <> nil do
+  begin
+    Next := Current.FNext;
+    Current.Free;
+    Current := Next;
+  end;
+
+  FRoot.FNext := nil;
+  FRoot.NextIndex := 0;
+  FCurrentNode := FRoot;
+end;
+
+function TBitStreamReader.GetPosition: integer;
 begin
   Result := FStream.Position * 8 - (8 - CurrentIndex);
 
 end;
 
-function TBitStreamReader.GetSize: Int64;
+function TBitStreamReader.GetSize: int64;
 begin
   Result := FStream.Size * 8;
 
@@ -725,7 +731,7 @@ begin
 
 end;
 
-function TBitStreamReader.ReadNextBit: Integer;
+function TBitStreamReader.ReadNextBit: integer;
 begin
   Result := (CurrentByte shr CurrentIndex) and 1;
   Inc(CurrentIndex);
@@ -737,11 +743,10 @@ begin
   end;
 end;
 
-function TBitStreamReader.ReadNextByte: Integer;
+function TBitStreamReader.ReadNextByte: integer;
 var
-  i: Integer;
-  P2: Integer;
-
+  i: integer;
+  P2: integer;
 begin
   Result := 0;
   P2 := 1;
@@ -754,4 +759,3 @@ begin
 end;
 
 end.
-

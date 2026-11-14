@@ -6,13 +6,13 @@ interface
 
 uses
   Classes, SysUtils, BufStream, PatternUnit, ProtoStreamUnit,
-  ProtoHelperUnit, FastListUnit;
+  ProtoHelperUnit, Generics.Collections;
 
 const
-  OneGB = 1 shl 30;
+  OneGB = 1000000000;
 
 type
-  TIntList = specialize TFastList<integer>;
+  TIntList = specialize TList<integer>;
 
   { TRobustFileStream - Retries partial writes under kernel backpressure }
   TRobustFileStream = class(TFileStream)
@@ -22,6 +22,10 @@ type
 
   { TDelimitedWriter }
   generic TDelimitedWriter<TMessage: TBaseMessage> = class(TObject)
+  private
+  type
+    TProtoStreamWriter = class(ProtoStreamUnit.TProtoStreamWriter);
+
   public
   type
 
@@ -38,6 +42,7 @@ type
       FFileStream: TRobustFileStream;
       FBufferedStream: TWriteBufStream;
       FTempStream: TMemoryStream;
+      FProtoWriter: TProtoStreamWriter;
       FBytesWritten: int64;
 
       procedure OpenNextPart;
@@ -55,8 +60,7 @@ type
     end;
 
     { TPartWriters }
-
-    TPartWriters = class(specialize TFastObjectList<TPartWriter>)
+    TPartWriters = class(specialize TObjectList<TPartWriter>)
     public
       function WriteMessage(const AKey: rawbytestring; AMessage: TMessage): boolean;
     end;
@@ -79,7 +83,7 @@ type
       function WriteMessage(const AKey: rawbytestring; AMessage: TMessage): boolean;
     end;
 
-    TShardWriters = specialize TFastObjectList<TShardWriter>;
+    TShardWriters = specialize TObjectList<TShardWriter>;
 
   private
     FPattern: TPattern;
@@ -89,18 +93,19 @@ type
     FTimestampStr: string;
     FNextWorkerID: integer;
 
-    function GetShardWriter(Index: integer): TShardWriter; inline;
+    function GetShardWriter(Index: integer): TShardWriter;
 
   public
     constructor Create(aPattern: TPattern; AMaxPartSize: int64 = OneGB;
+      ABufferSize: integer = 65536);
+    constructor Create(const aPattern: string; AMaxPartSize: int64 = OneGB;
       ABufferSize: integer = 65536);
     destructor Destroy; override;
 
     property ShardWriter[Index: integer]: TShardWriter read GetShardWriter;
 
-    function GetShardWriters: TShardWriters; inline;
-    // The caller owns and must free the instance.
-    function NewPartWriters: TPartWriters; inline;
+    function GetShardWriters: TShardWriters;
+    function NewPartWriters: TPartWriters;
 
     procedure WriteMessage(ShardIndex: integer; AMessage: TMessage);
     function WriteMessage(const AKey: rawbytestring; AMessage: TMessage): boolean;
@@ -109,7 +114,6 @@ type
 function HashKey(const Key: rawbytestring): cardinal;
 
 implementation
-
 
 { TRobustFileStream }
 
@@ -148,6 +152,7 @@ begin
   FMaxPartSize := AMaxPartSize;
   FBufferSize := ABufferSize;
   FTempStream := TMemoryStream.Create;
+  FProtoWriter := TProtoStreamWriter.Create(FTempStream, False);
 
   if not DirectoryExists(FShardPath) then
     ForceDirectories(FShardPath);
@@ -158,14 +163,15 @@ end;
 destructor TDelimitedWriter.TPartWriter.Destroy;
 begin
   CloseCurrentPart;
+  FProtoWriter.Free;
   FTempStream.Free;
+
   inherited Destroy;
 end;
 
 function TDelimitedWriter.TPartWriter.GeneratePartPath: string;
 begin
   Inc(FSequence);
-  // Example: data/shard-0000-of-0016/part-20261003135322-00000-00001.pb
   Result := Format('%spart-%s-%.5d-%.5d.pb', [FShardPath, FTimestampStr,
     FWriterID, FSequence]);
 end;
@@ -176,7 +182,6 @@ begin
   FBytesWritten := 0;
   FFileStream := TRobustFileStream.Create(GeneratePartPath, fmCreate);
   FBufferedStream := TWriteBufStream.Create(FFileStream, FBufferSize);
-
   FBufferedStream.SourceOwner := False;
 end;
 
@@ -201,9 +206,14 @@ begin
     OpenNextPart;
 
   FTempStream.Clear;
-  AMessage.SaveToStream(FTempStream);
+  FProtoWriter.Clear;
 
-  Value := FTempStream.Size;
+  AMessage.EncodeToProto(FProtoWriter);
+
+  Value := FProtoWriter.Size;
+  FProtoWriter.WriteToStream;
+  FTempStream.Position := 0;
+
   VarintLen := 0;
   while Value >= $80 do
   begin
@@ -257,40 +267,38 @@ var
   VarintBuf: array[0..31] of byte;
   BufLen: integer;
 begin
+  Result := True;
   if AMessage = nil then Exit(False);
 
-  // 1. Serialize the inner message to get its exact size
-  FTempStream.Clear;
-  AMessage.SaveToStream(FTempStream);
-
-  MsgSize := FTempStream.Size;
-  KeySize := Length(AKey);
-
-  KeySizeVarintLen := GetVarintLen(KeySize);
-  MsgSizeVarintLen := GetVarintLen(MsgSize);
-
-  // 2. Calculate the exact payload size of the wrapper Protobuf message
-  // 1 byte (Tag $0A) + Varint(KeySize) + KeyBytes + 1 byte (Tag $12) + Varint(MsgSize) + MsgBytes
-  TotalPayloadSize := 1 + KeySizeVarintLen + KeySize + 1 + MsgSizeVarintLen + MsgSize;
-
-  // File size limit reached? Rotate.
   if FBytesWritten >= FMaxPartSize then
     OpenNextPart;
 
-  // 3. Write Total Wrapper Size (Length-Delimited prefix for the whole object)
+  FTempStream.Clear;
+  FProtoWriter.Clear;
+
+  AMessage.EncodeToProto(FProtoWriter);
+
+  MsgSize := FProtoWriter.Size;
+  FProtoWriter.WriteToStream;
+  FTempStream.Position := 0;
+
+  KeySize := Length(AKey);
+  KeySizeVarintLen := GetVarintLen(KeySize);
+  MsgSizeVarintLen := GetVarintLen(MsgSize);
+
+  TotalPayloadSize := 1 + KeySizeVarintLen + KeySize + 1 + MsgSizeVarintLen + MsgSize;
+
   TotalSizeVarintLen := WriteVarintToBuf(TotalPayloadSize, VarintBuf, 0);
   FBufferedStream.WriteBuffer(VarintBuf, TotalSizeVarintLen);
 
-  // 4. Write Field 1 (Key): Tag 10 ($0A)
   VarintBuf[0] := $0A;
   BufLen := 1;
   BufLen := BufLen + WriteVarintToBuf(KeySize, VarintBuf, BufLen);
   FBufferedStream.WriteBuffer(VarintBuf, BufLen);
 
   if KeySize > 0 then
-    FBufferedStream.WriteBuffer(AKey[1], KeySize); // Write Key string bytes
+    FBufferedStream.WriteBuffer(AKey[1], KeySize);
 
-  // 5. Write Field 2 (Message): Tag 18 ($12)
   VarintBuf[0] := $12;
   BufLen := 1;
   BufLen := BufLen + WriteVarintToBuf(MsgSize, VarintBuf, BufLen);
@@ -298,10 +306,8 @@ begin
 
   if MsgSize > 0 then
     FBufferedStream.WriteBuffer(FTempStream.Memory^, MsgSize);
-  // Write inner message bytes
 
   Inc(FBytesWritten, TotalSizeVarintLen + TotalPayloadSize);
-  Result := True;
 end;
 
 { TDelimitedWriter.TPartWriters }
@@ -311,12 +317,9 @@ function TDelimitedWriter.TPartWriters.WriteMessage(const AKey: rawbytestring;
 var
   TargetShard: integer;
 begin
-  // Automatically hash the Key to route it to a consistent shard
   TargetShard := HashKey(AKey) mod cardinal(Self.Count);
   Result := Self[TargetShard].WriteMessage(AKey, AMessage);
-
 end;
-
 
 { TDelimitedWriter.TShardWriter }
 
@@ -330,7 +333,6 @@ begin
   FMaxPartSize := AMaxPartSize;
   FBufferSize := ABufferSize;
 
-  // Initialize the dedicated WriterID 0 for direct WriteMessage calls
   FPartZeroWriter := TPartWriter.Create(FShardPath, FTimestampStr,
     0, FMaxPartSize, FBufferSize);
 end;
@@ -338,7 +340,6 @@ end;
 destructor TDelimitedWriter.TShardWriter.Destroy;
 begin
   FPartZeroWriter.Free;
-
   inherited Destroy;
 end;
 
@@ -351,9 +352,7 @@ function TDelimitedWriter.TShardWriter.WriteMessage(const AKey: rawbytestring;
   AMessage: TMessage): boolean;
 begin
   Result := FPartZeroWriter.WriteMessage(AKey, AMessage);
-
 end;
-
 
 { TDelimitedWriter }
 
@@ -364,17 +363,22 @@ var
 begin
   inherited Create;
 
-  FPattern := TPattern.Create(aPattern);
+  FPattern := aPattern;
   FMaxPartSize := AMaxPartSize;
   FBufferSize := ABufferSize;
-  FShards := TShardWriters.Create(True); // Owns the TShardWriter instances
+  FShards := TShardWriters.Create(True);
   FTimestampStr := FormatDateTime('yyyymmddhhnnss', Now);
-  FNextWorkerID := 0; // Starts at 0 so the first worker becomes ID 1
+  FNextWorkerID := 0;
 
-  FShards.Capacity := FPattern.NumShards;
   for i := 0 to FPattern.NumShards - 1 do
     FShards.Add(TShardWriter.Create(i, FPattern.GetShardPath(i),
       FTimestampStr, FMaxPartSize, FBufferSize));
+end;
+
+constructor TDelimitedWriter.Create(const aPattern: string;
+  AMaxPartSize: int64; ABufferSize: integer);
+begin
+  Create(TPattern.Create(aPattern), AMaxPartSize, ABufferSize);
 end;
 
 destructor TDelimitedWriter.Destroy;
@@ -387,24 +391,21 @@ end;
 
 function TDelimitedWriter.GetShardWriter(Index: integer): TShardWriter;
 begin
+  if (Index < 0) or (Index >= FShards.Count) then
+    raise EShardException.CreateFmt('Shard index %d out of bounds', [Index]);
   Result := FShards[Index];
 end;
 
 function HashKey(const Key: rawbytestring): cardinal;
 var
-  i: integer;
-  Len: integer;
-  P: pbyte;
+  PCh: pchar;
 begin
-  Result := 5381; // djb2 hash
-  Len := Length(Key);
-  if Len = 0 then Exit;
-
-  P := @Key[1];
-  for i := 1 to Len do
+  Result := 5381;
+  PCh := @Key[1];
+  while PCh^ <> #0 do
   begin
-    Result := ((Result shl 5) + Result) xor P^;
-    Inc(P);
+    Result := ((Result shl 5) + Result) xor Ord(PCh^);
+    Inc(PCh);
   end;
 end;
 
@@ -438,7 +439,6 @@ begin
   Result := True;
   if FShards.Count = 0 then Exit(False);
 
-  // Automatically hash the Key to route it to a consistent shard
   TargetShard := HashKey(AKey) mod cardinal(FShards.Count);
   Result := GetShardWriter(TargetShard).WriteMessage(AKey, AMessage);
 end;
