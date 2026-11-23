@@ -133,7 +133,7 @@ end;
 
 destructor TDelimitedWriter.TPartWriter.Destroy;
 begin
-  // Free FProtoWriter first before closing streams
+  FTempStream.Free;
   FreeAndNil(FProtoWriter);
   CloseCurrentPart;
 
